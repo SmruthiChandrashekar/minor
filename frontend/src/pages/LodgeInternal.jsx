@@ -1,0 +1,278 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthProvider";
+import { supabase } from "../services/supabaseClient";
+
+function LodgeInternal() {
+  const navigate = useNavigate();
+  const [submittedId, setSubmittedId] = useState(null);
+  const [queryRedirect, setQueryRedirect] = useState(null); // set when intent = Query
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useLanguage();
+  const { user } = useAuth();
+
+  const [formData, setFormData] = useState({
+    employeeId: "",
+    projectLocation: "",
+    department: "",
+    incidentDate: "",
+    description: "",
+    isAnonymous: false,
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  // Dispatch query text to the chatbot panel via a DOM event
+  const sendToChat = (text) => {
+    window.dispatchEvent(new CustomEvent("chatbot-open", { detail: text }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const cleanDescription = formData.description.trim();
+
+    const payload = {
+      description: cleanDescription,
+      metadata: {
+        user_id: formData.isAnonymous ? null : (user?.id || null),
+        location: formData.projectLocation,
+        date: formData.incidentDate,
+        contact_info: formData.employeeId,
+        department: formData.department,
+      },
+    };
+
+    try {
+      // ── STEP 1: Classify intent via backend ──────────────────────────────
+      const classifyRes = await fetch("http://localhost:8000/api/agents/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: cleanDescription }),
+      });
+
+      if (classifyRes.ok) {
+        const classified = await classifyRes.json();
+
+        // ── STEP 2a: Intent = Query → chatbot, NO DB insert ─────────────────
+        if (classified.intent === "Query") {
+          setIsSubmitting(false);
+          setQueryRedirect({ type: "query", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 2b: Low severity → chatbot only, NO DB insert ───────────────
+        if (classified.severity === "Low") {
+          setIsSubmitting(false);
+          setQueryRedirect({ type: "low", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 2c: Medium severity → DB insert AND open chatbot ────────────
+        if (classified.severity === "Medium") {
+          const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!submitRes.ok) throw new Error("Backend submit failed");
+          const data = await submitRes.json();
+          setSubmittedId(data.grievance_id || data.id);
+          // Also open chatbot for guidance
+          setQueryRedirect({ type: "medium", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 3: Intent = Complaint → submit to backend (with category/severity)
+        const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!submitRes.ok) throw new Error("Backend submit failed");
+
+        const data = await submitRes.json();
+        setSubmittedId(data.grievance_id || data.id);
+        return;
+      }
+
+      throw new Error("Classify endpoint unreachable");
+
+    } catch (err) {
+      console.warn("Falling back to direct Supabase insert:", err.message);
+
+      // ── FALLBACK: only for actual complaint submissions (not queries) ────
+      try {
+        const fallbackDesc = `[Employee ID: ${formData.employeeId}] [Project: ${formData.projectLocation}] [Date: ${formData.incidentDate}]\n\n${cleanDescription}`;
+
+        const { data, error } = await supabase.from("grievances").insert({
+          user_id: payload.metadata.user_id,
+          category: "Other",
+          description: fallbackDesc,
+          department: formData.department,
+          status: "Open",
+        }).select().single();
+
+        if (error) throw error;
+        setSubmittedId(data.grievance_id);
+      } catch (supabaseErr) {
+        console.error("Supabase insert error:", supabaseErr);
+        alert("Failed to submit grievance. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  return (
+    <div className="container mt-5 mb-5">
+      <div className="row justify-content-center">
+        <div className="col-md-9">
+
+          <div className="card shadow-lg p-5 border-0" style={{ borderRadius: "16px" }}>
+
+            {!submittedId ? (
+              <>
+                <h3 className="mb-4 fw-bold pb-2 border-bottom" style={{ color: "#001a4d" }}>{t("lodgeInternal")}</h3>
+
+                {/* Query / Low / Medium Redirect Banner */}
+                {queryRedirect && (
+                  <div className="alert d-flex align-items-start gap-3 mb-4" style={{
+                    backgroundColor: queryRedirect.type === "low" ? "#d1ecf1" : queryRedirect.type === "medium" ? "#d4edda" : "#fff3cd",
+                    border: `1px solid ${queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107"}`,
+                    borderRadius: "12px",
+                    color: queryRedirect.type === "low" ? "#0c5460" : queryRedirect.type === "medium" ? "#155724" : "#856404"
+                  }}>
+                    <span style={{ fontSize: "1.5rem" }}>
+                      {queryRedirect.type === "low" ? "💡" : queryRedirect.type === "medium" ? "✅" : "💬"}
+                    </span>
+                    <div className="flex-grow-1">
+                      <strong>
+                        {queryRedirect.type === "low" ? "This looks like a low-priority concern."
+                          : queryRedirect.type === "medium" ? "Complaint logged! Policy Assistant is here to help."
+                          : "This looks like a general query."}
+                      </strong>
+                      <p className="mb-1 mt-1" style={{ fontSize: "14px" }}>
+                        {queryRedirect.type === "low"
+                          ? "Our Policy Assistant can resolve this quickly. Check the chatbot in the bottom-right corner."
+                          : queryRedirect.type === "medium"
+                          ? "Your complaint has been submitted and assigned. The Policy Assistant is open for additional guidance."
+                          : "We've redirected you to the Policy Assistant. Check the chatbot in the bottom-right corner."}
+                      </p>
+                      <button className="btn btn-sm fw-bold" style={{
+                        backgroundColor: queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107",
+                        fontSize: "12px"
+                      }} onClick={() => setQueryRedirect(null)}>Dismiss</button>
+                    </div>
+                  </div>
+                )}
+
+                {user && (
+                  <div className="alert alert-info py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "#e3f2fd", border: "none", color: "#001a4d" }}>
+                    Filing as: <strong>Internal Employee</strong>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+                  <div className="row">
+                    <div className="col-md-6 mb-3">
+                      <label className="fw-semibold mb-1">{t("employeeId")}</label>
+                      <input type="text" name="employeeId" value={formData.employeeId} onChange={handleChange} className="form-control" placeholder={t("enterEmployeeId")} required />
+                    </div>
+                    <div className="col-md-6 mb-3">
+                      <label className="fw-semibold mb-1">{t("projectLocation")}</label>
+                      <input type="text" name="projectLocation" value={formData.projectLocation} onChange={handleChange} className="form-control" placeholder={t("enterLocation")} required />
+                    </div>
+                  </div>
+
+                  <div className="row">
+                    <div className="col-md-12 mb-3">
+                      <label className="fw-semibold mb-1">{t("department")}</label>
+                      <input type="text" name="department" value={formData.department} onChange={handleChange} className="form-control" placeholder={t("enterDepartment")} required />
+                    </div>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("incidentDate")}</label>
+                    <input type="date" name="incidentDate" value={formData.incidentDate} onChange={handleChange} className="form-control" required />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("grievanceDescription")}</label>
+                    <textarea
+                      className="form-control"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      rows="4"
+                      placeholder={t("describeGrievance")}
+                      required
+                    ></textarea>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("uploadProof")}</label>
+                    <input type="file" className="form-control" />
+                  </div>
+
+                  <div className="form-check mb-4 mt-3">
+                    <input className="form-check-input" type="checkbox" id="anon" name="isAnonymous" checked={formData.isAnonymous} onChange={handleChange} />
+                    <label className="form-check-label text-muted" htmlFor="anon">
+                      {t("submitAnonymously")}
+                    </label>
+                  </div>
+
+                  <button type="submit" disabled={isSubmitting} className="btn w-100 py-3 fw-bold shadow-sm text-white" style={{ backgroundColor: "#001a4d", fontSize: "1.1rem" }}>
+                    {isSubmitting ? "Submitting..." : t("submitGrievance")}
+                  </button>
+
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-5">
+                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#d4edda", color: "#28a745" }}>
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <h3 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("grievanceSuccess")}</h3>
+                <p className="text-muted mb-4 fs-6 px-3">
+                  {t("grievanceSuccessMsg")}
+                </p>
+                <div className="bg-light p-4 rounded mb-5 d-inline-block border shadow-sm">
+                  <span className="text-muted d-block mb-1 text-uppercase" style={{ fontSize: "14px", letterSpacing: "1px" }}>{t("trackingId")}</span>
+                  <h2 className="fw-bold mb-0 text-danger" style={{ letterSpacing: "2px" }}>{submittedId}</h2>
+                </div>
+                <div className="d-flex justify-content-center gap-3">
+                  <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
+                    {t("submitAnother")}
+                  </button>
+                  <button onClick={() => navigate("/track")} className="btn px-4 py-2 fw-bold shadow-sm text-white" style={{ backgroundColor: "#001a4d" }}>
+                    {t("trackStatus")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default LodgeInternal;

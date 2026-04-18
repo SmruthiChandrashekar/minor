@@ -1,0 +1,12 @@
+[
+  {"text": "I haven’t been paid for months and nobody from HR is responding properly", "label": "HR"},
+  {"text": "Someone at work keeps making uncomfortable comments and it’s affecting my mental health", "label": "POSH"},
+  {"text": "I saw very young kids working at the site along with adult workers", "label": "Child Labour"},
+  {"text": "No one is following safety protocols and workers are exposed to serious risks", "label": "Safety"},
+  {"text": "There are multiple violations of company policies happening without any action", "label": "Compliance"},
+  {"text": "I’m facing an issue but I’m not sure which category it belongs to", "label": "Other"},
+  {"text": "My payment is delayed and also the system is showing incorrect attendance", "label": "HR"},
+  {"text": "The environment feels unsafe because of how a colleague behaves sometimes", "label": "POSH"},
+  {"text": "Workers are not using helmets and equipment looks unsafe", "label": "Safety"},
+  {"text": "There are rules but nobody seems to follow them at all", "label": "Compliance"}
+]

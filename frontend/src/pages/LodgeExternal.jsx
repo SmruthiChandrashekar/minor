@@ -1,0 +1,272 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthProvider";
+import { supabase } from "../services/supabaseClient";
+
+function LodgeExternal() {
+  const navigate = useNavigate();
+  const [submittedId, setSubmittedId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [queryRedirect, setQueryRedirect] = useState(null);
+  const { t } = useLanguage();
+  const { user } = useAuth();
+
+  const [formData, setFormData] = useState({
+    orgName: "",
+    contactNumber: "",
+    emailAddress: "",
+    cityLocation: "",
+    incidentDate: "",
+    description: "",
+    isAnonymous: false,
+  });
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const sendToChat = (text) => {
+    window.dispatchEvent(new CustomEvent("chatbot-open", { detail: text }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const cleanDescription = formData.description.trim();
+
+    const payload = {
+      description: cleanDescription,
+      metadata: {
+        user_id: formData.isAnonymous ? null : (user?.id || null),
+        location: formData.cityLocation,
+        date: formData.incidentDate,
+        contact_info: `Org: ${formData.orgName}, Phone: ${formData.contactNumber}, Email: ${formData.emailAddress}`,
+        department: "External Relations",
+      },
+    };
+
+    try {
+      // ── STEP 1: Classify intent ───────────────────────────────────────────
+      const classifyRes = await fetch("http://localhost:8000/api/agents/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: cleanDescription }),
+      });
+
+      if (classifyRes.ok) {
+        const classified = await classifyRes.json();
+
+        // ── STEP 2a: Query → chatbot, NO DB insert ──────────────────────────
+        if (classified.intent === "Query") {
+          setIsSubmitting(false);
+          setQueryRedirect({ type: "query", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 2b: Low severity → chatbot, NO DB insert ────────────────────
+        if (classified.severity === "Low") {
+          setIsSubmitting(false);
+          setQueryRedirect({ type: "low", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 2c: Medium severity → DB insert AND open chatbot ────────────
+        if (classified.severity === "Medium") {
+          const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!submitRes.ok) throw new Error("Backend submit failed");
+          const data = await submitRes.json();
+          setSubmittedId(data.grievance_id || data.id);
+          setQueryRedirect({ type: "medium", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 3: High/Critical → DB insert only ───────────────────────────
+        const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!submitRes.ok) throw new Error("Backend submit failed");
+
+        const data = await submitRes.json();
+        setSubmittedId(data.grievance_id || data.id);
+        return;
+      }
+
+      throw new Error("Classify endpoint unreachable");
+
+    } catch (err) {
+      console.warn("Falling back to direct Supabase insert:", err.message);
+
+      try {
+        const fallbackDesc = `[Org: ${formData.orgName}] [Contact: ${formData.contactNumber}] [Email: ${formData.emailAddress}] [Location: ${formData.cityLocation}] [Date: ${formData.incidentDate}]\n\n${cleanDescription}`;
+
+        const { data, error } = await supabase.from("grievances").insert({
+          user_id: payload.metadata.user_id,
+          category: "Other",
+          description: fallbackDesc,
+          department: "External Relations",
+          status: "Open",
+        }).select().single();
+
+        if (error) throw error;
+        setSubmittedId(data.grievance_id);
+      } catch (supabaseErr) {
+        console.error("Supabase insert error:", supabaseErr);
+        alert("Failed to submit grievance. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+
+  return (
+    <div className="container mt-5 mb-5">
+      <div className="row justify-content-center">
+        <div className="col-md-8">
+
+          <div className="card shadow-lg p-4 border-0" style={{ borderRadius: "16px" }}>
+
+            {!submittedId ? (
+              <>
+                <h3 className="mb-4 fw-bold" style={{ color: "#001a4d" }}>{t("lodgeExternal")}</h3>
+
+                {/* Query / Low / Medium Redirect Banner */}
+                {queryRedirect && (
+                  <div className="alert d-flex align-items-start gap-3 mb-4" style={{
+                    backgroundColor: queryRedirect.type === "low" ? "#d1ecf1" : queryRedirect.type === "medium" ? "#d4edda" : "#fff3cd",
+                    border: `1px solid ${queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107"}`,
+                    borderRadius: "12px",
+                    color: queryRedirect.type === "low" ? "#0c5460" : queryRedirect.type === "medium" ? "#155724" : "#856404"
+                  }}>
+                    <span style={{ fontSize: "1.5rem" }}>
+                      {queryRedirect.type === "low" ? "💡" : queryRedirect.type === "medium" ? "✅" : "💬"}
+                    </span>
+                    <div className="flex-grow-1">
+                      <strong>
+                        {queryRedirect.type === "low" ? "This looks like a low-priority concern."
+                          : queryRedirect.type === "medium" ? "Complaint logged! Policy Assistant is here to help."
+                          : "This looks like a general query."}
+                      </strong>
+                      <p className="mb-1 mt-1" style={{ fontSize: "14px" }}>
+                        {queryRedirect.type === "low"
+                          ? "Our Policy Assistant can help resolve this quickly. Check the chatbot in the bottom-right corner."
+                          : queryRedirect.type === "medium"
+                          ? "Your complaint has been submitted and assigned. The Policy Assistant is open for additional guidance."
+                          : "We've redirected you to the Policy Assistant. Check the chatbot in the bottom-right corner for answers."}
+                      </p>
+                      <button className="btn btn-sm fw-bold" style={{
+                        backgroundColor: queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107",
+                        fontSize: "12px"
+                      }} onClick={() => setQueryRedirect(null)}>Dismiss</button>
+                    </div>
+                  </div>
+                )}
+
+                {user && (
+                  <div className="alert alert-info py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "#f8d7da", border: "none", color: "#721c24" }}>
+                    Filing as: <strong>External Stakeholder</strong>
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("orgName")}</label>
+                    <input type="text" name="orgName" value={formData.orgName} onChange={handleChange} className="form-control" required />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("contactNumber")}</label>
+                    <input type="tel" name="contactNumber" value={formData.contactNumber} onChange={handleChange} className="form-control" required />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("emailAddress")}</label>
+                    <input type="email" name="emailAddress" value={formData.emailAddress} onChange={handleChange} className="form-control" />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("cityLocation")}</label>
+                    <input type="text" name="cityLocation" value={formData.cityLocation} onChange={handleChange} className="form-control" required />
+                  </div>
+
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("incidentDate")}</label>
+                    <input type="date" name="incidentDate" value={formData.incidentDate} onChange={handleChange} className="form-control" required />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("grievanceDescription")}</label>
+                    <textarea name="description" value={formData.description} onChange={handleChange} className="form-control" rows="4" placeholder={t("describeGrievance")} required></textarea>
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="fw-semibold mb-1">{t("uploadProof")}</label>
+                    <input type="file" className="form-control" />
+                  </div>
+
+                  <div className="form-check mb-4 mt-3">
+                    <input className="form-check-input" type="checkbox" id="anonExternal" name="isAnonymous" checked={formData.isAnonymous} onChange={handleChange} />
+                    <label className="form-check-label text-muted" htmlFor="anonExternal">
+                      {t("submitAnonymously")}
+                    </label>
+                  </div>
+
+                  <button type="submit" disabled={isSubmitting} className="btn btn-danger w-100 py-2 fw-bold shadow-sm">
+                    {isSubmitting ? "🤖 AI Classifying & Submitting..." : t("submitGrievance")}
+                  </button>
+
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-5">
+                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#d4edda", color: "#28a745" }}>
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <h3 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("grievanceSuccess")}</h3>
+                <p className="text-muted mb-4 fs-6 px-3">
+                  {t("grievanceSuccessMsg")}
+                </p>
+                <div className="bg-light p-4 rounded mb-5 d-inline-block border shadow-sm">
+                  <span className="text-muted d-block mb-1 text-uppercase" style={{ fontSize: "14px", letterSpacing: "1px" }}>{t("trackingId")}</span>
+                  <h2 className="fw-bold mb-0 text-danger" style={{ letterSpacing: "2px" }}>{submittedId}</h2>
+                </div>
+                <div className="d-flex justify-content-center gap-3">
+                  <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
+                    {t("submitAnother")}
+                  </button>
+                  <button onClick={() => navigate("/track")} className="btn btn-danger px-4 py-2 fw-bold shadow-sm">
+                    {t("trackStatus")}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default LodgeExternal;
