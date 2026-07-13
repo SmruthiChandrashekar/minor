@@ -1,4 +1,136 @@
-.card:hover {
-  transform: translateY(-5px);
+:root {
+  --bg-color: #f8f9fa;
+  --text-color: #212529;
+  --card-bg: #ffffff;
+  --navbar-bg: #ffffff;
+  --footer-bg: #343a40;
+  --footer-text: #ffffff;
+  --chat-bg: #ffffff;
+  --chat-bubble-bot: #ffffff;
+}
+
+[data-theme="dark"] {
+  --bg-color: #121212;
+  --text-color: #e9ecef;
+  --card-bg: #1e1e1e;
+  --navbar-bg: #1e1e1e;
+  --footer-bg: #000000;
+  --chat-bg: #1e1e1e;
+  --chat-bubble-bot: #2c2c2c;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.nav-link-custom {
+  color: var(--text-color) !important;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.nav-link-custom:hover {
+  opacity: 1;
+}
+
+select.form-select {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+  border-color: rgba(0,0,0,0.1);
+}
+
+[data-theme="dark"] select.form-select {
+  border-color: rgba(255,255,255,0.1);
+}
+
+/* Bootstrap Theme Overrides */
+[data-theme="dark"] .bg-light {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .table {
+  color: var(--text-color) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-theme="dark"] .table-light {
+  background-color: #2c2c2c !important;
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .table td, [data-theme="dark"] .table th {
+  background-color: transparent !important;
+  border-bottom-color: rgba(255,255,255,0.05);
+}
+
+[data-theme="dark"] .border-bottom, [data-theme="dark"] .border-top {
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-theme="dark"] .text-muted {
+  color: #adb5bd !important;
+}
+
+[data-theme="dark"] .text-dark {
+  color: #ffffff !important;
+}
+
+
+[data-theme="dark"] input::placeholder {
+  color: #adb5bd !important;
+  opacity: 0.6;
+}
+
+[data-theme="dark"] .form-control {
+  background-color: rgba(255,255,255,0.05) !important;
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,0.1) !important;
+}
+
+[data-theme="dark"] .form-control:focus {
+  background-color: rgba(255,255,255,0.08) !important;
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+.dashboard-action-card:hover {
+  background-color: var(--navbar-bg) !important;
+  transform: translateX(5px);
+}
+
+.card {
+  background-color: var(--card-bg) !important;
+  color: var(--text-color) !important;
   transition: 0.3s ease;
 }
+
+.footer {
+  background-color: var(--footer-bg);
+  color: var(--footer-text);
+  padding: 40px 0 20px;
+  margin-top: 50px;
+}
+
+.footer a {
+  color: var(--footer-text);
+  text-decoration: none;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.footer a:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.footer hr {
+  border-color: rgba(255,255,255,0.1);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+

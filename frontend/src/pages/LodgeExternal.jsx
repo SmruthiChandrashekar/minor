@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
+import { apiClient } from "../services/api";
 
 function LodgeExternal() {
   const navigate = useNavigate();
@@ -44,16 +45,19 @@ function LodgeExternal() {
       description: cleanDescription,
       metadata: {
         user_id: formData.isAnonymous ? null : (user?.id || null),
+        name: formData.orgName,
+        phone: formData.contactNumber,
+        email: formData.emailAddress,
         location: formData.cityLocation,
         date: formData.incidentDate,
-        contact_info: `Org: ${formData.orgName}, Phone: ${formData.contactNumber}, Email: ${formData.emailAddress}`,
         department: "External Relations",
+        is_anonymous: formData.isAnonymous
       },
     };
 
     try {
       // ── STEP 1: Classify intent ───────────────────────────────────────────
-      const classifyRes = await fetch("http://localhost:8000/api/agents/classify", {
+      const classifyRes = await apiClient("/api/agents/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: cleanDescription }),
@@ -71,7 +75,7 @@ function LodgeExternal() {
         }
 
         // ── STEP 2b: Low severity → chatbot, NO DB insert ────────────────────
-        if (classified.severity === "Low") {
+        if (classified.severity === "Low" || classified.severity === "Policy") {
           setIsSubmitting(false);
           setQueryRedirect({ type: "low", text: cleanDescription });
           sendToChat(cleanDescription);
@@ -80,7 +84,7 @@ function LodgeExternal() {
 
         // ── STEP 2c: Medium severity → DB insert AND open chatbot ────────────
         if (classified.severity === "Medium") {
-          const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+          const submitRes = await apiClient("/submit-complaint", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -94,7 +98,7 @@ function LodgeExternal() {
         }
 
         // ── STEP 3: High/Critical → DB insert only ───────────────────────────
-        const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+        const submitRes = await apiClient("/submit-complaint", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -112,13 +116,12 @@ function LodgeExternal() {
     } catch (err) {
       console.warn("Falling back to direct Supabase insert:", err.message);
 
+      // ── FALLBACK: store cleanDescription only — NO metadata prefix ─────────
       try {
-        const fallbackDesc = `[Org: ${formData.orgName}] [Contact: ${formData.contactNumber}] [Email: ${formData.emailAddress}] [Location: ${formData.cityLocation}] [Date: ${formData.incidentDate}]\n\n${cleanDescription}`;
-
         const { data, error } = await supabase.from("grievances").insert({
           user_id: payload.metadata.user_id,
-          category: "Other",
-          description: fallbackDesc,
+          category: "Other",             // can't classify without backend
+          description: cleanDescription, // ← clean text only
           department: "External Relations",
           status: "Open",
         }).select().single();
@@ -144,7 +147,7 @@ function LodgeExternal() {
 
             {!submittedId ? (
               <>
-                <h3 className="mb-4 fw-bold" style={{ color: "#001a4d" }}>{t("lodgeExternal")}</h3>
+                <h3 className="mb-4 fw-bold" style={{ color: "var(--text-color)" }}>{t("lodgeExternal")}</h3>
 
                 {/* Query / Low / Medium Redirect Banner */}
                 {queryRedirect && (
@@ -179,7 +182,7 @@ function LodgeExternal() {
                 )}
 
                 {user && (
-                  <div className="alert alert-info py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "#f8d7da", border: "none", color: "#721c24" }}>
+                  <div className="alert py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-color)" }}>
                     Filing as: <strong>External Stakeholder</strong>
                   </div>
                 )}
@@ -230,7 +233,7 @@ function LodgeExternal() {
                   </div>
 
                   <button type="submit" disabled={isSubmitting} className="btn btn-danger w-100 py-2 fw-bold shadow-sm">
-                    {isSubmitting ? "🤖 AI Classifying & Submitting..." : t("submitGrievance")}
+                    {isSubmitting ? "Submitting..." : t("submitGrievance")}
                   </button>
 
                 </form>
@@ -242,7 +245,7 @@ function LodgeExternal() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("grievanceSuccess")}</h3>
+                <h3 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("grievanceSuccess")}</h3>
                 <p className="text-muted mb-4 fs-6 px-3">
                   {t("grievanceSuccessMsg")}
                 </p>

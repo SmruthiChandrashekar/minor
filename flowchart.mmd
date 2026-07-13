@@ -1,0 +1,38 @@
+graph TD
+    classDef user fill:#3b82f6,stroke:#1d4ed8,color:white;
+    classDef ui fill:#4b5563,stroke:#374151,color:white;
+    classDef nlp fill:#6366f1,stroke:#4338ca,color:white;
+    classDef ai fill:#10b981,stroke:#047857,color:white;
+    classDef alert fill:#ef4444,stroke:#b91c1c,color:white;
+    classDef db fill:#f59e0b,stroke:#b45309,color:white;
+    classDef admin fill:#8b5cf6,stroke:#6d28d9,color:white;
+
+    %% STAKEHOLDERS (Compact)
+    Stake[Internal Employee <br> Contract Worker <br> External Entity]:::user --> UI[Lodge Complaint Form <br> or RAG Chatbot Widget]:::ui
+    
+    %% AI PIPELINE (Linear & Compact)
+    UI --> Trans[Audio Transcription (Whisper) <br> & English Translation]:::nlp
+    Trans --> Intent{Intent Detection <br> Agent}:::ai
+    
+    %% RAG PATH
+    Intent -->|Policy Query| RAG[ChromaDB Search <br> + Groq Llama 3]:::ai
+    RAG --> Reply[Instant Chatbot <br> Policy Resolution]:::ui
+    
+    %% GRIEVANCE PATH
+    Intent -->|Formal Complaint| Class[Classification Agent <br> HR/Safety/POSH]:::ai
+    Class --> Sev[Severity Agent <br> Rules + ML Model]:::ai
+    Sev --> Esc[Escalation Agent <br> Evaluates Risk]:::ai
+    
+    %% STORAGE & ALERTS
+    Esc --> DB[(Supabase PostgreSQL <br> Secure Database)]:::db
+    Esc -->|High/Critical Risk| Alert[Instant Notifications <br> Twilio SMS & SMTP Email]:::alert
+    
+    %% ADMIN RESOLUTION
+    Alert -.-> AdminUI[Real-time Analytics <br> Admin Dashboard]:::ui
+    DB <--> AdminUI
+    AdminUI --- Admin[Department Admin <br> Super Admin]:::admin
+    Admin --> Update[Investigate Issue <br> & Update Status]:::admin
+    Update --> DB
+    
+    %% FEEDBACK
+    DB -.-> Track[User Track Status <br> Portal]:::ui

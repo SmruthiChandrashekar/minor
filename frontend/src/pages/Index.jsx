@@ -48,14 +48,14 @@ function Index() {
               className="btn btn-danger btn-lg px-5 py-3 fw-bold shadow-lg"
               style={{ borderRadius: "10px" }}
             >
-              Lodge Complaint
+              {t("lodgeComplaintBtn")}
             </button>
             <button
               onClick={handleTrack}
               className="btn btn-outline-light btn-lg px-5 py-3 fw-bold shadow-lg"
               style={{ borderRadius: "10px" }}
             >
-              Track Status
+              {t("trackStatusBtn")}
             </button>
           </div>
         </div>
@@ -63,7 +63,7 @@ function Index() {
 
       {/* ABOUT US SECTION */}
       <section style={{
-        backgroundColor: "#f8f9fa",
+        backgroundColor: "var(--bg-color)",
         padding: "60px 20px"
       }}>
         <div style={{
@@ -79,7 +79,7 @@ function Index() {
             <h2 style={{
               fontWeight: "bold",
               marginBottom: "24px",
-              color: "#001a4d",
+              color: "var(--text-color)",
               display: "flex",
               alignItems: "center",
               flexWrap: "wrap"
@@ -93,14 +93,14 @@ function Index() {
               lineHeight: "1.8",
               marginBottom: "30px"
             }}>
-              Puravankara's Grievance Redressal Mechanism (GRM) is a state-of-the-art platform designed to ensure transparency, accountability, and rapid resolution of concerns for our employees, partners, and external stakeholders.
+              {t("aboutDesc")}
             </p>
             <div className="row g-3">
               {[
-                { icon: "bi-clock-history", label: "24/7 Digital Intake" },
-                { icon: "bi-robot", label: "AI-Powered Routing" },
-                { icon: "bi-shield-lock", label: "Confidential & Secure" },
-                { icon: "bi-graph-up-arrow", label: "Real-time Tracking" }
+                { icon: "bi-clock-history", label: t("feature247") },
+                { icon: "bi-robot", label: t("featureAI") },
+                { icon: "bi-shield-lock", label: t("featureConfidential") },
+                { icon: "bi-graph-up-arrow", label: t("featureRealtime") }
               ].map((item, idx) => (
                 <div key={idx} className="col-6">
                   <div className="d-flex align-items-center">
@@ -129,14 +129,14 @@ function Index() {
                 height: "auto",
                 borderRadius: "12px",
                 boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-                border: "4px solid #fff"
+                border: "4px solid var(--card-bg)"
               }}
             />
             <div style={{
               position: "absolute",
               bottom: "-20px",
               left: "20px",
-              backgroundColor: "#fff",
+              backgroundColor: "var(--card-bg)",
               padding: "20px",
               borderRadius: "12px",
               boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
@@ -152,7 +152,7 @@ function Index() {
 
       {/* ACTION CARDS */}
       <div className="container mt-5 mb-5 pb-5">
-        <h3 className="fw-bold text-center mb-5" style={{ color: "#001a4d" }}>How can we help you today?</h3>
+        <h3 className="fw-bold text-center mb-5" style={{ color: "var(--text-color)" }}>{t("howCanWeHelp")}</h3>
         <div className="row g-4 justify-content-center">
 
           {/* LODE COMPLAINT */}
@@ -164,14 +164,14 @@ function Index() {
               onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateY(-5px)'; }}
               onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#f8d7da", color: "#c4122f" }}>
+              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "rgba(196, 18, 47, 0.1)", color: "#c4122f" }}>
                 <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               </div>
-              <h5 className="fw-bold mb-3" style={{ color: "#001a4d" }}>Raise Grievance</h5>
-              <p className="text-muted small mb-0">Securely submit a new concern or complaint for investigation.</p>
+              <h5 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("raiseGrievance")}</h5>
+              <p className="text-muted small mb-0">{t("raiseGrievanceDesc")}</p>
             </div>
           </div>
 
@@ -184,13 +184,13 @@ function Index() {
               onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateY(-5px)'; }}
               onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#e2e3e5", color: "#343a40" }}>
+              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "rgba(0,0,0,0.05)", color: "var(--text-color)" }}>
                 <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
-              <h5 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("viewStatus")}</h5>
+              <h5 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("viewStatus")}</h5>
               <p className="text-muted small mb-0">{t("viewStatusDesc")}</p>
             </div>
           </div>
@@ -204,11 +204,15 @@ function Index() {
               onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateY(-5px)'; }}
               onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateY(0)'; }}
             >
-              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#d1ecf1", color: "#0c5460" }}>
-                <i className="bi bi-question-circle fs-2"></i>
+              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "rgba(13, 202, 240, 0.1)", color: "#0dcaf0" }}>
+                <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
               </div>
-              <h5 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("helpCenter")}</h5>
-              <p className="text-muted small mb-0">Browse FAQs or view policy documentation for assistance.</p>
+              <h5 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("helpCenter")}</h5>
+              <p className="text-muted small mb-0">{t("helpCenterDesc")}</p>
             </div>
           </div>
 

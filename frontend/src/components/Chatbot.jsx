@@ -1,16 +1,163 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useLanguage } from '../context/LanguageContext';
+import { apiClient } from "../services/api";
+
+/**
+ * Formats RAG text to convert asterisks to bullet points, 
+ * handles bolding, and nicely formats the "Sources:" section.
+ */
+const formatBotMessage = (text) => {
+  if (!text) return { __html: '' };
+  
+  let formatted = text
+    // Convert **bold** to <strong>bold</strong>
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Convert `* ` to a clean bullet point with line break
+    .replace(/(?:\s|^)\*\s+(.*?)(?=(?:\s\*|$))/g, '<br/>• $1')
+    // Highlight "Sources:" separately
+    .replace(/(Sources?:)/gi, '<br/><br/><strong style="color: #6c757d; font-size: 0.9em;">$1</strong>')
+    // Preserve normal line breaks
+    .replace(/\n/g, '<br/>');
+
+  return { __html: formatted };
+};
 
 const Chatbot = () => {
+  const { langCode, t } = useLanguage();  // langCode for API, t() for UI labels
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, text: "Hi! I'm your Policy Assistant. How can I help you today?", isBot: true }
+    { id: 1, text: null, isBot: true, isGreeting: true }
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  const [listening, setListening] = useState(false);
+  const [recordSecs, setRecordSecs] = useState(0);
+  const [voiceError, setVoiceError] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false); // Show loading while backend processes
+  const messagesEndRef     = useRef(null);
+  
+  // MediaRecorder refs
+  const mediaRecorderRef   = useRef(null);
+  const audioChunksRef     = useRef([]);
+  const timerRef           = useRef(null);
+  const shouldSendRef      = useRef(true);
+  const clearErrorRef      = useRef(null);
+
+  // ── VOICE INPUT (WHISPER/MEDIARECORDER) ──────────────────────────────────
+  const isSpeechSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+  /** BCP-47 locale codes for each app language */
+  const LANG_MAP = { en: "en-US", hi: "hi-IN", kn: "kn-IN" };
+
+  /** Format seconds as m:ss */
+  const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const stopTimer = () => {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+    setRecordSecs(0);
+  };
+
+  const startListening = async () => {
+    if (!isSpeechSupported || listening) return;
+
+    audioChunksRef.current = [];
+    shouldSendRef.current = true;
+    setVoiceError('');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstart = () => {
+        setListening(true);
+        setRecordSecs(0);
+        timerRef.current = setInterval(() => setRecordSecs(s => s + 1), 1000);
+      };
+
+      mediaRecorder.onstop = async () => {
+        setListening(false);
+        stopTimer();
+        
+        // Stop all audio tracks to release microphone
+        stream.getTracks().forEach(track => track.stop());
+
+        if (shouldSendRef.current && audioChunksRef.current.length > 0) {
+          setIsTranscribing(true);
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          
+          const formData = new FormData();
+          // The backend expects 'file'
+          formData.append('file', audioBlob, 'recording.webm');
+          
+          try {
+            const response = await apiClient('/api/agents/transcribe', {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (!response.ok) throw new Error('Transcription failed');
+            
+            const data = await response.json();
+            
+            // The backend returns { "transcript": "the text..." }
+            const transcript = typeof data.transcript === 'string' 
+              ? data.transcript 
+              : (data.transcript?.text || '');
+              
+            if (transcript.trim()) {
+              handleSendMessage(transcript.trim());
+            }
+          } catch (error) {
+            console.error('Whisper transcription error:', error);
+            showError("Couldn't transcribe audio. Try again.");
+          } finally {
+            setIsTranscribing(false);
+          }
+        }
+      };
+
+      mediaRecorder.start();
+
+    } catch (err) {
+      console.error('Microphone access error:', err);
+      showError("Microphone access denied. Please allow mic in browser settings.");
+    }
+  };
+
+  const showError = (msg) => {
+    clearTimeout(clearErrorRef.current);
+    setVoiceError(msg);
+    clearErrorRef.current = setTimeout(() => setVoiceError(''), 4000);
+  };
+
+  /** Stop recording → sends to backend */
+  const stopListening = () => {
+    shouldSendRef.current = true;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  /** Discard recording */
+  const cancelListening = () => {
+    shouldSendRef.current = false;
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setListening(false);
+    stopTimer();
+  };
 
   const [showHint, setShowHint] = useState(true);
-  const [hintText, setHintText] = useState("Need help understanding policies? Ask me 👇");
+  const [hintText, setHintText] = useState(null);
 
   const suggestedPrompts = [
     "What is POSH policy?",
@@ -51,6 +198,10 @@ const Chatbot = () => {
     const handleChatbotOpen = (e) => {
       setIsOpen(true);
       setShowHint(false);
+      
+      // Background warmup call to eliminate first-query latency
+      apiClient("/api/agents/warmup").catch(err => console.error("Warmup failed", err));
+
       if (e.detail) {
         // Small delay so panel renders before the message is added
         setTimeout(() => handleSendMessage(e.detail), 300);
@@ -65,59 +216,8 @@ const Chatbot = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // ── RULE-BASED RESPONSE ENGINE ──────────────────────────────────────────────
-  const getRuleBasedResponse = (input) => {
-    const q = input.toLowerCase().trim();
-
-    if (/^(hi|hello|hey|good morning|good evening|good afternoon|namaste)/.test(q))
-      return "Hello! 👋 I'm your Puravankara Policy Assistant. You can ask me about policies, how to file a complaint, track status, POSH, or anything related to the GRM process.";
-
-    if (/posh|sexual harass|prevention of sexual|workplace sexual/.test(q))
-      return "📋 POSH Policy:\n\n• Puravankara has zero-tolerance for sexual harassment.\n• Complaints are handled by the Internal Complaints Committee (ICC).\n• File within 90 days of the incident via Lodge Complaint.\n• Complainant identity is strictly confidential.";
-
-    if (/anonym|without name|identity|secret|confidential report/.test(q))
-      return "🔒 Anonymous Reporting:\n\n• Yes, you can report anonymously on the GRM portal.\n• Your identity will never be disclosed to the respondent.\n• Even anonymous complaints are fully investigated.";
-
-    if (/harass|bully|discriminat|intimidat|misconduct|hostile/.test(q))
-      return "⚠️ Harassment includes:\n\n• Verbal abuse, insults, or threats\n• Unwelcome sexual advances\n• Bullying or persistent unreasonable behaviour\n• Discrimination based on gender, religion, caste, or disability\n• Retaliation for raising a grievance\n\nIf you are experiencing any of these, please file a complaint immediately.";
-
-    if (/file|submit|lodge|raise|report|how to complain/.test(q))
-      return "📝 How to File a Complaint:\n\n1. Click 'Lodge Complaint' on the Home page.\n2. Select your type: Internal, Contract, or External.\n3. Fill in category, department, and description.\n4. Submit — you'll receive a unique Grievance ID.\n5. Use the ID to track progress anytime.";
-
-    if (/track|status|grievance id|complaint id|complaint number|update|progress/.test(q))
-      return "🔍 Tracking Your Complaint:\n\n• Click 'Track Status' from the Home page or Navbar.\n• Enter your Grievance ID for the latest update.\n• Statuses: Submitted → Under Review → In Progress → Resolved.";
-
-    if (/escalat|not resolved|no action|delay|overdue|ignore/.test(q))
-      return "🚨 Escalation Process:\n\n• Level 1: Department Admin (7 days)\n• Level 2: HR / Compliance Team (14 days)\n• Level 3: Senior Management / POSH Committee\n\nContact support@puravankara.com to escalate.";
-
-    if (/how long|sla|time limit|deadline|days|timeline|resolution time/.test(q))
-      return "⏱️ Resolution Timelines (SLA):\n\n• General Grievance: 7 business days\n• HR / Policy Issue: 10 business days\n• POSH Complaint: 90 days (per Act)\n• Safety / Urgent: 24–48 hours";
-
-    if (/department|hr|it|finance|legal|compliance|facility/.test(q))
-      return "🏢 Department Contacts:\n\n• HR: hr@puravankara.com\n• Legal / Compliance: legal@puravankara.com\n• IT: it@puravankara.com\n• Finance: finance@puravankara.com\n• Facility / Admin: admin@puravankara.com";
-
-    if (/categor|type of complaint|what can i report/.test(q))
-      return "📂 Complaint Categories:\n\n• Sexual Harassment (POSH)\n• Workplace Bullying / Misconduct\n• Discrimination\n• Fraud or Financial Misconduct\n• Data Privacy Violation\n• Safety & Infrastructure Issues\n• Contract Workforce Grievances";
-
-    if (/contract|vendor|third party|external worker/.test(q))
-      return "👷 Contract & External Workforce:\n\n• Contract workers are fully covered by GRM.\n• Select 'Contract Workforce' when filing.\n• Your employer will NOT be notified without due process.";
-
-    if (/privacy|data protection|who sees|share|disclose/.test(q))
-      return "🔐 Confidentiality:\n\n• Only the assigned admin can view your complaint.\n• Personal information is never shared without consent.\n• All data is encrypted and securely stored.\n• Retaliation against complainants is strictly prohibited.";
-
-    if (/whistle|fraud|corrupt|wrongdoing/.test(q))
-      return "📣 Whistleblower Protection:\n\n• Whistleblowers are fully protected from retaliation.\n• Anonymous reporting available.\n• Governed by the Vigil Mechanism under Companies Act 2013.";
-
-    if (/contact|phone|email|support|helpline|reach/.test(q))
-      return "📞 Contact & Support:\n\n• Email: support@puravankara.com\n• Helpline: 1800-555-0199 (24/7)\n• Location: Puravankara Limited, Bengaluru, India";
-
-    if (/thank|thanks|bye|goodbye|ok|okay|got it|understood/.test(q))
-      return "You're welcome! 😊 Feel free to ask anything anytime. You can lodge or track a complaint from the portal.";
-
-    return "🤔 I'm not sure about that. I can help with:\n\n• POSH Policy\n• Anonymous Reporting\n• How to File a Complaint\n• Track Complaint Status\n• SLA & Timelines\n• Escalation Process\n• Department Contacts\n• Whistleblower Protection\n\nJust type your topic!";
-  };
-
-  const handleSendMessage = (text) => {
+  // ── RAG-POWERED RESPONSE (via backend) ───────────────────────────────────────
+  const handleSendMessage = async (text) => {
     if (!text.trim()) return;
 
     const newUserMsg = { id: Date.now(), text, isBot: false };
@@ -125,11 +225,65 @@ const Chatbot = () => {
     setInputValue("");
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responseText = getRuleBasedResponse(text);
+    // Quick greeting — no need to hit the backend
+    const q = text.toLowerCase().trim();
+    if (/^(hi|hello|hey|good morning|good evening|good afternoon|namaste|नमस्ते|नमस्कार)/.test(q)) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          text: t('chatbotHelloReply'),
+          isBot: true
+        }]);
+        setIsTyping(false);
+      }, 400);
+      return;
+    }
+
+    if (/^(thank|thanks|bye|goodbye|ok|okay|got it|understood|धन्यवाद|शुक्रिया)/.test(q)) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          text: t('chatbotByeReply'),
+          isBot: true
+        }]);
+        setIsTyping(false);
+      }, 400);
+      return;
+    }
+
+    // Call backend RAG endpoint
+    try {
+      const res = await apiClient("/api/agents/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, lang: langCode }),
+      });
+
+      if (!res.ok) throw new Error("Backend error");
+
+      const data = await res.json();
+
+      let responseText = data.response || "Sorry, I couldn't find an answer.";
+
+      // Append source citations if available
+      if (data.sources && data.sources.length > 0) {
+        const sourceList = data.sources
+          .map(s => `${s.source} (p.${s.page})`)
+          .join(", ");
+        responseText += `\n\n📄 ${t("sources")}: ${sourceList}`;
+      }
+
       setMessages(prev => [...prev, { id: Date.now() + 1, text: responseText, isBot: true }]);
+    } catch (err) {
+      console.error("RAG chat error:", err);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        text: "⚠️ Sorry, I'm having trouble connecting to the policy engine. Please try again in a moment.",
+        isBot: true
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 700);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -176,6 +330,45 @@ const Chatbot = () => {
             justify-content: center !important;
           }
         }
+        /* ── Mic recording animations ───────────────────────── */
+        @keyframes micCorePulse {
+          0%, 100% { transform: scale(1);    opacity: 1; }
+          50%       { transform: scale(1.18); opacity: 0.85; }
+        }
+        @keyframes ripple {
+          0%   { transform: scale(1);   opacity: 0.55; }
+          100% { transform: scale(2.6); opacity: 0; }
+        }
+        @keyframes wave {
+          0%, 100% { transform: scaleY(0.4); }
+          50%       { transform: scaleY(1);   }
+        }
+        @keyframes recBarSlideIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0);   }
+        }
+        .rec-bar {
+          animation: recBarSlideIn 0.22s ease;
+        }
+        .mic-core {
+          animation: micCorePulse 1.1s ease-in-out infinite;
+        }
+        .mic-ripple {
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          border: 2px solid #dc3545;
+          animation: ripple 1.4s ease-out infinite;
+        }
+        .mic-ripple-2 {
+          animation-delay: 0.7s;
+        }
+        .sound-bar {
+          width: 3px;
+          border-radius: 3px;
+          background: #dc3545;
+          animation: wave 0.7s ease-in-out infinite;
+        }
       `}</style>
 
       {/* TOOLTIP HINT */}
@@ -194,7 +387,7 @@ const Chatbot = () => {
           transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
         }}
       >
-        {hintText}
+        {hintText || t('chatbotHint')}
         {/* Little triangle arrow pointing down */}
         <div style={{
           position: 'absolute',
@@ -212,8 +405,13 @@ const Chatbot = () => {
       <button 
         onClick={(e) => {
           e.stopPropagation();
-          setIsOpen(!isOpen);
+          const nextState = !isOpen;
+          setIsOpen(nextState);
           setShowHint(false);
+          
+          if (nextState) {
+            apiClient("/api/agents/warmup").catch(err => console.error("Warmup failed", err));
+          }
         }}
         className={`btn btn-primary shadow-lg d-flex align-items-center chatbot-btn ${isOpen ? 'btn-open' : ''}`}
         style={{
@@ -236,7 +434,7 @@ const Chatbot = () => {
             <svg width="22" height="22" fill="currentColor" viewBox="0 0 16 16" className="chatbot-icon me-2">
               <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
             </svg>
-            <span className="chatbot-text fw-bold" style={{ fontSize: '15px' }}>Ask Policy Assistant</span>
+            <span className="chatbot-text fw-bold" style={{ fontSize: '15px' }}>{t('chatbotBtn')}</span>
           </>
         )}
       </button>
@@ -266,12 +464,14 @@ const Chatbot = () => {
         <div className="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
           <div>
             <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5ZM3 8.062C3 6.76 4.235 5.765 5.53 5.889a28.02 28.02 0 0 1 3.972.505 1 1 0 0 0 .997-.282l.859-1.063c.247-.305.776-.328 1.054-.055.27.265.236.721-.06 1.055L11.5 6.945c-.322.384-.366.864-.176 1.25.132.269.467.447.781.564a27.973 27.973 0 0 1 3.486 1.636c.219.136.438.271.657.411A.5.5 0 0 1 16 11.233V14a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.766a.5.5 0 0 1 .234-.411 36.31 36.31 0 0 1 2.766-1.761ZM5.5 7h5a.5.5 0 0 0 0-1h-5a.5.5 0 0 0 0 1Z"/>
-              </svg>
-              Policy Assistant
+              <img 
+                src="/assistant_logo.png" 
+                alt="AI" 
+                style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.2)" }} 
+              />
+              {t('chatbotTitle')}
             </h6>
-            <small style={{ opacity: 0.8 }}>Ask about policies or issues</small>
+            <small style={{ opacity: 0.8 }}>{t('chatbotSubtitle')}</small>
           </div>
           <button 
             onClick={() => setIsOpen(false)}
@@ -283,19 +483,19 @@ const Chatbot = () => {
         </div>
 
         {/* MESSAGES BODY */}
-        <div className="flex-grow-1 p-3" style={{ overflowY: 'auto', backgroundColor: '#f8f9fa' }}>
+        <div className="flex-grow-1 p-3" style={{ overflowY: 'auto', backgroundColor: 'var(--bg-color)' }}>
           
           {/* SUGGESTED PROMPTS */}
           {messages.length === 1 && (
             <div className="mb-4">
-              <p className="text-muted small mb-2 text-center">Suggested topics</p>
+              <p className="small mb-2 text-center" style={{ color: 'var(--text-color)', opacity: 0.7 }}>{t('chatbotSuggestedTopics')}</p>
               <div className="d-flex flex-wrap gap-2 justify-content-center">
                 {suggestedPrompts.map((prompt, idx) => (
                   <button 
                     key={idx}
                     onClick={() => handlePromptClick(prompt)}
-                    className="btn btn-sm btn-outline-primary rounded-pill bg-white"
-                    style={{ fontSize: '13px' }}
+                    className="btn btn-sm btn-outline-primary rounded-pill"
+                    style={{ fontSize: '13px', backgroundColor: 'var(--card-bg)', color: 'var(--text-color)' }}
                   >
                     {prompt}
                   </button>
@@ -311,17 +511,26 @@ const Chatbot = () => {
               className={`d-flex mb-3 ${msg.isBot ? 'justify-content-start' : 'justify-content-end'}`}
             >
               <div 
-                className={`p-3 shadow-sm ${msg.isBot ? 'bg-white text-dark' : 'bg-primary text-white'}`}
+                className={`p-3 shadow-sm ${msg.isBot ? '' : 'bg-primary text-white'}`}
                 style={{
                   maxWidth: '85%',
+                  backgroundColor: msg.isBot ? 'var(--chat-bubble-bot)' : undefined,
+                  color: msg.isBot ? 'var(--text-color)' : undefined,
                   borderTopLeftRadius: '16px',
                   borderTopRightRadius: '16px',
                   borderBottomLeftRadius: msg.isBot ? '4px' : '16px',
                   borderBottomRightRadius: msg.isBot ? '16px' : '4px',
-                  fontSize: '14.5px'
+                  fontSize: '14.5px',
+                  lineHeight: '1.5'
                 }}
               >
-                {msg.text}
+                {msg.isGreeting ? (
+                  t('chatbotGreeting')
+                ) : msg.isBot ? (
+                  <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
+                ) : (
+                  msg.text
+                )}
               </div>
             </div>
           ))}
@@ -343,28 +552,151 @@ const Chatbot = () => {
         </div>
 
         {/* INPUT BOX */}
-        <div className="p-3 bg-white border-top">
-          <div className="input-group">
-            <input 
-              type="text" 
-              className="form-control rounded-pill me-2 bg-light border-0 shadow-none px-4" 
-              placeholder="Type your message..." 
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={isTyping}
-            />
-            <button 
-              className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
-              onClick={() => handleSendMessage(inputValue)}
-              disabled={!inputValue.trim() || isTyping}
-              style={{ width: '45px', height: '45px', flexShrink: 0 }}
+        <div className="bg-white border-top" style={{ flexShrink: 0 }}>
+
+          {/* ── WHATSAPP-STYLE RECORDING BAR ───────────────────────────── */}
+          {listening && (
+            <div
+              className="rec-bar d-flex align-items-center gap-2 px-3"
+              style={{ height: '68px', backgroundColor: '#fff8f8' }}
             >
-              <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
-              </svg>
-            </button>
-          </div>
+              {/* 🗑 DISCARD — left side */}
+              <button
+                onClick={cancelListening}
+                title="Discard recording"
+                style={{
+                  background: 'none', border: 'none', padding: '6px',
+                  color: '#adb5bd', cursor: 'pointer', flexShrink: 0,
+                  borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >
+                {/* Trash icon */}
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                  <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                </svg>
+              </button>
+
+              {/* Pulsing red mic */}
+              <div style={{ position: 'relative', width: '38px', height: '38px', flexShrink: 0 }}>
+                <div className="mic-ripple" />
+                <div className="mic-ripple mic-ripple-2" />
+                <div
+                  className="mic-core d-flex align-items-center justify-content-center rounded-circle"
+                  style={{ width: '38px', height: '38px', backgroundColor: '#dc3545', position: 'relative', zIndex: 1 }}
+                >
+                  <svg width="15" height="15" fill="white" viewBox="0 0 16 16">
+                    <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* Waveform + timer — centre */}
+              <div className="d-flex align-items-center gap-1" style={{ flex: 1, overflow: 'hidden' }}>
+                {[0.3, 0.6, 1, 0.7, 0.45, 0.8, 0.5, 1, 0.65, 0.35].map((delay, i) => (
+                  <div
+                    key={i}
+                    className="sound-bar"
+                    style={{ height: `${14 + i % 3 * 8}px`, animationDelay: `${delay * 0.4}s` }}
+                  />
+                ))}
+                <span style={{
+                  marginLeft: '8px', color: '#dc3545',
+                  fontWeight: 600, fontSize: '13px',
+                  fontVariantNumeric: 'tabular-nums', flexShrink: 0
+                }}>
+                  {fmtTime(recordSecs)}
+                </span>
+              </div>
+
+              {/* ➤ SEND — right side */}
+              <button
+                onClick={stopListening}
+                title="Stop and send"
+                className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
+                style={{ width: '42px', height: '42px', flexShrink: 0, border: 'none' }}
+              >
+                <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* ── NORMAL INPUT BAR ───────────────────────────────────────── */}
+          {!listening && (
+            <div className="p-3" style={{ backgroundColor: 'var(--chat-bg)', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="input-group">
+                <input
+                  type="text"
+                  className="form-control rounded-pill me-2 border-0 shadow-none px-4"
+                  style={{ backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}
+                  placeholder={isTranscribing ? "Transcribing audio..." : t('chatbotPlaceholder')}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isTyping || isTranscribing}
+                />
+
+                {/* Mic button */}
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center me-2"
+                  onClick={startListening}
+                  disabled={!isSpeechSupported || isTyping || isTranscribing}
+                  title={!isSpeechSupported ? "Voice input not supported in this browser" : "Click to speak"}
+                  style={{ width: '45px', height: '45px', flexShrink: 0 }}
+                >
+                  <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/>
+                  </svg>
+                </button>
+
+                {/* Send button */}
+                <button
+                  className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center"
+                  onClick={() => handleSendMessage(inputValue)}
+                  disabled={!inputValue.trim() || isTyping || isTranscribing}
+                  style={{ width: '45px', height: '45px', flexShrink: 0 }}
+                >
+                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── VOICE ERROR BANNER ──────────────────────────────────────────── */}
+          {voiceError && (
+            <div
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#fff3cd',
+                borderTop: '1px solid #ffc107',
+                color: '#856404',
+                fontSize: '12.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                animation: 'recBarSlideIn 0.2s ease',
+              }}
+            >
+              <span style={{ fontSize: '15px' }}>⚠️</span>
+              {voiceError}
+              <button
+                onClick={() => setVoiceError('')}
+                style={{
+                  marginLeft: 'auto', background: 'none', border: 'none',
+                  color: '#856404', cursor: 'pointer', fontSize: '15px', padding: 0
+                }}
+              >
+                ×
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>

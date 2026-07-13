@@ -3,14 +3,17 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
+import { translateList } from "../services/translationService";
 
 function Dashboard() {
   const navigate = useNavigate();
   const { user, userDetails, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [grievances, setGrievances] = useState([]);
+  const [translatedGrievances, setTranslatedGrievances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [translating, setTranslating] = useState(false);
 
   const getLodgeRoute = () => {
     if (!userDetails || !userDetails.user_type) return "/lodge-selection";
@@ -42,10 +45,7 @@ function Dashboard() {
         .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
-      if (fetchError) {
-        throw fetchError;
-      }
-
+      if (fetchError) throw fetchError;
       setGrievances(data || []);
     } catch (err) {
       console.error("Error fetching grievances:", err);
@@ -54,6 +54,24 @@ function Dashboard() {
       setLoading(false);
     }
   };
+
+  // Re-translate description whenever grievances list or language changes
+  useEffect(() => {
+    if (grievances.length === 0) {
+      setTranslatedGrievances([]);
+      return;
+    }
+    let cancelled = false;
+    setTranslating(true);
+    // Only translate the 'description' field; category/status stay fixed
+    translateList(grievances, ["description"], language).then((result) => {
+      if (!cancelled) {
+        setTranslatedGrievances(result);
+        setTranslating(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [grievances, language]);
 
   if (!user) return null;
 
@@ -69,9 +87,21 @@ function Dashboard() {
       case "Open": return "bg-primary text-white";
       case "Investigating": return "bg-warning text-dark";
       case "Resolved": return "bg-success text-white";
-      case "Closed": 
+      case "Closed":
       case "Rejected": return "bg-danger text-white";
       default: return "bg-secondary text-dark";
+    }
+  };
+
+  // Translate status value → i18n label (status itself is stored in English in DB)
+  const getStatusLabel = (status) => {
+    switch(status) {
+      case "Open":          return t("pending");
+      case "Investigating": return t("inProgress");
+      case "Resolved":      return t("resolved");
+      case "Closed":
+      case "Rejected":      return t("rejected");
+      default:              return status;
     }
   };
 
@@ -81,7 +111,7 @@ function Dashboard() {
       {/* HEADER SECTION */}
       <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
         <div>
-          <h2 className="fw-bold mb-1" style={{ color: "#001a4d" }}>{t("dashboardTitle")}</h2>
+          <h2 className="fw-bold mb-1" style={{ color: "var(--text-color)" }}>{t("dashboardTitle")}</h2>
           <p className="text-muted mb-0">
             {t("welcomeBack")} <span className="fw-bold text-dark">{userDetails?.name || "User"}</span>. {t("dashboardOverview")}
           </p>
@@ -133,7 +163,7 @@ function Dashboard() {
         {/* RECENT TABLE */}
         <div className="col-lg-8">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h5 className="fw-bold mb-4" style={{ color: "#001a4d" }}>{t("recentActivity")}</h5>
+            <h5 className="fw-bold mb-4" style={{ color: "var(--text-color)" }}>{t("recentActivity")}</h5>
             
             {loading ? (
               <div className="text-center py-5">
@@ -156,22 +186,32 @@ function Dashboard() {
                     <tr>
                       <th scope="col" className="text-muted small">{t("trackingId")}</th>
                       <th scope="col" className="text-muted small">{t("category")}</th>
+                      <th scope="col" className="text-muted small">Description</th>
                       <th scope="col" className="text-muted small">{t("dateSubmitted")}</th>
                       <th scope="col" className="text-muted small">{t("status")}</th>
                       <th scope="col" className="text-muted small">{t("action")}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {grievances.map((g) => (
+                    {(translating ? grievances : translatedGrievances).map((g) => (
                       <tr key={g.grievance_id}>
-                        <td className="fw-bold">#{g.grievance_id.substring(0, 8)}</td>
-                        <td>{g.category}</td>
+                        <td className="fw-bold" style={{ color: "var(--text-color)" }}>#{g.grievance_id.substring(0, 8)}</td>
+                        <td style={{ color: "var(--text-color)" }}>{g.category}</td>
+                        <td className="text-muted" style={{ maxWidth: "220px" }}>
+                          {translating ? (
+                            <span className="spinner-border spinner-border-sm text-secondary" role="status" />
+                          ) : (
+                            <span title={g.description}>
+                              {g.description ? g.description.substring(0, 60) + (g.description.length > 60 ? "…" : "") : "—"}
+                            </span>
+                          )}
+                        </td>
                         <td className="text-muted">
                           {new Date(g.created_at).toLocaleDateString()}
                         </td>
                         <td>
                           <span className={`badge px-3 py-2 rounded-pill shadow-sm ${getBadgeClass(g.status)}`}>
-                            {g.status}
+                            {getStatusLabel(g.status)}
                           </span>
                         </td>
                         <td>
@@ -202,18 +242,16 @@ function Dashboard() {
         {/* QUICK LINKS */}
         <div className="col-lg-4">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h5 className="fw-bold mb-4" style={{ color: "#001a4d" }}>{t("quickActions")}</h5>
+            <h5 className="fw-bold mb-4" style={{ color: "var(--text-color)" }}>{t("quickActions")}</h5>
 
             {/* ACTION 1 */}
             <div 
-              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light"
+              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light dashboard-action-card"
               style={{ cursor: "pointer", transition: "all 0.2s" }}
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('chatbot-hint', { detail: 'Not sure about policy? Ask the assistant first. 👇' }));
                 navigate(getLodgeRoute());
               }}
-              onMouseOver={(e) => e.currentTarget.classList.replace('bg-light', 'bg-white')}
-              onMouseOut={(e) => e.currentTarget.classList.replace('bg-white', 'bg-light')}
             >
               <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center me-3" style={{ width: "45px", height: "45px" }}>
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -229,11 +267,9 @@ function Dashboard() {
 
             {/* ACTION 2 */}
             <div 
-              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light"
+              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light dashboard-action-card"
               style={{ cursor: "pointer", transition: "all 0.2s" }}
               onClick={() => navigate("/track")}
-              onMouseOver={(e) => e.currentTarget.classList.replace('bg-light', 'bg-white')}
-              onMouseOut={(e) => e.currentTarget.classList.replace('bg-white', 'bg-light')}
             >
               <div className="text-white rounded-circle d-flex justify-content-center align-items-center me-3" style={{ backgroundColor: "#17a2b8", width: "45px", height: "45px" }}>
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -249,11 +285,9 @@ function Dashboard() {
 
             {/* ACTION 3 */}
             <div 
-              className="d-flex align-items-center p-3 rounded shadow-sm bg-light"
+              className="d-flex align-items-center p-3 rounded shadow-sm bg-light dashboard-action-card"
               style={{ cursor: "pointer", transition: "all 0.2s" }}
               onClick={() => navigate("/help")}
-              onMouseOver={(e) => e.currentTarget.classList.replace('bg-light', 'bg-white')}
-              onMouseOut={(e) => e.currentTarget.classList.replace('bg-white', 'bg-light')}
             >
               <div className="bg-secondary text-white rounded-circle d-flex justify-content-center align-items-center me-3" style={{ width: "45px", height: "45px" }}>
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

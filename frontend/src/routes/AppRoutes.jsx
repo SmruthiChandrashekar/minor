@@ -15,11 +15,11 @@ import LodgeExternal from "../pages/LodgeExternal";
 import Dashboard from "../pages/Dashboard";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
+import SuperAdminPortal from "../pages/SuperAdminPortal";
 
 const MainRoutes = () => {
-  const { user, loading, adminUser } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading } = useAuth();
   const isAuthenticated = !!user;
-  const isAdminAuthenticated = !!adminUser;
 
   if (loading) {
     return (
@@ -31,7 +31,7 @@ const MainRoutes = () => {
 
   // Dynamic root element
   const getRootElement = () => {
-    if (isAdminAuthenticated) return <AdminDashboard />;
+    if (isAdmin) return <AdminDashboard />;
     if (isAuthenticated) return <Dashboard />;
     return <Index />;
   };
@@ -41,22 +41,25 @@ const MainRoutes = () => {
       <Routes>
         <Route path="/" element={getRootElement()} />
         
-        {/* Protected Routes */}
+        {/* Protected User Routes */}
         <Route path="/track" element={<ProtectedRoute><Track /></ProtectedRoute>} />
-        <Route path="/lodge-selection" element={<ProtectedRoute><LodgeSelection /></ProtectedRoute>} />
-        <Route path="/lodge-internal" element={<ProtectedRoute><LodgeInternal /></ProtectedRoute>} />
-        <Route path="/lodge-contract" element={<ProtectedRoute><LodgeContract /></ProtectedRoute>} />
-        <Route path="/lodge-external" element={<ProtectedRoute><LodgeExternal /></ProtectedRoute>} />
+        <Route path="/lodge-selection" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <ProtectedRoute><LodgeSelection /></ProtectedRoute>} />
+        <Route path="/lodge-internal" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <ProtectedRoute><LodgeInternal /></ProtectedRoute>} />
+        <Route path="/lodge-contract" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <ProtectedRoute><LodgeContract /></ProtectedRoute>} />
+        <Route path="/lodge-external" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <ProtectedRoute><LodgeExternal /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
+        {/* Public Routes */}
         <Route path="/help" element={<Help />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/login" element={<Auth />} />
+        <Route path="/login" element={isAuthenticated && !isAdmin ? <Navigate to="/" replace /> : <Auth />} />
         <Route path="/register" element={<Auth />} />
 
         {/* Admin Routes */}
-        <Route path="/admin" element={isAdminAuthenticated ? <Navigate to="/" replace /> : <AdminLogin />} />
-        <Route path="/admin/dashboard" element={isAdminAuthenticated ? <Navigate to="/" replace /> : <AdminLogin />} />
+        <Route path="/admin" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} />
+        <Route path="/admin/login" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} />
+        <Route path="/admin/dashboard" element={isAdmin ? <AdminDashboard /> : <Navigate to="/admin/login" replace />} />
+        <Route path="/admin/portal" element={isSuperAdmin ? <SuperAdminPortal /> : (isAdmin ? <Navigate to="/admin/dashboard" replace /> : <Navigate to="/admin/login" replace />)} />
       </Routes>
     </Layout>
   );

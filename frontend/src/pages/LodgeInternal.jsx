@@ -3,13 +3,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
+import { apiClient } from "../services/api";
 
 function LodgeInternal() {
   const navigate = useNavigate();
   const [submittedId, setSubmittedId] = useState(null);
   const [queryRedirect, setQueryRedirect] = useState(null); // set when intent = Query
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { t } = useLanguage();
+  const { t, langCode } = useLanguage();
   const { user } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -42,21 +43,25 @@ function LodgeInternal() {
 
     const payload = {
       description: cleanDescription,
+      lang: langCode,
       metadata: {
         user_id: formData.isAnonymous ? null : (user?.id || null),
-        location: formData.projectLocation,
+        name: formData.employeeName,
+        phone: formData.contactNumber,
+        email: formData.emailAddress,
+        location: formData.department,
         date: formData.incidentDate,
-        contact_info: formData.employeeId,
-        department: formData.department,
+        department: "Internal HR",
+        is_anonymous: formData.isAnonymous
       },
     };
 
     try {
       // ── STEP 1: Classify intent via backend ──────────────────────────────
-      const classifyRes = await fetch("http://localhost:8000/api/agents/classify", {
+      const classifyRes = await apiClient("/api/agents/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanDescription }),
+        body: JSON.stringify({ text: cleanDescription, lang: langCode }),
       });
 
       if (classifyRes.ok) {
@@ -71,7 +76,7 @@ function LodgeInternal() {
         }
 
         // ── STEP 2b: Low severity → chatbot only, NO DB insert ───────────────
-        if (classified.severity === "Low") {
+        if (classified.severity === "Low" || classified.severity === "Policy") {
           setIsSubmitting(false);
           setQueryRedirect({ type: "low", text: cleanDescription });
           sendToChat(cleanDescription);
@@ -80,7 +85,7 @@ function LodgeInternal() {
 
         // ── STEP 2c: Medium severity → DB insert AND open chatbot ────────────
         if (classified.severity === "Medium") {
-          const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+          const submitRes = await apiClient("/submit-complaint", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -95,7 +100,7 @@ function LodgeInternal() {
         }
 
         // ── STEP 3: Intent = Complaint → submit to backend (with category/severity)
-        const submitRes = await fetch("http://localhost:8000/submit-complaint", {
+        const submitRes = await apiClient("/submit-complaint", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -113,14 +118,12 @@ function LodgeInternal() {
     } catch (err) {
       console.warn("Falling back to direct Supabase insert:", err.message);
 
-      // ── FALLBACK: only for actual complaint submissions (not queries) ────
+      // ── FALLBACK: store cleanDescription only — NO metadata prefix ─────────
       try {
-        const fallbackDesc = `[Employee ID: ${formData.employeeId}] [Project: ${formData.projectLocation}] [Date: ${formData.incidentDate}]\n\n${cleanDescription}`;
-
         const { data, error } = await supabase.from("grievances").insert({
           user_id: payload.metadata.user_id,
           category: "Other",
-          description: fallbackDesc,
+          description: cleanDescription, // ← clean text only, no metadata noise
           department: formData.department,
           status: "Open",
         }).select().single();
@@ -146,7 +149,7 @@ function LodgeInternal() {
 
             {!submittedId ? (
               <>
-                <h3 className="mb-4 fw-bold pb-2 border-bottom" style={{ color: "#001a4d" }}>{t("lodgeInternal")}</h3>
+                <h3 className="mb-4 fw-bold pb-2 border-bottom" style={{ color: "var(--text-color)" }}>{t("lodgeInternal")}</h3>
 
                 {/* Query / Low / Medium Redirect Banner */}
                 {queryRedirect && (
@@ -181,7 +184,7 @@ function LodgeInternal() {
                 )}
 
                 {user && (
-                  <div className="alert alert-info py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "#e3f2fd", border: "none", color: "#001a4d" }}>
+                  <div className="alert py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-color)" }}>
                     Filing as: <strong>Internal Employee</strong>
                   </div>
                 )}
@@ -248,7 +251,7 @@ function LodgeInternal() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("grievanceSuccess")}</h3>
+                <h3 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("grievanceSuccess")}</h3>
                 <p className="text-muted mb-4 fs-6 px-3">
                   {t("grievanceSuccessMsg")}
                 </p>
@@ -260,7 +263,7 @@ function LodgeInternal() {
                   <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
                     {t("submitAnother")}
                   </button>
-                  <button onClick={() => navigate("/track")} className="btn px-4 py-2 fw-bold shadow-sm text-white" style={{ backgroundColor: "#001a4d" }}>
+                  <button onClick={() => navigate("/track")} className="btn px-4 py-2 fw-bold shadow-sm text-white" style={{ backgroundColor: "#c4122f" }}>
                     {t("trackStatus")}
                   </button>
                 </div>

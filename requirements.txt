@@ -1,0 +1,21 @@
+# Consolidated Python dependencies for the entire Purvankara React project
+fastapi
+uvicorn
+pydantic
+supabase
+PyJWT
+cryptography
+python-dotenv
+requests
+langchain-community
+langchain-ollama
+langchain
+groq
+chromadb
+huggingface-hub
+sentence-transformers
+torch
+transformers
+datasets
+scikit-learn
+tqdm

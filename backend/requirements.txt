@@ -4,3 +4,9 @@ pydantic
 supabase
 bcrypt
 passlib[bcrypt]
+python-dotenv
+requests
+deep-translator
+python-multipart
+groq
+twilio

@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
+import { supabase } from "../services/supabaseClient";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { loginAdmin } = useAuth();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -17,29 +17,32 @@ const AdminLogin = () => {
     setIsLoading(true);
 
     try {
-      // Use the SAME unified login endpoint
-      const response = await fetch("http://localhost:8000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: formData.email, password: formData.password })
+      // Authenticate via Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Login failed");
+      if (authError || !authData.user) {
+        throw new Error("Invalid credentials. Please try again.");
       }
 
-      // Check role — only admins can access admin portal
-      if (data.user.role !== "admin") {
+      // Check role — only admins/super_admins can access admin portal
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("user_id", authData.user.id)
+        .single();
+
+      if (userError || userData?.role !== "super_admin") {
+        await supabase.auth.signOut();
         setError("Access denied. This portal is for administrators only.");
         setIsLoading(false);
         return;
       }
 
-      // Store admin data in react context
-      loginAdmin(data.user);
-      navigate("/"); // Redirect to dynamic home
+      // Redirect to admin dashboard
+      navigate("/admin/dashboard");
 
     } catch (err) {
       setError(err.message || "Failed to connect to server.");

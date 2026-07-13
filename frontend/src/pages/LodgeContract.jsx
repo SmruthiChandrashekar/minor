@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
+import { apiClient } from "../services/api";
 
 function LodgeContract() {
   const navigate = useNavigate();
   const [submittedId, setSubmittedId] = useState(null);
+  const [queryRedirect, setQueryRedirect] = useState(null); // set when intent = Query or severity = Low/Policy
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -28,6 +30,11 @@ function LodgeContract() {
     }));
   };
 
+  // Dispatch query text to the chatbot panel via a DOM event
+  const sendToChat = (text) => {
+    window.dispatchEvent(new CustomEvent("chatbot-open", { detail: text }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -39,36 +46,84 @@ function LodgeContract() {
        description: cleanDescription,
        metadata: {
            user_id: formData.isAnonymous ? null : (user?.id || null),
+           name: formData.workerName,
+           phone: formData.contactNumber,
+           email: formData.emailAddress || null,
            location: formData.workSiteLocation,
            date: formData.incidentDate,
-           contact_info: `Worker: ${formData.workerName}, Company: ${formData.contractorCompany}`,
-           department: "Operations"
+           department: "Operations",
+           is_anonymous: formData.isAnonymous
        }
     };
     
     try {
-      const response = await fetch("http://localhost:8000/submit-complaint", {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify(payload)
+      // ── STEP 1: Classify intent via backend ──────────────────────────────
+      const classifyRes = await apiClient("/api/agents/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: cleanDescription }),
       });
+
+      if (classifyRes.ok) {
+        const classified = await classifyRes.json();
+
+        // ── STEP 2a: Intent = Query → chatbot, NO DB insert ─────────────────
+        if (classified.intent === "Query") {
+          setIsSubmitting(false);
+          setQueryRedirect({ type: "query", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 2b: Low or Policy severity → chatbot only, NO DB insert ───────────────
+        if (classified.severity === "Low" || classified.severity === "Policy") {
+          setIsSubmitting(false);
+          setQueryRedirect({ type: "low", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 2c: Medium severity → DB insert AND open chatbot ────────────
+        if (classified.severity === "Medium") {
+          const submitRes = await apiClient("/submit-complaint", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!submitRes.ok) throw new Error("Backend submit failed");
+          const data = await submitRes.json();
+          setSubmittedId(data.grievance_id || data.id);
+          // Also open chatbot for guidance
+          setQueryRedirect({ type: "medium", text: cleanDescription });
+          sendToChat(cleanDescription);
+          return;
+        }
+
+        // ── STEP 3: Intent = Complaint → submit to backend (with category/severity)
+        const submitRes = await apiClient("/submit-complaint", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
       
-      if (!response.ok) throw new Error("Backend not ready or returned error");
+        if (!submitRes.ok) throw new Error("Backend not ready or returned error");
+        
+        const data = await submitRes.json();
+        setSubmittedId(data.grievance_id || data.id);
+        return;
+      }
       
-      const data = await response.json();
-      setSubmittedId(data.grievance_id || data.id);
+      throw new Error("Classify endpoint unreachable");
       
     } catch (err) {
       console.warn("Backend not ready. Falling back to direct Supabase insert.", err);
       
-      // FALLBACK: Temporary direct insert to satisfy NOT NULL constraints
+      // ── FALLBACK: store cleanDescription only — NO metadata prefix ─────────
       try {
-         const fallbackDesc = `[Worker: ${formData.workerName}] [Company: ${formData.contractorCompany}] [Location: ${formData.workSiteLocation}] [Date: ${formData.incidentDate}]\n\n${cleanDescription}`;
-         
          const { data, error } = await supabase.from("grievances").insert({
              user_id: payload.metadata.user_id,
-             category: "Other", // satisfied NOT NULL
-             description: fallbackDesc,
+             category: "Other",
+             description: cleanDescription, // ← clean text only, no metadata noise
              department: "Operations",
              status: "Open"
          }).select().single();
@@ -93,10 +148,42 @@ function LodgeContract() {
 
             {!submittedId ? (
               <>
-                <h3 className="mb-4 fw-bold" style={{ color: "#001a4d" }}>{t("lodgeContract")}</h3>
+                <h3 className="mb-4 fw-bold" style={{ color: "var(--text-color)" }}>{t("lodgeContract")}</h3>
+
+                {/* Query / Low / Medium Redirect Banner */}
+                {queryRedirect && (
+                  <div className="alert d-flex align-items-start gap-3 mb-4" style={{
+                    backgroundColor: queryRedirect.type === "low" ? "#d1ecf1" : queryRedirect.type === "medium" ? "#d4edda" : "#fff3cd",
+                    border: `1px solid ${queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107"}`,
+                    borderRadius: "12px",
+                    color: queryRedirect.type === "low" ? "#0c5460" : queryRedirect.type === "medium" ? "#155724" : "#856404"
+                  }}>
+                    <span style={{ fontSize: "1.5rem" }}>
+                      {queryRedirect.type === "low" ? "💡" : queryRedirect.type === "medium" ? "✅" : "💬"}
+                    </span>
+                    <div className="flex-grow-1">
+                      <strong>
+                        {queryRedirect.type === "low" ? "This looks like a low-priority concern."
+                          : queryRedirect.type === "medium" ? "Complaint logged! Policy Assistant is here to help."
+                          : "This looks like a general query."}
+                      </strong>
+                      <p className="mb-1 mt-1" style={{ fontSize: "14px" }}>
+                        {queryRedirect.type === "low"
+                          ? "Our Policy Assistant can resolve this quickly. Check the chatbot in the bottom-right corner."
+                          : queryRedirect.type === "medium"
+                          ? "Your complaint has been submitted and assigned. The Policy Assistant is open for additional guidance."
+                          : "We've redirected you to the Policy Assistant. Check the chatbot in the bottom-right corner."}
+                      </p>
+                      <button className="btn btn-sm fw-bold" style={{
+                        backgroundColor: queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107",
+                        fontSize: "12px"
+                      }} onClick={() => setQueryRedirect(null)}>Dismiss</button>
+                    </div>
+                  </div>
+                )}
 
                 {user && (
-                  <div className="alert alert-info py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "#e8f5e9", border: "none", color: "#1b5e20" }}>
+                  <div className="alert py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-color)" }}>
                     Filing as: <strong>Contract Workforce</strong>
                   </div>
                 )}
@@ -142,7 +229,7 @@ function LodgeContract() {
                   </div>
 
                   <button type="submit" disabled={isSubmitting} className="btn btn-danger w-100 py-2 fw-bold shadow-sm">
-                    {isSubmitting ? "🤖 AI Classifying & Submitting..." : t("submitGrievance")}
+                    {isSubmitting ? "Submitting..." : t("submitGrievance")}
                   </button>
 
                 </form>
@@ -154,7 +241,7 @@ function LodgeContract() {
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-3" style={{ color: "#001a4d" }}>{t("grievanceSuccess")}</h3>
+                <h3 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("grievanceSuccess")}</h3>
                 <p className="text-muted mb-4 fs-6 px-3">
                   {t("grievanceSuccessMsg")}
                 </p>

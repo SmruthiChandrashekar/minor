@@ -6,11 +6,6 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userDetails, setUserDetails] = useState(null);
-  const [adminUser, setAdminUser] = useState(() => {
-    // Initial load from localStorage
-    const saved = localStorage.getItem("admin_user");
-    return saved ? JSON.parse(saved) : null;
-  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -56,23 +51,16 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginAdmin = (data) => {
-    localStorage.setItem("admin_user", JSON.stringify(data));
-    setAdminUser(data);
-  };
-
-  const logoutAdmin = () => {
-    localStorage.removeItem("admin_user");
-    setAdminUser(null);
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
-    logoutAdmin(); // Also clear admin session on global logout
   };
 
+  // Derived state for role-based access
+  const isAdmin = ["super_admin", "admin"].includes(userDetails?.role);
+  const isSuperAdmin = userDetails?.role === "super_admin";
+
   return (
-    <AuthContext.Provider value={{ user, userDetails, adminUser, loading, logout, loginAdmin, logoutAdmin }}>
+    <AuthContext.Provider value={{ user, userDetails, isAdmin, isSuperAdmin, loading, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );

@@ -99,10 +99,10 @@ function Track() {
 
   const getStatusBadge = (status) => {
     const styles = {
-      Open: { bg: "#e8f4fd", color: "#0c7cd5", label: "Open" },
+      Open:          { bg: "#e8f4fd", color: "#0c7cd5", label: t("pending") },
       Investigating: { bg: "#fff8e1", color: "#f59e0b", label: t("inProgress") },
-      Resolved: { bg: "#e8f5e9", color: "#2e7d32", label: t("resolved") },
-      Closed: { bg: "#fce4ec", color: "#c62828", label: "Closed" },
+      Resolved:      { bg: "#e8f5e9", color: "#2e7d32", label: t("resolved") },
+      Closed:        { bg: "#fce4ec", color: "#c62828", label: t("rejected") },
     };
     const s = styles[status] || { bg: "#f5f5f5", color: "#666", label: status };
     return (
@@ -163,7 +163,10 @@ function Track() {
                   color: i <= currentIndex ? "#001a4d" : "#adb5bd",
                 }}
               >
-                {step}
+                {step === "Open" ? t("pending") :
+                 step === "Investigating" ? t("inProgress") :
+                 step === "Resolved" ? t("resolved") :
+                 t("rejected")}
               </span>
             </div>
             {i < steps.length - 1 && (
@@ -198,7 +201,7 @@ function Track() {
                   </svg>
                 </div>
                 <h3 className="fw-bold" style={{ color: "#001a4d" }}>{t("trackYourGrievance")}</h3>
-                <p className="text-muted">Enter your Tracking ID to check complaint status</p>
+                <p className="text-muted">{t("trackSubtitle")}</p>
               </div>
 
               {error && (
@@ -215,12 +218,12 @@ function Track() {
                   <input
                     type="text"
                     className="form-control form-control-lg bg-light border-0 shadow-sm"
-                    placeholder="Enter full or partial Tracking ID (e.g. 51034769)"
+                    placeholder={t("trackIdPlaceholder")}
                     value={trackingId}
                     onChange={(e) => { setTrackingId(e.target.value); setError(""); }}
                   />
                   <small className="text-muted mt-1 d-block">
-                    You can enter the full UUID or just the first 8 characters shown on your receipt.
+                    {t("trackIdHint")}
                   </small>
                 </div>
 
@@ -233,7 +236,7 @@ function Track() {
                   {isTracking ? (
                     <>
                       <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                      Searching...
+                      {t("searching")}
                     </>
                   ) : (
                     t("trackStatus")
@@ -271,44 +274,44 @@ function Track() {
                 <div className="row g-3">
                   <div className="col-6">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      TRACKING ID
+                      {t("trackingId").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">#{trackedData.id.substring(0, 8)}</span>
                   </div>
                   <div className="col-6">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      STATUS
+                      {t("status").toUpperCase()}
                     </span>
                     {getStatusBadge(trackedData.status)}
                   </div>
                   <div className="col-6">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      CATEGORY
+                      {t("category").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.category}</span>
                   </div>
                   <div className="col-6">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      SEVERITY
+                      Severity
                     </span>
                     {getSeverityBadge(trackedData.severity)}
                   </div>
                   <div className="col-6">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      DEPARTMENT
+                      {t("department").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.department || "—"}</span>
                   </div>
                   <div className="col-6">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      SUBMITTED ON
+                      {t("dateSubmitted").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.date}</span>
                   </div>
                   {trackedData.description && (
                     <div className="col-12 mt-2">
                       <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                        DESCRIPTION
+                        Description
                       </span>
                       <p className="text-dark mb-0" style={{ fontSize: "14px", lineHeight: "1.6" }}>
                         {trackedData.description}

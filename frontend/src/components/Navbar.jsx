@@ -1,25 +1,26 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
+import ThemeToggle from "./ThemeToggle";
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { language, setLanguage, t } = useLanguage();
-  const { user, userDetails, logout, adminUser, logoutAdmin } = useAuth();
+  const { user, userDetails, isAdmin, isSuperAdmin, logout } = useAuth();
 
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  const handleAdminLogout = () => {
-    logoutAdmin();
-    navigate("/admin");
+  const handleAdminLogout = async () => {
+    await logout();
+    navigate("/admin/login");
   };
 
   return (
-    <nav className="navbar navbar-expand-lg bg-white shadow-sm">
+    <nav className="navbar navbar-expand-lg shadow-sm" style={{ backgroundColor: "var(--navbar-bg)" }}>
       <div className="container">
 
         {/* LOGO */}
@@ -31,17 +32,28 @@ function Navbar() {
         {/* NAV LINKS */}
         <div className="ms-auto d-flex align-items-center">
 
-          <Link to="/" className="me-4 text-dark text-decoration-none">
-            {user || adminUser ? "Dashboard" : t("home")}
+          <Link to="/" className="me-4 text-decoration-none nav-link-custom">
+            {user ? t("dashboard") : t("home")}
           </Link>
 
-          <Link to="/track" className="me-4 text-dark text-decoration-none">
+          <Link to="/track" className="me-4 text-decoration-none nav-link-custom">
             {t("track")}
           </Link>
 
-          <Link to="/help" className="me-4 text-dark text-decoration-none">
+          <Link to="/help" className="me-4 text-decoration-none nav-link-custom">
             {t("help")}
           </Link>
+
+          {isSuperAdmin && (
+            <Link to="/admin/portal" className="me-4 text-decoration-none nav-link-custom" style={{ color: "#d32f2f", fontWeight: "bold" }}>
+              <i className="bi bi-shield-lock me-1"></i>Staff & Security
+            </Link>
+          )}
+
+          {/* THEME TOGGLE */}
+          <div className="me-4">
+            <ThemeToggle />
+          </div>
 
           {/* LANGUAGE DROPDOWN */}
           <select
@@ -57,7 +69,7 @@ function Navbar() {
           </select>
 
           {/* AUTH BUTTON — Admin or User */}
-          {adminUser ? (
+          {isAdmin ? (
             // Admin is logged in
             <div className="d-flex align-items-center">
               <div className="me-3 d-flex align-items-center">
@@ -65,10 +77,10 @@ function Navbar() {
                   className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
                   style={{ width: "32px", height: "32px", backgroundColor: "#001a4d", fontWeight: "bold" }}
                 >
-                  {adminUser.name ? adminUser.name.charAt(0).toUpperCase() : "A"}
+                  {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "A"}
                 </div>
                 <span style={{ fontSize: "14px", color: "#6c757d" }}>
-                  <span style={{ color: "#001a4d", fontWeight: "bold" }}>{adminUser.name}</span>
+                  <span style={{ color: "#001a4d", fontWeight: "bold" }}>{userDetails?.name}</span>
                 </span>
               </div>
               <button onClick={handleAdminLogout} className="btn btn-outline-danger px-3 fw-semibold" style={{ fontSize: "14px" }}>
