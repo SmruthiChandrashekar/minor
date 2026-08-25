@@ -62,6 +62,6 @@ def require_role(*allowed_roles):
     return checker
 
 # Convenience shortcuts
-require_admin = require_role("super_admin")
+require_admin = require_role("admin", "super_admin", "hr", "safety", "compliance")
 require_super_admin = require_role("super_admin")
 require_authenticated = get_current_user

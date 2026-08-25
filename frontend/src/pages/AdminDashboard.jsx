@@ -16,6 +16,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [translating, setTranslating] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
+  const [viewingAttachments, setViewingAttachments] = useState(null);
 
   // --- FETCH GRIEVANCES ---
   const fetchGrievances = async () => {
@@ -148,6 +149,41 @@ const AdminDashboard = () => {
     );
   };
 
+  const handleExport = async (format) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      let url = `${import.meta.env.VITE_API_BASE_URL}/api/admin/export?format=${format}`;
+      if (!isSuperAdmin && admin?.department) {
+        url += `&department=${encodeURIComponent(admin.department)}`;
+      }
+      
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to export data");
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `grievances_export.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error("Export Error:", err);
+      alert("Failed to export data. Please try again.");
+    }
+  };
+
   if (!admin) return null;
 
   const total        = filtered.length;
@@ -175,7 +211,27 @@ const AdminDashboard = () => {
           </p>
         </div>
         <div className="d-flex gap-2 align-items-center">
-          <span className="badge bg-success rounded-pill px-3 py-2" style={{ fontSize: "11px" }}>
+          <button onClick={() => handleExport("csv")} className="btn btn-outline-primary btn-sm fw-bold shadow-sm" style={{ borderRadius: "8px" }}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="me-1 mb-1">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            CSV
+          </button>
+          <button onClick={() => handleExport("pdf")} className="btn btn-outline-danger btn-sm fw-bold shadow-sm" style={{ borderRadius: "8px" }}>
+             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="me-1 mb-1">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            PDF
+          </button>
+          <span className="badge bg-success rounded-pill px-3 py-2 ms-2" style={{ fontSize: "11px" }}>
             ● Live
           </span>
         </div>
@@ -236,6 +292,16 @@ const AdminDashboard = () => {
                       <td>{getStatusBadge(g.status)}</td>
                       <td className="text-end pe-4">
                         <div className="d-flex align-items-center justify-content-end gap-2">
+                          {g.attachments && g.attachments.length > 0 && (
+                            <button
+                              className="btn btn-outline-secondary btn-sm shadow-sm"
+                              title="View Attachments"
+                              onClick={() => setViewingAttachments(g.attachments)}
+                              style={{ borderRadius: "6px", padding: "4px 8px" }}
+                            >
+                              📎 {g.attachments.length}
+                            </button>
+                          )}
                           <select
                             className="form-select form-select-sm d-inline-block w-auto shadow-sm"
                             value={g.status}
@@ -267,6 +333,52 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* ATTACHMENT GALLERY MODAL */}
+      <div className={`modal fade ${viewingAttachments ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal-dialog modal-dialog-centered modal-lg">
+          <div className="modal-content border-0 shadow">
+            <div className="modal-header border-bottom-0 pb-0">
+              <h5 className="modal-title fw-bold">Evidence Attachments</h5>
+              <button type="button" className="btn-close" onClick={() => setViewingAttachments(null)}></button>
+            </div>
+            <div className="modal-body py-4">
+              {viewingAttachments && viewingAttachments.length > 0 ? (
+                <div className="row g-3">
+                  {viewingAttachments.map((url, idx) => {
+                    const isVideo = url.toLowerCase().endsWith('.mp4');
+                    const isPdf = url.toLowerCase().endsWith('.pdf');
+                    return (
+                      <div key={idx} className="col-12 col-md-6">
+                        <div className="border rounded p-2 h-100 d-flex flex-column align-items-center justify-content-center bg-light">
+                          {isPdf ? (
+                            <div className="text-center">
+                              <div style={{ fontSize: "3rem" }}>📄</div>
+                              <a href={url} target="_blank" rel="noreferrer" className="btn btn-sm btn-primary mt-2">Open PDF</a>
+                            </div>
+                          ) : isVideo ? (
+                            <video src={url} controls className="img-fluid rounded" style={{ maxHeight: "300px" }} />
+                          ) : (
+                            <a href={url} target="_blank" rel="noreferrer">
+                              <img src={url} alt={`Attachment ${idx + 1}`} className="img-fluid rounded" style={{ maxHeight: "300px", objectFit: "contain" }} />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-muted text-center">No attachments found.</p>
+              )}
+            </div>
+            <div className="modal-footer border-top-0 pt-0">
+              <button type="button" className="btn btn-secondary" onClick={() => setViewingAttachments(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 };

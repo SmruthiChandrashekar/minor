@@ -19,12 +19,13 @@ const AdminLogin = () => {
     try {
       // Authenticate via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+        email: formData.email.trim(),
+        password: formData.password.trim(),
       });
 
       if (authError || !authData.user) {
-        throw new Error("Invalid credentials. Please try again.");
+        console.error("Auth Error:", authError);
+        throw new Error(authError?.message || "Invalid credentials. Please try again.");
       }
 
       // Check role — only admins/super_admins can access admin portal
@@ -34,7 +35,8 @@ const AdminLogin = () => {
         .eq("user_id", authData.user.id)
         .single();
 
-      if (userError || userData?.role !== "super_admin") {
+      const allowedRoles = ["super_admin", "admin", "hr", "safety", "compliance"];
+      if (userError || !allowedRoles.includes(userData?.role)) {
         await supabase.auth.signOut();
         setError("Access denied. This portal is for administrators only.");
         setIsLoading(false);

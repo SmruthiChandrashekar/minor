@@ -1,9 +1,15 @@
 import os
+import sys
+
+# Ensure project root is in path for 'agents', 'rag', and 'backend' modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 import asyncio
 import logging
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -13,17 +19,21 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from agents.severity.severity import get_severity
 from agents.intent.intent import detect_intent
 from agents.escalation import EscalationAgent
+from agents.escalation.notifier import Notifier
 from backend.middleware.auth import get_current_user, require_admin, require_role, require_super_admin
 from backend.utils.audit import log_audit
 from backend.utils.translator import translate_text, translate_to_english
 from groq import Groq
 import io
-import sys
 import time
-
-# Ensure root is in path for 'rag' module
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import pandas as pd
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 from rag.query_data import initialize_rag, is_rag_ready, get_rag_response
+from backend.agent.graph import run_agent
+from backend.database.grievance_state import load_grievance_state, save_grievance_state
 
 # ── Configure logging for escalation agent ──
 logging.basicConfig(
@@ -47,7 +57,7 @@ app = FastAPI(title="Puravankara GRM Backend")
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,6 +117,7 @@ severity_map = {
 # --- INIT ESCALATION AGENT ---
 print("loading escalation agent")
 escalation_agent = EscalationAgent()
+notifier = Notifier()
 print("all modalllls loaded")
 # --- MODELS ---
 class HealthResponse(BaseModel):
@@ -116,6 +127,7 @@ class HealthResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     lang: str = "en"   # ISO 639-1 code: en | hi | kn
+    session_id: Optional[str] = None  # Chat session ID for grievance state persistence
 
 class ClassifyRequest(BaseModel):
     text: str
@@ -144,12 +156,45 @@ class SubmitComplaintRequest(BaseModel):
     description: str
     lang: str = "en"   # ISO 639-1 code: en | hi | kn
     metadata: ComplaintMetadata | None = None
+    attachments: list[str] = []
 
 class UpdateStatusRequest(BaseModel):
     grievance_id: str
     status: str
 
+class FeedbackRequest(BaseModel):
+    grievance_id: str
+    rating: int
+    comments: Optional[str] = None
+
 # --- ROUTES ---
+
+@app.post("/api/feedback")
+async def submit_feedback(request: FeedbackRequest, user: dict = Depends(get_current_user)):
+    try:
+        # Verify the grievance belongs to the user
+        grievance = supabase.table("grievances").select("user_id, status").eq("grievance_id", request.grievance_id).execute()
+        if not grievance.data or grievance.data[0]["user_id"] != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Not authorized to submit feedback for this grievance.")
+            
+        if grievance.data[0]["status"] != "Resolved":
+            raise HTTPException(status_code=400, detail="Can only provide feedback on resolved grievances.")
+
+        # Insert feedback
+        result = supabase.table("feedback").insert({
+            "grievance_id": request.grievance_id,
+            "rating": request.rating,
+            "comments": request.comments
+        }).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to submit feedback")
+            
+        return {"status": "success", "message": "Feedback submitted successfully"}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
 
 # --- ADMIN ANALYTICS ROUTES ---
 @app.get("/api/admin/complaints")
@@ -163,6 +208,102 @@ async def get_admin_complaints(category: Optional[str] = None, severity: Optiona
         result = query.execute()
         return result.data
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/export")
+async def export_admin_data(
+    format: str,
+    category: Optional[str] = None, 
+    severity: Optional[str] = None, 
+    department: Optional[str] = None,
+    user: dict = Depends(require_admin)
+):
+    try:
+        query = supabase.table("grievances").select("*").order("created_at", desc=True)
+        if category:
+            query = query.eq("category", category)
+        if severity:
+            query = query.eq("severity", severity)
+        if department:
+            query = query.eq("department", department)
+            
+        result = query.execute()
+        data = result.data
+        
+        if not data:
+            raise HTTPException(status_code=404, detail="No data found to export")
+            
+        if format.lower() == "csv":
+            df = pd.DataFrame(data)
+            csv_data = df.to_csv(index=False)
+            return StreamingResponse(
+                iter([csv_data]),
+                media_type="text/csv",
+                headers={"Content-Disposition": f"attachment; filename=grievances_export.csv"}
+            )
+            
+        elif format.lower() == "pdf":
+            buffer = io.BytesIO()
+            doc = SimpleDocTemplate(buffer, pagesize=landscape(letter))
+            elements = []
+            
+            styles = getSampleStyleSheet()
+            style_normal = styles["Normal"]
+            elements.append(Paragraph("Grievances Export", styles['Title']))
+            
+            headers = ["ID", "Category", "Department", "Severity", "Status", "Date", "Description"]
+            table_data = [headers]
+            for row in data:
+                gid = str(row.get("grievance_id", ""))[:8]
+                date_str = str(row.get("created_at", ""))[:10]
+                
+                desc_text = str(row.get("description", ""))
+                if len(desc_text) > 150:
+                    desc_text = desc_text[:147] + "..."
+                desc_para = Paragraph(desc_text, style_normal)
+                
+                table_data.append([
+                    gid,
+                    str(row.get("category", "")),
+                    str(row.get("department", "")),
+                    str(row.get("severity", "")),
+                    str(row.get("status", "")),
+                    date_str,
+                    desc_para
+                ])
+                
+            col_widths = [55, 65, 65, 55, 70, 65, 330]
+            t = Table(table_data, colWidths=col_widths)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ALIGN', (6, 1), (6, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ]))
+            elements.append(t)
+            doc.build(elements)
+            
+            pdf_data = buffer.getvalue()
+            buffer.close()
+            
+            return StreamingResponse(
+                iter([pdf_data]),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename=grievances_export.pdf"}
+            )
+            
+        else:
+            raise HTTPException(status_code=400, detail="Invalid format specified")
+            
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/trends")
@@ -183,9 +324,37 @@ async def get_admin_metrics(category: Optional[str] = None, severity: Optional[s
         if category: args["p_category"] = category
         if severity: args["p_severity"] = severity
         result = supabase.rpc("get_admin_metrics", args).execute()
+        
+        avg_resolution_time = 0
         if result.data and len(result.data) > 0:
-            return {"avg_resolution_time": float(result.data[0].get("avg_resolution_time", 0))}
-        return {"avg_resolution_time": 0}
+            avg_resolution_time = float(result.data[0].get("avg_resolution_time", 0))
+            
+        # Fetch Feedback Average
+        feedback_query = supabase.table("feedback").select("rating")
+        # Currently we just do overall or we would need to join with grievances. 
+        # Since Supabase REST doesn't easily let us filter feedback by grievance category, 
+        # we'll do a simple fetch of all feedback, or if category is provided, we can fetch matching grievances first.
+        
+        if category or severity:
+            grievance_q = supabase.table("grievances").select("grievance_id")
+            if category: grievance_q = grievance_q.eq("category", category)
+            if severity: grievance_q = grievance_q.eq("severity", severity)
+            g_ids = [g["grievance_id"] for g in grievance_q.execute().data]
+            if g_ids:
+                feedback_query = feedback_query.in_("grievance_id", g_ids)
+            else:
+                return {"avg_resolution_time": avg_resolution_time, "avg_satisfaction": 0}
+                
+        feedback_res = feedback_query.execute()
+        avg_satisfaction = 0
+        if feedback_res.data:
+            ratings = [f["rating"] for f in feedback_res.data]
+            avg_satisfaction = round(sum(ratings) / len(ratings), 1)
+            
+        return {
+            "avg_resolution_time": avg_resolution_time,
+            "avg_satisfaction": avg_satisfaction
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -373,7 +542,7 @@ async def transcribe_audio(file: UploadFile = File(...), user: dict = Depends(ge
         print(f"Transcription error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# 🤖 RAG-POWERED CHAT
+# 🤖 LANGGRAPH CONVERSATIONAL GRIEVANCE AGENT + RAG
 @app.post("/api/agents/chat")
 async def chat_with_agent(request: ChatRequest):
     try:
@@ -385,25 +554,71 @@ async def chat_with_agent(request: ChatRequest):
 
         user_lang = request.lang  # e.g. "hi", "kn", "en"
         start_time = time.time()
+        session_id = request.session_id or ""
 
-        # Step 1 — Normalize user input to English for RAG pipeline
+        # Step 1 — Normalize user input to English
         message_en = translate_to_english(request.message)
 
-        # Step 2 — Run RAG (always processes in English)
-        result = get_rag_response(message_en)
-        response_en = result["answer"]
+        # Step 2 — Load conversation history from Supabase (if session exists)
+        conversation_history = []
+        if session_id:
+            try:
+                hist_result = supabase.table("chat_messages").select("sender, message").eq(
+                    "session_id", session_id
+                ).order("created_at", desc=False).limit(20).execute()
+                for msg in (hist_result.data or []):
+                    role = "assistant" if msg["sender"] == "assistant" else "user"
+                    conversation_history.append({"role": role, "content": msg["message"]})
+            except Exception as hist_err:
+                logging.warning("Failed to load chat history: %s", hist_err)
 
-        # Step 3 — Translate response back to user's language
+        # Step 3 — Load persisted grievance state (if any)
+        existing_state = None
+        if session_id:
+            existing_state = load_grievance_state(session_id)
+
+        # Step 4 — Run LangGraph agent
+        agent_result = await asyncio.to_thread(
+            run_agent,
+            user_message=message_en,
+            session_id=session_id,
+            messages=conversation_history,
+            existing_state=existing_state,
+        )
+
+        response_en = agent_result.get("response", "I'm sorry, I couldn't process your request.")
+
+        # Step 5 — Persist updated grievance state
+        if session_id and agent_result.get("intent") in ("GRIEVANCE", "FOLLOW_UP"):
+            save_grievance_state(session_id, {
+                "intent": agent_result.get("intent", ""),
+                "category": agent_result.get("category", ""),
+                "severity": agent_result.get("severity", ""),
+                "collected_information": agent_result.get("collected_information", {}),
+                "missing_information": agent_result.get("missing_information", []),
+                "status": agent_result.get("status", "ACTIVE"),
+                "active_grievance": agent_result.get("active_grievance", False),
+            })
+
+        # Step 6 — Translate response back to user's language
         final_response = translate_text(response_en, user_lang)
 
-        print(f"Total API Response Time: {round(time.time() - start_time, 3)}s")
+        print(f"Total Agent Response Time: {round(time.time() - start_time, 3)}s")
 
         return {
             "response": final_response,
-            "sources": result.get("sources", [])
+            "sources": agent_result.get("sources", []),
+            "grievance_state": {
+                "intent": agent_result.get("intent", ""),
+                "category": agent_result.get("category", ""),
+                "severity": agent_result.get("severity", ""),
+                "status": agent_result.get("status", ""),
+                "active_grievance": agent_result.get("active_grievance", False),
+            } if agent_result.get("intent") else None,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"RAG error: {str(e)}")
+        logging.error("Agent chat error: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
 
 
 # 📝 SUBMIT COMPLAINT (Frontend calls this)
@@ -495,7 +710,8 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
             "contact_email": contact_email,
             "location": location_val,
             "incident_date": date_val,
-            "is_anonymous": is_anonymous_val
+            "is_anonymous": is_anonymous_val,
+            "attachments": request.attachments
         }
 
         result = supabase.table("grievances").insert(grievance_data).execute()
@@ -503,8 +719,21 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         if not result.data:
             raise HTTPException(status_code=500, detail="Failed to insert grievance")
 
+        new_grievance_id = result.data[0]["grievance_id"]
+
+        # 🔹 STEP 6: NOTIFY COMPLAINANT
+        if contact_email:
+            asyncio.create_task(
+                asyncio.to_thread(
+                    notifier.send_email,
+                    contact_email,
+                    "Puravankara GRM - Grievance Received",
+                    f"Dear {submitter_name or 'User'},\n\nYour grievance has been successfully submitted.\n\nYour Tracking ID is: {new_grievance_id}\n\nYou can use this ID to track your complaint status.\n\nThank you,\nPuravankara GRM Team"
+                )
+            )
+
         return {
-            "grievance_id": result.data[0]["grievance_id"],
+            "grievance_id": new_grievance_id,
             "category": category,
             "severity": severity,
             "assigned_to": assigned_admin_name,
@@ -557,6 +786,18 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Grievance not found or not assigned to you.")
+
+        updated_grievance = result.data[0]
+        contact_email = updated_grievance.get("contact_email")
+        if contact_email:
+            asyncio.create_task(
+                asyncio.to_thread(
+                    notifier.send_email,
+                    contact_email,
+                    "Puravankara GRM - Status Update",
+                    f"Dear {updated_grievance.get('submitter_name') or 'User'},\n\nThe status of your grievance ({request.grievance_id}) has been updated to: {request.status}.\n\nThank you,\nPuravankara GRM Team"
+                )
+            )
 
         return {
             "message": "Status updated successfully",
@@ -650,4 +891,90 @@ async def get_audit_logs(grievance_id: Optional[str] = None, user: dict = Depend
         res = query.execute()
         return res.data
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- CHAT HISTORY ROUTES ---
+@app.post("/api/chat/session")
+async def create_chat_session(user: dict = Depends(get_current_user)):
+    try:
+        user_id = user["user_id"]
+        result = supabase.table("chat_sessions").insert({
+            "user_id": user_id,
+            "title": "New Conversation"
+        }).execute()
+        return result.data[0]
+    except Exception as e:
+        with open("debug_error.log", "a") as f:
+            f.write(f"create_chat_session error: {str(e)}\n")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/chat/session/latest")
+async def get_latest_chat_session(user: dict = Depends(get_current_user)):
+    try:
+        user_id = user["user_id"]
+        result = supabase.table("chat_sessions").select("*").eq("user_id", user_id).order("updated_at", desc=True).limit(1).execute()
+        if result.data:
+            return result.data[0]
+        return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/chat/sessions")
+async def get_all_chat_sessions(user: dict = Depends(get_current_user)):
+    try:
+        user_id = user["user_id"]
+        result = supabase.table("chat_sessions").select("*").eq("user_id", user_id).order("updated_at", desc=True).execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/chat/session/{session_id}")
+async def get_chat_session_messages(session_id: str, user: dict = Depends(get_current_user)):
+    try:
+        result = supabase.table("chat_messages").select("*").eq("session_id", session_id).order("created_at", desc=False).execute()
+        return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/chat/session/{session_id}")
+async def delete_chat_session(session_id: str, user: dict = Depends(get_current_user)):
+    try:
+        user_id = user["user_id"]
+        # Ensure the session belongs to the user
+        session = supabase.table("chat_sessions").select("user_id").eq("id", session_id).execute()
+        if not session.data or session.data[0]["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this session")
+            
+        result = supabase.table("chat_sessions").delete().eq("id", session_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ChatMessageRequest(BaseModel):
+    session_id: str
+    sender: str
+    message: str
+
+@app.post("/api/chat/message")
+async def add_chat_message(req: ChatMessageRequest, user: dict = Depends(get_current_user)):
+    try:
+        # Save message
+        result = supabase.table("chat_messages").insert({
+            "session_id": req.session_id,
+            "sender": req.sender,
+            "message": req.message
+        }).execute()
+        
+        # Auto-generate title if this is the first user message
+        if req.sender == "user":
+            session_res = supabase.table("chat_sessions").select("title").eq("id", req.session_id).execute()
+            if session_res.data and session_res.data[0].get("title") == "New Conversation":
+                # Generate title: first 40 chars
+                new_title = req.message[:40] + ("..." if len(req.message) > 40 else "")
+                supabase.table("chat_sessions").update({"title": new_title}).eq("id", req.session_id).execute()
+                
+        return result.data[0]
+    except Exception as e:
+        with open("debug_error.log", "a") as f:
+            f.write(f"add_chat_message error: {str(e)}\n")
         raise HTTPException(status_code=500, detail=str(e))

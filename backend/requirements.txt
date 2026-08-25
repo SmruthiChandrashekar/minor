@@ -10,3 +10,5 @@ deep-translator
 python-multipart
 groq
 twilio
+pandas
+reportlab

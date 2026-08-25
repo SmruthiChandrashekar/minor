@@ -209,38 +209,15 @@ Response:
     rag_sources = rag_result["sources"]
 
     # =========================
-    # FALLBACK TO LLM
+    # RAG RESPONSE
     # =========================
-    if "not specified" in rag_answer.lower():
-
-        prompt = f"""
-You are a helpful assistant for Puravankara.
-
-Rules:
-- Answer workplace / HR related queries
-- If it's a minor issue → give practical steps
-- Be concise and natural
-
-Previous conversation:
-{history_text}
-
-User message:
-{text}
-
-Response:
-"""
-
-        response = call_llm(prompt)
-
+    if rag_sources:
+        source_text = "\n\n📄 Sources:\n"
+        for s in rag_sources:
+            source_text += f"- {s['source']} (p.{s['page']})\n"
+        response = rag_answer + source_text
     else:
-        if rag_sources:
-            source_text = "\n\n📚 Sources:\n"
-            for s in rag_sources:
-                source_text += f"- {s['source']} (page {s['page']})\n"
-
-            response = rag_answer + source_text
-        else:
-            response = rag_answer
+        response = rag_answer
 
     # =========================
     # SAVE MEMORY

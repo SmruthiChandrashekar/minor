@@ -19,3 +19,5 @@ transformers
 datasets
 scikit-learn
 tqdm
+langgraph
+langchain-groq

@@ -16,6 +16,7 @@ import Dashboard from "../pages/Dashboard";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
 import SuperAdminPortal from "../pages/SuperAdminPortal";
+import PolicyAssistant from "../pages/PolicyAssistant";
 
 const MainRoutes = () => {
   const { user, isAdmin, isSuperAdmin, loading } = useAuth();
@@ -50,6 +51,7 @@ const MainRoutes = () => {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
         {/* Public Routes */}
+        <Route path="/assistant" element={<PolicyAssistant />} />
         <Route path="/help" element={<Help />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/login" element={isAuthenticated && !isAdmin ? <Navigate to="/" replace /> : <Auth />} />

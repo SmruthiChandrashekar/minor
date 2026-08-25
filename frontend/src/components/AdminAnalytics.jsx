@@ -74,26 +74,35 @@ const AdminAnalytics = ({ adminDepartment }) => {
       </div>
 
       {/* KPI Cards */}
-      <div className="row g-3 mb-4">
-        <div className="col-md-3">
+      <div className="row g-3 mb-4 row-cols-2 row-cols-md-5">
+        <div className="col">
           <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #001a4d" }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Total Grievances</div>
             <h3 className="fw-bold mb-0" style={{ color: "#001a4d" }}>{filteredCount}</h3>
           </div>
         </div>
-        <div className="col-md-3">
+        <div className="col">
           <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #f59e0b" }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Avg Resolution Time</div>
             <h3 className="fw-bold mb-0" style={{ color: "#f59e0b" }}>{metrics.avg_resolution_time} hrs</h3>
           </div>
         </div>
-        <div className="col-md-3">
+        <div className="col">
+          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #2e7d32" }}>
+            <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>User Satisfaction</div>
+            <h3 className="fw-bold mb-0" style={{ color: "#2e7d32" }}>
+              {metrics.avg_satisfaction ? `${metrics.avg_satisfaction} / 5` : "N/A"}
+              {metrics.avg_satisfaction && <span className="text-warning ms-2" style={{ fontSize: "1.5rem", lineHeight: "1" }}>★</span>}
+            </h3>
+          </div>
+        </div>
+        <div className="col">
           <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #c62828" }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>High/Critical Risk</div>
             <h3 className="fw-bold mb-0" style={{ color: "#c62828" }}>{insights.high_severity}</h3>
           </div>
         </div>
-        <div className="col-md-3">
+        <div className="col">
           <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #0c7cd5" }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Pending Cases</div>
             <h3 className="fw-bold mb-0" style={{ color: "#0c7cd5" }}>

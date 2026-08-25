@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
 import { translateList } from "../services/translationService";
+import { apiClient } from "../services/api";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -14,6 +15,12 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [translating, setTranslating] = useState(false);
+  const [feedbackData, setFeedbackData] = useState({});
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [selectedGrievanceId, setSelectedGrievanceId] = useState(null);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState("");
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const getLodgeRoute = () => {
     if (!userDetails || !userDetails.user_type) return "/lodge-selection";
@@ -47,6 +54,20 @@ function Dashboard() {
 
       if (fetchError) throw fetchError;
       setGrievances(data || []);
+
+      if (data && data.length > 0) {
+        const grievanceIds = data.map(g => g.grievance_id);
+        const { data: fbData, error: fbError } = await supabase
+          .from("feedback")
+          .select("grievance_id")
+          .in("grievance_id", grievanceIds);
+          
+        if (!fbError && fbData) {
+          const fbMap = {};
+          fbData.forEach(fb => fbMap[fb.grievance_id] = true);
+          setFeedbackData(fbMap);
+        }
+      }
     } catch (err) {
       console.error("Error fetching grievances:", err);
       setError(err.message || "Failed to load grievances.");
@@ -72,6 +93,39 @@ function Dashboard() {
     });
     return () => { cancelled = true; };
   }, [grievances, language]);
+
+  const handleOpenFeedback = (grievanceId) => {
+    setSelectedGrievanceId(grievanceId);
+    setFeedbackRating(0);
+    setFeedbackComment("");
+    setShowFeedbackModal(true);
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (feedbackRating < 1 || feedbackRating > 5) {
+      alert("Please select a rating between 1 and 5 stars.");
+      return;
+    }
+    try {
+      setSubmittingFeedback(true);
+      await apiClient("/api/feedback", {
+        method: "POST",
+        body: JSON.stringify({
+          grievance_id: selectedGrievanceId,
+          rating: feedbackRating,
+          comments: feedbackComment
+        })
+      });
+      // Update local state
+      setFeedbackData(prev => ({ ...prev, [selectedGrievanceId]: true }));
+      setShowFeedbackModal(false);
+    } catch (err) {
+      console.error("Error submitting feedback:", err);
+      alert("Failed to submit feedback. Please try again.");
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -205,6 +259,19 @@ function Dashboard() {
                               {g.description ? g.description.substring(0, 60) + (g.description.length > 60 ? "…" : "") : "—"}
                             </span>
                           )}
+                          <div className="mt-2">
+                            {g.status === "Resolved" && !feedbackData[g.grievance_id] && (
+                              <button 
+                                className="btn btn-sm btn-outline-success"
+                                onClick={() => handleOpenFeedback(g.grievance_id)}
+                              >
+                                <i className="bi bi-star me-1"></i> Provide Feedback
+                              </button>
+                            )}
+                            {feedbackData[g.grievance_id] && (
+                              <span className="badge bg-success"><i className="bi bi-check-circle me-1"></i>Feedback Submitted</span>
+                            )}
+                          </div>
                         </td>
                         <td className="text-muted">
                           {new Date(g.created_at).toLocaleDateString()}
@@ -305,6 +372,49 @@ function Dashboard() {
           </div>
         </div>
 
+      </div>
+
+      {/* FEEDBACK MODAL */}
+      <div className={`modal fade ${showFeedbackModal ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content border-0 shadow">
+            <div className="modal-header border-bottom-0 pb-0">
+              <h5 className="modal-title fw-bold">Provide Feedback</h5>
+              <button type="button" className="btn-close" onClick={() => setShowFeedbackModal(false)}></button>
+            </div>
+            <div className="modal-body py-4">
+              <p className="text-muted mb-3">How satisfied are you with the resolution of your grievance?</p>
+              <div className="d-flex justify-content-center mb-3">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span 
+                    key={star} 
+                    className={`${feedbackRating >= star ? "text-warning" : "text-secondary"} mx-1`}
+                    style={{ cursor: "pointer", fontSize: "2.5rem", lineHeight: "1" }}
+                    onClick={() => setFeedbackRating(star)}
+                  >
+                    {feedbackRating >= star ? "★" : "☆"}
+                  </span>
+                ))}
+              </div>
+              <div className="form-group">
+                <label className="form-label text-muted small">Comments (Optional)</label>
+                <textarea 
+                  className="form-control" 
+                  rows="3"
+                  value={feedbackComment}
+                  onChange={(e) => setFeedbackComment(e.target.value)}
+                  placeholder="Share your experience..."
+                ></textarea>
+              </div>
+            </div>
+            <div className="modal-footer border-top-0 pt-0">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowFeedbackModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={handleSubmitFeedback} disabled={submittingFeedback || feedbackRating === 0}>
+                {submittingFeedback ? "Submitting..." : "Submit Feedback"}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>

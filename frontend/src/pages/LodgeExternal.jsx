@@ -4,6 +4,8 @@ import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
 import { apiClient } from "../services/api";
+import FileUpload from "../components/FileUpload";
+import { saveToQueue } from "../services/offlineQueue";
 
 function LodgeExternal() {
   const navigate = useNavigate();
@@ -21,6 +23,7 @@ function LodgeExternal() {
     incidentDate: "",
     description: "",
     isAnonymous: false,
+    attachments: []
   });
 
   const handleChange = (e) => {
@@ -28,6 +31,13 @@ function LodgeExternal() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleUploadComplete = (urls) => {
+    setFormData(prev => ({
+      ...prev,
+      attachments: [...prev.attachments, ...urls]
     }));
   };
 
@@ -43,6 +53,7 @@ function LodgeExternal() {
 
     const payload = {
       description: cleanDescription,
+      attachments: formData.attachments,
       metadata: {
         user_id: formData.isAnonymous ? null : (user?.id || null),
         name: formData.orgName,
@@ -130,7 +141,19 @@ function LodgeExternal() {
         setSubmittedId(data.grievance_id);
       } catch (supabaseErr) {
         console.error("Supabase insert error:", supabaseErr);
-        alert("Failed to submit grievance. Please try again.");
+
+        // ── OFFLINE FALLBACK: Save to IndexedDB queue ──
+        if (!navigator.onLine) {
+          try {
+            await saveToQueue(payload);
+            setSubmittedId("offline-queued");
+          } catch (qErr) {
+            console.error("Offline queue error:", qErr);
+            alert("Failed to submit grievance. Please try again.");
+          }
+        } else {
+          alert("Failed to submit grievance. Please try again.");
+        }
       }
     } finally {
       setIsSubmitting(false);
@@ -221,8 +244,10 @@ function LodgeExternal() {
                   </div>
 
                   <div className="mb-3">
-                    <label className="fw-semibold mb-1">{t("uploadProof")}</label>
-                    <input type="file" className="form-control" />
+                    <FileUpload 
+                      onUploadComplete={handleUploadComplete} 
+                      onUploading={(isUploading) => setIsSubmitting(isUploading)}
+                    />
                   </div>
 
                   <div className="form-check mb-4 mt-3">
@@ -238,6 +263,29 @@ function LodgeExternal() {
 
                 </form>
               </>
+            ) : submittedId === "offline-queued" ? (
+              <div className="text-center py-5">
+                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#fff3cd", color: "#f7931e" }}>
+                  <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                  </svg>
+                </div>
+                <h3 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>Saved Offline</h3>
+                <p className="text-muted mb-4 fs-6 px-3">
+                  Your complaint has been saved locally on this device. It will be <strong>automatically submitted</strong> when your internet connection is restored.
+                </p>
+                <div className="bg-light p-4 rounded mb-5 d-inline-block border shadow-sm">
+                  <span className="text-muted d-block mb-1 text-uppercase" style={{ fontSize: "14px", letterSpacing: "1px" }}>Status</span>
+                  <h4 className="fw-bold mb-0" style={{ color: "#f7931e" }}>⏳ Queued for Sync</h4>
+                </div>
+                <div className="d-flex justify-content-center gap-3">
+                  <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
+                    {t("submitAnother")}
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="text-center py-5">
                 <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#d4edda", color: "#28a745" }}>
