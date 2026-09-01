@@ -211,7 +211,17 @@ function PolicyAssistant() {
       if (data.sources?.length > 0) {
         responseText += `\n\n📄 ${t("sources") || "Sources"}: ${data.sources.map(s => `${s.source} (p.${s.page})`).join(", ")}`;
       }
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: responseText, isBot: true }]);
+      const botMsg = {
+        id: Date.now() + 1,
+        text: responseText,
+        isBot: true,
+        severity: data.severity || '',
+        department: data.department || '',
+        routed: data.routed || false,
+        grievance_id: data.grievance_id || '',
+        assigned_to: data.assigned_to || '',
+      };
+      setMessages(prev => [...prev, botMsg]);
       if (currentSessionId) {
         apiClient("/api/chat/message", {
           method: "POST", headers: { "Content-Type": "application/json" },
@@ -353,7 +363,22 @@ function PolicyAssistant() {
                 {msg.isGreeting ? (
                   t('chatbotGreeting') || "Hi! I'm the AI Policy Assistant. How can I help you today?"
                 ) : msg.isBot ? (
-                  <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
+                  <>
+                    <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
+                    {msg.routed && msg.department && (
+                      <div className="pa-routing-badge high">
+                        <span className="pa-routing-dot"></span>
+                        <span>High Severity → Routed to <strong>{msg.department}</strong></span>
+                        {msg.grievance_id && <span className="pa-routing-id">ID: {String(msg.grievance_id).slice(0, 8)}</span>}
+                      </div>
+                    )}
+                    {msg.severity === 'low' && !msg.isGreeting && (
+                      <div className="pa-routing-badge low">
+                        <span className="pa-routing-dot"></span>
+                        <span>Policy Assistant</span>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   msg.text
                 )}

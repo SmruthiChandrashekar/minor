@@ -1,22 +1,38 @@
 """
-test_agent.py — Tests for the Phase 2 LangGraph grievance agent.
+test_agent.py — Tests for Multi-Account Severity Classification, Routing & Conversational RAG agent.
 
 Tests cover:
-    1. Policy question (POLICY_QUERY intent)
-    2. Incomplete grievance (GRIEVANCE intent, missing fields)
-    3. Complete initial message (all fields extracted)
-    4. Correction handling
-    5. Sensitive grievance (POSH — no content refusal)
-    6. Side question during active grievance
-    7. Unknown information ("I don't know")
+    1. Low-severity → RAG ("What is the company's leave policy?")
+    2. High-severity → HR ("I have a serious employee harassment issue that requires immediate attention.")
+    3. High-severity → IC ("There is a major internal compliance and financial fraud violation in audit.")
+    4. High-severity → CRM ("A major corporate client is terminating contract due to sales and service dispute.")
+    5. High-severity → CSD ("Our customer support team is completely ignoring critical helpdesk tickets.")
+    6. High-severity → ESG ("I want to report a serious environmental compliance and waste dumping violation.")
+    7. High-severity → Investors ("Investors are raising critical concerns about financial report disclosure irregularities.")
+    8. Conversational follow-up questions ("What is the leave policy?" -> "What about interns?")
+    9. Invalid LLM classification handling (graceful fallback to CRM / low severity)
+    10. Empty/no-context retrieval handling ("XYZ123NonExistentTopicQuery")
 
 Run with:
-    python -m pytest backend/tests/test_agent.py -v
+    python backend/tests/test_agent.py
 """
 
 import os
 import sys
-import pytest
+
+try:
+    import pytest
+except ImportError:
+    class pytest:
+        @staticmethod
+        def mark():
+            pass
+        class mark:
+            @staticmethod
+            def skipif(cond, reason=""):
+                def decorator(func):
+                    return func
+                return decorator
 
 # Ensure project root is in path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -25,264 +41,226 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 
 from backend.agent.graph import run_agent
+from backend.agent.nodes.classify_severity import classify_severity_node
+from backend.agent.nodes.classify_department import classify_department_node
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────
-
-def make_messages(*pairs):
-    """Build a message history from (role, content) pairs."""
-    return [{"role": r, "content": c} for r, c in pairs]
-
-
-# ── Test 1: Policy Question ──────────────────────────────────────────────
+# ── Test 1: Low-severity → RAG ───────────────────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_policy_question():
+def test_low_severity_rag():
     """
-    User: 'What is the maximum Earned Leave accumulation?'
-    Expected: intent=POLICY_QUERY, RAG retrieves Leave Policy, no grievance follow-up.
+    User query about company policy.
+    Expected: severity='low', routed=False, RAG response generated.
     """
     result = run_agent(
-        user_message="What is the maximum Earned Leave accumulation?",
+        user_message="What is the company's leave policy?",
         session_id="",
         messages=[],
-        existing_state=None,
     )
 
-    assert result["intent"] == "POLICY_QUERY", f"Expected POLICY_QUERY, got {result['intent']}"
-    assert result["response"], "Expected a non-empty response"
-    assert result["active_grievance"] is False, "Should not have active grievance"
-    print(f"✓ Test 1 passed — Policy question: intent={result['intent']}")
+    assert result["severity"] == "low", f"Expected severity 'low', got '{result['severity']}'"
+    assert result["routed"] is False, "Low severity query should not be routed to department"
+    assert result["response"], "Expected non-empty response"
+    print(f"[OK] Test 1 passed -- Low severity -> RAG: severity={result['severity']}", flush=True)
 
 
-# ── Test 2: Incomplete Grievance ─────────────────────────────────────────
+# ── Test 2: High-severity → HR ───────────────────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_incomplete_grievance():
+def test_high_severity_hr():
     """
-    User: 'My wages haven't been paid.'
-    Expected: intent=GRIEVANCE, missing info identified dynamically from policy,
-              one follow-up question generated.
+    User query about employee harassment issue.
+    Expected: severity='high', department='HR', routed=True.
     """
     result = run_agent(
-        user_message="My wages haven't been paid.",
+        user_message="I have a serious employee harassment issue that requires immediate attention.",
         session_id="",
         messages=[],
-        existing_state=None,
     )
 
-    assert result["intent"] == "GRIEVANCE", f"Expected GRIEVANCE, got {result['intent']}"
-    assert result["response"], "Expected a non-empty response"
-    assert result["active_grievance"] is True, "Should have active grievance"
-    # Should have missing information (dynamically determined from policy)
-    assert len(result.get("missing_information", [])) > 0, "Expected missing information"
-    print(f"✓ Test 2 passed — Incomplete grievance: cat={result['category']}, sev={result['severity']}, missing={result['missing_information']}")
+    assert result["severity"] == "high", f"Expected severity 'high', got '{result['severity']}'"
+    assert result["department"] == "HR", f"Expected department 'HR', got '{result['department']}'"
+    assert result["routed"] is True, "High severity query should be routed"
+    print(f"[OK] Test 2 passed -- High severity -> HR: dept={result['department']}", flush=True)
 
 
-# ── Test 3: Complete Initial Message ─────────────────────────────────────
+# ── Test 3: High-severity → IC ───────────────────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_complete_initial_message():
+def test_high_severity_ic():
     """
-    User: "I'm EMP1024 from Site A. My July wages of ₹20,000 haven't been paid."
-    Expected: All fields extracted, no duplicate questions.
+    User query about internal compliance / audit violation.
+    Expected: severity='high', department='IC', routed=True.
     """
     result = run_agent(
-        user_message="I'm EMP1024 from Site A. My July wages of ₹20,000 haven't been paid.",
+        user_message="There is a major internal compliance violation and ethics breach in audit.",
         session_id="",
         messages=[],
-        existing_state=None,
     )
 
-    collected = result.get("collected_information", {})
-    assert result["intent"] == "GRIEVANCE", f"Expected GRIEVANCE, got {result['intent']}"
-
-    # Check that key fields were extracted
-    has_employee_id = any("EMP1024" in str(v) for v in collected.values())
-    has_site = any("Site A" in str(v) or "site a" in str(v).lower() for v in collected.values())
-    has_period = any("July" in str(v) or "july" in str(v).lower() for v in collected.values())
-    has_amount = any("20,000" in str(v) or "20000" in str(v) for v in collected.values())
-
-    assert has_employee_id, f"Expected EMP1024 extracted, got {collected}"
-    assert has_site, f"Expected Site A extracted, got {collected}"
-    assert has_period, f"Expected July extracted, got {collected}"
-    assert has_amount, f"Expected ₹20,000 extracted, got {collected}"
-
-    print(f"✓ Test 3 passed — Complete message: collected={collected}")
+    assert result["severity"] == "high", f"Expected severity 'high', got '{result['severity']}'"
+    assert result["department"] == "IC", f"Expected department 'IC', got '{result['department']}'"
+    assert result["routed"] is True, "High severity query should be routed"
+    print(f"[OK] Test 3 passed -- High severity -> IC: dept={result['department']}", flush=True)
 
 
-# ── Test 4: Correction ──────────────────────────────────────────────────
+# ── Test 4: High-severity → CRM ──────────────────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_correction():
+def test_high_severity_crm():
     """
-    Conversation: "My wages weren't paid in July." → "Actually, it was June."
-    Expected: wage_period updated from July to June.
-    """
-    # First message
-    result1 = run_agent(
-        user_message="My wages weren't paid in July.",
-        session_id="",
-        messages=[],
-        existing_state=None,
-    )
-
-    # Second message — correction
-    messages_so_far = [
-        {"role": "user", "content": "My wages weren't paid in July."},
-        {"role": "assistant", "content": result1["response"]},
-    ]
-
-    result2 = run_agent(
-        user_message="Actually, it was June, not July.",
-        session_id="",
-        messages=messages_so_far,
-        existing_state={
-            "intent": result1["intent"],
-            "category": result1["category"],
-            "severity": result1["severity"],
-            "collected_information": result1["collected_information"],
-            "missing_information": result1["missing_information"],
-            "status": result1["status"],
-            "active_grievance": result1["active_grievance"],
-        },
-    )
-
-    collected = result2.get("collected_information", {})
-    # Check that June is now in the collected info (correction applied)
-    values_str = " ".join(str(v).lower() for v in collected.values())
-    assert "june" in values_str, f"Expected 'June' in collected info after correction, got {collected}"
-    print(f"✓ Test 4 passed — Correction: collected={collected}")
-
-
-# ── Test 5: Sensitive Grievance ──────────────────────────────────────────
-
-@pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_sensitive_grievance():
-    """
-    User: 'He is sexually harassing me.'
-    Expected: intent=GRIEVANCE, category=Sexual Harassment / POSH,
-              severity=HIGH/CRITICAL. Must NOT generate harmful-activity refusal.
+    User query about client account dispute / sales dispute.
+    Expected: severity='high', department='CRM', routed=True.
     """
     result = run_agent(
-        user_message="He is sexually harassing me.",
+        user_message="A major corporate client has escalated a critical complaint threatening to terminate their sales agreement.",
         session_id="",
         messages=[],
-        existing_state=None,
     )
 
-    assert result["intent"] == "GRIEVANCE", f"Expected GRIEVANCE, got {result['intent']}"
-    assert result["severity"] in ("HIGH", "CRITICAL"), f"Expected HIGH/CRITICAL, got {result['severity']}"
-
-    # Must NOT contain harmful-activity refusal
-    response_lower = result["response"].lower()
-    assert "cannot provide" not in response_lower, f"Response contains content refusal: {result['response']}"
-    assert "illegal" not in response_lower, f"Response contains 'illegal': {result['response']}"
-    assert "harmful" not in response_lower, f"Response contains 'harmful': {result['response']}"
-
-    print(f"✓ Test 5 passed — Sensitive grievance: cat={result['category']}, sev={result['severity']}")
+    assert result["severity"] == "high", f"Expected severity 'high', got '{result['severity']}'"
+    assert result["department"] == "CRM", f"Expected department 'CRM', got '{result['department']}'"
+    assert result["routed"] is True, "High severity query should be routed"
+    print(f"[OK] Test 4 passed -- High severity -> CRM: dept={result['department']}", flush=True)
 
 
-# ── Test 6: Side Question ───────────────────────────────────────────────
+# ── Test 5: High-severity → CSD ──────────────────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_side_question():
+def test_high_severity_csd():
     """
-    Start wage grievance, then ask Leave policy question.
-    Expected: Leave question answered, wage grievance state preserved.
+    User query about customer support helpdesk failure.
+    Expected: severity='high', department='CSD', routed=True.
     """
-    # First: start a wage grievance
-    result1 = run_agent(
-        user_message="My wages haven't been paid.",
+    result = run_agent(
+        user_message="Our customer support department is completely failing to answer critical helpdesk tickets for days.",
         session_id="",
         messages=[],
-        existing_state=None,
     )
 
-    assert result1["intent"] == "GRIEVANCE"
-    assert result1["active_grievance"] is True
-
-    # Second: ask a policy question
-    messages_so_far = [
-        {"role": "user", "content": "My wages haven't been paid."},
-        {"role": "assistant", "content": result1["response"]},
-    ]
-
-    result2 = run_agent(
-        user_message="How many days of Earned Leave can I accumulate?",
-        session_id="",
-        messages=messages_so_far,
-        existing_state={
-            "intent": result1["intent"],
-            "category": result1["category"],
-            "severity": result1["severity"],
-            "collected_information": result1["collected_information"],
-            "missing_information": result1["missing_information"],
-            "status": "ACTIVE",
-            "active_grievance": True,
-        },
-    )
-
-    assert result2["intent"] == "POLICY_QUERY", f"Expected POLICY_QUERY for side question, got {result2['intent']}"
-    assert result2["response"], "Expected a policy answer"
-    print(f"✓ Test 6 passed — Side question answered, intent={result2['intent']}")
+    assert result["severity"] == "high", f"Expected severity 'high', got '{result['severity']}'"
+    assert result["department"] == "CSD", f"Expected department 'CSD', got '{result['department']}'"
+    assert result["routed"] is True, "High severity query should be routed"
+    print(f"[OK] Test 5 passed -- High severity -> CSD: dept={result['department']}", flush=True)
 
 
-# ── Test 7: Unknown Information ──────────────────────────────────────────
+# ── Test 6: High-severity → ESG ──────────────────────────────────────────
 
 @pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
-def test_unknown_information():
+def test_high_severity_esg():
     """
-    User: 'I don't know my employee ID.'
-    Expected: employee_id = UNKNOWN, no repeated questioning loop.
+    User query about environmental compliance.
+    Expected: severity='high', department='ESG', routed=True.
     """
-    existing_state = {
-        "intent": "GRIEVANCE",
-        "category": "Wages / Salary",
-        "severity": "HIGH",
-        "collected_information": {"wage_period": "July", "site": "Site A"},
-        "missing_information": ["Your employee ID so we can look up your records", "The approximate amount involved"],
-        "status": "ACTIVE",
-        "active_grievance": True,
-    }
+    result = run_agent(
+        user_message="I want to report a serious environmental compliance and hazardous waste dumping violation at our construction site.",
+        session_id="",
+        messages=[],
+    )
 
-    messages = [
-        {"role": "user", "content": "My wages for July at Site A haven't been paid."},
-        {"role": "assistant", "content": "Could you provide your employee ID?"},
+    assert result["severity"] == "high", f"Expected severity 'high', got '{result['severity']}'"
+    assert result["department"] == "ESG", f"Expected department 'ESG', got '{result['department']}'"
+    assert result["routed"] is True, "High severity query should be routed"
+    print(f"[OK] Test 6 passed -- High severity -> ESG: dept={result['department']}", flush=True)
+
+
+# ── Test 7: High-severity → Investors ────────────────────────────────────
+
+@pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
+def test_high_severity_investors():
+    """
+    User query about investor relations / financial reporting.
+    Expected: severity='high', department='Investors', routed=True.
+    """
+    result = run_agent(
+        user_message="Institutional investors are raising severe concerns about financial reporting irregularities and dividend disclosures.",
+        session_id="",
+        messages=[],
+    )
+
+    assert result["severity"] == "high", f"Expected severity 'high', got '{result['severity']}'"
+    assert result["department"] == "Investors", f"Expected department 'Investors', got '{result['department']}'"
+    assert result["routed"] is True, "High severity query should be routed"
+    print(f"[OK] Test 7 passed -- High severity -> Investors: dept={result['department']}", flush=True)
+
+
+# ── Test 8: Conversational Follow-up Questions ────────────────────────────
+
+@pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
+def test_conversational_followup():
+    """
+    Turn 1: "What is the policy for employee leave?"
+    Turn 2: "What about interns?"
+    Expected: Turn 2 understands that "interns" refers to leave policy.
+    """
+    messages_turn_1 = [
+        {"role": "user", "content": "What is the policy for employee leave?"},
+        {"role": "assistant", "content": "According to Puravankara leave policy, employees get Earned Leave and Casual Leave..."},
     ]
 
     result = run_agent(
-        user_message="I don't know my employee ID.",
+        user_message="What about interns?",
         session_id="",
-        messages=messages,
-        existing_state=existing_state,
+        messages=messages_turn_1,
     )
 
-    collected = result.get("collected_information", {})
-    # employee_id should be set to UNKNOWN
-    values_str = " ".join(str(v).lower() for v in collected.values())
-    assert "unknown" in values_str, f"Expected UNKNOWN in collected info, got {collected}"
+    assert result["severity"] == "low", f"Expected 'low', got {result['severity']}"
+    assert result["response"], "Expected non-empty response"
+    print(f"[OK] Test 8 passed -- Conversational follow-up response generated", flush=True)
 
-    # The next question should NOT be about employee_id again
-    response_lower = result.get("response", "").lower()
-    assert "employee id" not in response_lower or "unknown" in response_lower, \
-        f"Should not re-ask for employee ID, response: {result['response']}"
 
-    print(f"✓ Test 7 passed — Unknown info: collected={collected}")
+# ── Test 9: Invalid LLM Classification Handling ──────────────────────────
+
+def test_invalid_classification_handling():
+    """
+    Test node fallback behavior when state contains invalid inputs or when LLM fails.
+    """
+    # 1. State with empty user message
+    res_sev = classify_severity_node({"user_message": "", "messages": []})
+    assert res_sev["severity"] == "low", f"Expected fallback 'low', got {res_sev['severity']}"
+
+    # 2. Department classification fallback test
+    res_dept = classify_department_node({"user_message": "Some random text", "messages": []})
+    assert res_dept["department"] in ["HR", "IC", "CRM", "CSD", "ESG", "Investors"], f"Invalid department {res_dept['department']}"
+
+    print("[OK] Test 9 passed -- Invalid LLM classification handling", flush=True)
+
+
+# ── Test 10: Empty/No-Context Retrieval Handling ──────────────────────────
+
+@pytest.mark.skipif(not os.environ.get("GROQ_API_KEY"), reason="GROQ_API_KEY not set")
+def test_no_context_retrieval():
+    """
+    User query for a completely non-existent topic.
+    Expected: Graceful response indicating no information found without crashing.
+    """
+    result = run_agent(
+        user_message="What is the policy regarding quantum teleportation for remote work in 2099?",
+        session_id="",
+        messages=[],
+    )
+
+    assert result["response"], "Expected graceful response for no-context query"
+    assert result["error"] == "", "Should not raise uncaught exception"
+    print(f"[OK] Test 10 passed -- Empty/no-context retrieval handling", flush=True)
 
 
 if __name__ == "__main__":
-    # Run LLM tests if GROQ_API_KEY is set
     if os.environ.get("GROQ_API_KEY"):
-        print("--- Running LLM-dependent tests ---\n")
-        test_policy_question()
-        test_incomplete_grievance()
-        test_complete_initial_message()
-        test_correction()
-        test_sensitive_grievance()
-        test_side_question()
-        test_unknown_information()
+        print("--- Running Workflow Tests ---\n", flush=True)
+        test_low_severity_rag()
+        test_high_severity_hr()
+        test_high_severity_ic()
+        test_high_severity_crm()
+        test_high_severity_csd()
+        test_high_severity_esg()
+        test_high_severity_investors()
+        test_conversational_followup()
+        test_invalid_classification_handling()
+        test_no_context_retrieval()
+        print("\n[OK] All 10 tests passed successfully!", flush=True)
     else:
-        print("Skipping LLM tests (GROQ_API_KEY not set)")
-
-    print("\n✅ All tests passed!")
+        print("Running offline tests...", flush=True)
+        test_invalid_classification_handling()
+        print("\n[OK] Offline test passed!", flush=True)

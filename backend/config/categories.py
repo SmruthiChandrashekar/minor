@@ -53,3 +53,30 @@ INTENT_TYPES = [
 ]
 
 INTENT_PROMPT_LIST = ", ".join(INTENT_TYPES)
+
+
+# ── Departments (for high-severity routing) ───────────────────────────────
+DEPARTMENTS = [
+    "HR",
+    "IC",
+    "CRM",
+    "CSD",
+    "ESG",
+    "Investors",
+]
+
+DEPARTMENTS_PROMPT_LIST = "\n".join(f"- {d}" for d in DEPARTMENTS)
+
+# Department descriptions for LLM classification
+DEPARTMENT_DESCRIPTIONS = {
+    "HR": "Human Resources — employee relations, harassment, workplace conduct, hiring, benefits, leave disputes, payroll issues",
+    "IC": "Internal Compliance — regulatory compliance, internal audits, policy violations, ethics, legal compliance, whistleblower",
+    "CRM": "Customer Relationship Management — client complaints, service quality, customer satisfaction, sales disputes",
+    "CSD": "Customer Service Department — customer support failures, response times, service delivery, helpdesk issues",
+    "ESG": "Environmental, Social & Governance — environmental violations, sustainability, social responsibility, governance concerns",
+    "Investors": "Investor Relations — financial reporting, shareholder concerns, investment disputes, dividend issues, fund management",
+}
+
+DEPARTMENT_DESCRIPTIONS_PROMPT = "\n".join(
+    f"- {dept}: {desc}" for dept, desc in DEPARTMENT_DESCRIPTIONS.items()
+)

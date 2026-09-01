@@ -3,22 +3,58 @@ routing.py — Conditional edge functions for LangGraph.
 
 These functions inspect the current state and return the name of the
 next node to visit. They implement the control flow of the agent.
+
+New workflow:
+    classify_severity
+        ├── low → rag_retrieve → generate_response → END
+        └── high → classify_department → dept_{department} → END
 """
 
 from backend.agent.state import GrievanceState
 
 
+def route_after_severity(state: GrievanceState) -> str:
+    """
+    After severity classification, decide the next node.
+
+    low  → rag_retrieve (conversational RAG path)
+    high → classify_department (department routing path)
+    """
+    severity = state.get("severity", "low")
+
+    if severity == "high":
+        return "classify_department"
+    else:
+        return "rag_retrieve"
+
+
+def route_to_department(state: GrievanceState) -> str:
+    """
+    After department classification, route to the correct department node.
+
+    Returns the node name for the classified department.
+    Department nodes are named: dept_hr, dept_ic, dept_crm, dept_csd, dept_esg, dept_investors
+    """
+    department = state.get("department", "CRM")
+
+    dept_node_map = {
+        "HR": "dept_hr",
+        "IC": "dept_ic",
+        "CRM": "dept_crm",
+        "CSD": "dept_csd",
+        "ESG": "dept_esg",
+        "Investors": "dept_investors",
+    }
+
+    node = dept_node_map.get(department, "dept_crm")
+    return node
+
+
+# ── Legacy edge functions (kept for backward compatibility) ───────────────
+
 def route_after_classify(state: GrievanceState) -> str:
-    """
-    After intent classification, decide the next node.
-
-    POLICY_QUERY → retrieve (then policy_answer)
-    GRIEVANCE    → classify_category
-    FOLLOW_UP    → extract_info (continue existing grievance)
-    OTHER        → other_response
-    """
+    """Legacy: After intent classification, decide the next node."""
     intent = state.get("intent", "OTHER")
-
     if intent == "POLICY_QUERY":
         return "retrieve_policy"
     elif intent == "GRIEVANCE":
@@ -29,37 +65,10 @@ def route_after_classify(state: GrievanceState) -> str:
         return "other_response"
 
 
-def route_after_category(state: GrievanceState) -> str:
-    """After category classification, always go to severity."""
-    return "assess_severity"
-
-
-def route_after_severity(state: GrievanceState) -> str:
-    """After severity assessment, go to retrieve for policy context."""
-    return "retrieve_grievance"
-
-
-def route_after_retrieve_policy(state: GrievanceState) -> str:
-    """After retrieval for a POLICY_QUERY, go to policy_answer."""
-    return "policy_answer"
-
-
-def route_after_retrieve_grievance(state: GrievanceState) -> str:
-    """After retrieval for a GRIEVANCE, go to extract_info."""
-    return "extract_info"
-
-
 def route_after_analyze(state: GrievanceState) -> str:
-    """
-    After analyzing requirements (LLM-driven), decide whether to ask
-    a follow-up or complete intake.
-
-    Missing items     → followup
-    Nothing missing   → intake_complete
-    """
+    """Legacy: After analyzing requirements, decide followup or complete."""
     missing = state.get("missing_information", [])
     status = state.get("status", "ACTIVE")
-
     if status == "INTAKE_COMPLETE" or not missing:
         return "intake_complete"
     else:

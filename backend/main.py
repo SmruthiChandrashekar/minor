@@ -542,7 +542,7 @@ async def transcribe_audio(file: UploadFile = File(...), user: dict = Depends(ge
         print(f"Transcription error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# 🤖 LANGGRAPH CONVERSATIONAL GRIEVANCE AGENT + RAG
+# 🤖 LANGGRAPH SEVERITY CLASSIFICATION + DEPARTMENT ROUTING + CONVERSATIONAL RAG
 @app.post("/api/agents/chat")
 async def chat_with_agent(request: ChatRequest):
     try:
@@ -559,7 +559,7 @@ async def chat_with_agent(request: ChatRequest):
         # Step 1 — Normalize user input to English
         message_en = translate_to_english(request.message)
 
-        # Step 2 — Load conversation history from Supabase (if session exists)
+        # Step 2 — Load conversation history from Supabase (for multi-turn context)
         conversation_history = []
         if session_id:
             try:
@@ -572,35 +572,17 @@ async def chat_with_agent(request: ChatRequest):
             except Exception as hist_err:
                 logging.warning("Failed to load chat history: %s", hist_err)
 
-        # Step 3 — Load persisted grievance state (if any)
-        existing_state = None
-        if session_id:
-            existing_state = load_grievance_state(session_id)
-
-        # Step 4 — Run LangGraph agent
+        # Step 3 — Run LangGraph agent (severity classification → routing)
         agent_result = await asyncio.to_thread(
             run_agent,
             user_message=message_en,
             session_id=session_id,
             messages=conversation_history,
-            existing_state=existing_state,
         )
 
         response_en = agent_result.get("response", "I'm sorry, I couldn't process your request.")
 
-        # Step 5 — Persist updated grievance state
-        if session_id and agent_result.get("intent") in ("GRIEVANCE", "FOLLOW_UP"):
-            save_grievance_state(session_id, {
-                "intent": agent_result.get("intent", ""),
-                "category": agent_result.get("category", ""),
-                "severity": agent_result.get("severity", ""),
-                "collected_information": agent_result.get("collected_information", {}),
-                "missing_information": agent_result.get("missing_information", []),
-                "status": agent_result.get("status", "ACTIVE"),
-                "active_grievance": agent_result.get("active_grievance", False),
-            })
-
-        # Step 6 — Translate response back to user's language
+        # Step 4 — Translate response back to user's language
         final_response = translate_text(response_en, user_lang)
 
         print(f"Total Agent Response Time: {round(time.time() - start_time, 3)}s")
@@ -608,17 +590,18 @@ async def chat_with_agent(request: ChatRequest):
         return {
             "response": final_response,
             "sources": agent_result.get("sources", []),
-            "grievance_state": {
-                "intent": agent_result.get("intent", ""),
-                "category": agent_result.get("category", ""),
-                "severity": agent_result.get("severity", ""),
-                "status": agent_result.get("status", ""),
-                "active_grievance": agent_result.get("active_grievance", False),
-            } if agent_result.get("intent") else None,
+            "severity": agent_result.get("severity", ""),
+            "severity_reason": agent_result.get("severity_reason", ""),
+            "department": agent_result.get("department", ""),
+            "department_reason": agent_result.get("department_reason", ""),
+            "routed": agent_result.get("routed", False),
+            "grievance_id": agent_result.get("grievance_id", ""),
+            "assigned_to": agent_result.get("assigned_to", ""),
         }
     except Exception as e:
         logging.error("Agent chat error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
+
 
 
 # 📝 SUBMIT COMPLAINT (Frontend calls this)

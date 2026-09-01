@@ -21,3 +21,5 @@ scikit-learn
 tqdm
 langgraph
 langchain-groq
+ragas
+
