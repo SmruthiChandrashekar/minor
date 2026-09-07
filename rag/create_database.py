@@ -77,8 +77,8 @@ def load_documents():
     for filename in files:
         file_path = os.path.join(DATA_PATH, filename)
 
-        # Ignore hidden files, requirements.txt, or non-policy assets
-        if filename.startswith(".") or filename.lower() == "requirements.txt":
+        # Ignore directories, hidden files, requirements.txt, or non-policy assets
+        if os.path.isdir(file_path) or filename.startswith(".") or filename.lower() == "requirements.txt":
             continue
 
         policy_name = os.path.splitext(filename)[0]
@@ -127,7 +127,7 @@ def load_documents():
                 )
                 documents.append(doc_obj)
 
-        elif filename.lower().endswith(".txt"):
+        elif filename.lower().endswith(".txt") or filename.lower().endswith(".md"):
             try:
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     raw_text = f.read()
