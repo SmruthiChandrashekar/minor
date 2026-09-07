@@ -17,6 +17,18 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
 # Initialize Supabase Admin Client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
+
+def _list_auth_users():
+    """
+    Get all Supabase Auth users. Handles both old and new supabase-py SDK
+    return types (list vs object with .users attribute).
+    """
+    resp = supabase.auth.admin.list_users()
+    if isinstance(resp, list):
+        return resp
+    return getattr(resp, 'users', resp)
+
+
 def migrate_existing_admins():
     print("Checking for existing admins to migrate...")
     # Fetch all admins from users table
@@ -37,20 +49,9 @@ def migrate_existing_admins():
             
         print(f"Processing {email}...")
         
-        # Check if user already exists in Supabase Auth by trying to create them.
-        # Alternatively, we can use the admin list users endpoint, but create_user is simpler
-        # and returns an error if they exist. However, the best way in the Python SDK is to list users.
-        # We can fetch all users:
         try:
-            # We will use invite_user_by_email to avoid setting a password and force them to reset it.
-            # But the python SDK doesn't have a direct `invite_user_by_email` yet in some versions.
-            # Let's try `create_user` with a random password, and if it fails because it exists, we skip.
-            # If it succeeds, we update the user_id in the `users` table.
-            # Since the requirement is to check first:
-            
-            # The python SDK supabase.auth.admin.list_users() exists.
-            users_resp = supabase.auth.admin.list_users()
-            existing_user = next((u for u in users_resp.users if u.email == email), None)
+            all_users = _list_auth_users()
+            existing_user = next((u for u in all_users if getattr(u, 'email', None) == email), None)
             
             if existing_user:
                 print(f"User {email} already exists in Supabase Auth (uid: {existing_user.id}).")
@@ -117,8 +118,8 @@ def setup_super_admin():
     print(f"\nSetting up Super Admin: {email}")
     
     try:
-        users_resp = supabase.auth.admin.list_users()
-        existing_user = next((u for u in users_resp.users if u.email == email), None)
+        all_users = _list_auth_users()
+        existing_user = next((u for u in all_users if getattr(u, 'email', None) == email), None)
         
         if existing_user:
             print(f"Super admin Auth account already exists (uid: {existing_user.id})")
@@ -155,8 +156,131 @@ def setup_super_admin():
     except Exception as e:
         print(f"Failed to setup super admin: {str(e)}")
 
+
+def seed_department_admins():
+    """
+    Seed admin accounts for all 6 departments, including general department admins
+    and distinct tier admins (L1, L2, L3, HEAD) for Option B.
+
+    Uses SEED_ADMIN_PASSWORD env var (default: development-only password).
+    Each admin gets:
+      - A Supabase Auth account
+      - A row in the users table with role='admin', department, and admin_tier
+    """
+    password = os.environ.get("SEED_ADMIN_PASSWORD", "DeptAdmin!Dev123")
+
+    depts = ["CRM", "CSD", "ESG", "HR", "Investors", "IC"]
+    tiers = ["L1", "L2", "L3", "HEAD"]
+
+    accounts_to_seed = []
+
+    # 1. General Department Admins (all-tier overview)
+    for dept in depts:
+        accounts_to_seed.append({
+            "department": dept,
+            "admin_tier": None,
+            "name": f"{dept} Admin",
+            "email": f"{dept.lower()}_admin@puravankara.com",
+        })
+
+    # 2. Distinct Tier Admins (Option B)
+    for dept in depts:
+        for tier in tiers:
+            name_label = f"{dept} Department Head" if tier == "HEAD" else f"{dept} {tier} Admin"
+            accounts_to_seed.append({
+                "department": dept,
+                "admin_tier": tier,
+                "name": name_label,
+                "email": f"{dept.lower()}_{tier.lower()}@puravankara.com",
+            })
+
+    print(f"\n--- Seeding Department & Tier Admins ({len(accounts_to_seed)} accounts) ---")
+
+    for acc in accounts_to_seed:
+        email = acc["email"]
+        name = acc["name"]
+        department = acc["department"]
+        admin_tier = acc["admin_tier"]
+        tier_label = admin_tier if admin_tier else "General"
+
+        try:
+            # Check if Auth account exists
+            all_users = _list_auth_users()
+            existing_user = next((u for u in all_users if getattr(u, 'email', None) == email), None)
+
+            if existing_user:
+                uid = existing_user.id
+                print(f"[EXISTS] {email} (uid: {uid})")
+            else:
+                new_user_resp = supabase.auth.admin.create_user({
+                    "email": email,
+                    "password": password,
+                    "email_confirm": True
+                })
+                uid = new_user_resp.user.id
+                print(f"[CREATED] {email} (uid: {uid})")
+
+            # Prepare user row payload
+            user_payload = {
+                "user_id": uid,
+                "email": email,
+                "name": name,
+                "role": "admin",
+                "user_type": "Internal",
+                "department": department,
+            }
+            if admin_tier:
+                user_payload["admin_tier"] = admin_tier
+
+            # Ensure users table row exists
+            user_row = supabase.table("users").select("*").eq("user_id", uid).execute()
+            if not user_row.data:
+                try:
+                    supabase.table("users").insert(user_payload).execute()
+                    print(f"  -> Added to users table as admin/{department} [{tier_label}]")
+                except Exception as insert_err:
+                    if "admin_tier" in str(insert_err):
+                        # Fallback without admin_tier if migration hasn't been run yet
+                        user_payload.pop("admin_tier", None)
+                        supabase.table("users").insert(user_payload).execute()
+                        print(f"  -> Added without admin_tier (run 011_add_admin_tier.sql to enable tier column)")
+                    else:
+                        raise insert_err
+            else:
+                existing = user_row.data[0]
+                update_fields = {}
+                if existing.get("role") != "admin":
+                    update_fields["role"] = "admin"
+                if existing.get("department") != department:
+                    update_fields["department"] = department
+                if admin_tier and existing.get("admin_tier") != admin_tier:
+                    update_fields["admin_tier"] = admin_tier
+
+                if update_fields:
+                    try:
+                        supabase.table("users").update(update_fields).eq("user_id", uid).execute()
+                        print(f"  -> Updated {list(update_fields.keys())} for {email}")
+                    except Exception as update_err:
+                        if "admin_tier" in str(update_err):
+                            update_fields.pop("admin_tier", None)
+                            if update_fields:
+                                supabase.table("users").update(update_fields).eq("user_id", uid).execute()
+                            print(f"  -> Column 'admin_tier' not found in users table. Run 011_add_admin_tier.sql")
+                        else:
+                            raise update_err
+                else:
+                    print(f"  -> Already configured correctly [{tier_label}]")
+
+        except Exception as e:
+            print(f"[ERROR] Failed to seed {email}: {str(e)}")
+
+    print("Department and tier admin seeding complete.")
+
+
 if __name__ == "__main__":
     print("--- Puravankara GRM Admin Migration ---")
     migrate_existing_admins()
     setup_super_admin()
+    seed_department_admins()
     print("\nMigration Complete.")
+

@@ -21,7 +21,7 @@ class GrievanceState(TypedDict, total=False):
         messages:               Conversation history as list of {"role": ..., "content": ...} dicts.
         user_message:           The current user message being processed.
 
-        severity:               Severity level: low, high.
+        severity:               Severity level: LOW, MEDIUM, HIGH.
         severity_reason:        LLM's reasoning for the severity classification.
 
         department:             Routed department: HR, IC, CRM, CSD, ESG, Investors.
@@ -35,6 +35,13 @@ class GrievanceState(TypedDict, total=False):
         response:               Final response text to return to the user.
         sources:                Source citations from RAG retrieval.
         error:                  Error message if something went wrong.
+
+        # Tier / SLA routing
+        initial_handler:        Initial handler: CHATBOT, L1, L2.
+        assigned_tier:          Current human tier: L1, L2, L3, HEAD, or None.
+        assigned_queue:         Queue name: e.g. crm_l1_queue, or None.
+        sla_hours:              SLA duration in hours for the current tier.
+        chatbot_resolved:       Whether the chatbot/RAG successfully resolved a LOW query.
 
         # Legacy fields (kept for backward compatibility with existing code paths)
         intent:                 Classified intent (legacy: POLICY_QUERY, GRIEVANCE, FOLLOW_UP, OTHER).
@@ -65,6 +72,13 @@ class GrievanceState(TypedDict, total=False):
     routed: bool
     grievance_id: str
     assigned_to: str
+
+    # Tier / SLA Routing
+    initial_handler: str
+    assigned_tier: str
+    assigned_queue: str
+    sla_hours: int
+    chatbot_resolved: bool
 
     # RAG / Policy
     policy_context: list[dict[str, Any]]

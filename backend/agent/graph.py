@@ -5,16 +5,11 @@ classification, department routing, and conversational RAG agent.
 Builds and compiles the conversation graph. Provides run_agent() to
 process a single user message through the graph and return the response.
 
-Workflow:
+Workflow (ternary severity):
     START → classify_severity
-      ├── low  → rag_retrieve → generate_response → END
-      └── high → classify_department
-                    ├── dept_hr       → END
-                    ├── dept_ic       → END
-                    ├── dept_crm      → END
-                    ├── dept_csd      → END
-                    ├── dept_esg      → END
-                    └── dept_investors → END
+      ├── LOW    → rag_retrieve → generate_response → END  (chatbot path)
+      ├── MEDIUM → classify_department → dept_{X} → END    (L1 human path)
+      └── HIGH   → classify_department → dept_{X} → END    (L2 human path)
 """
 
 import logging
@@ -44,15 +39,9 @@ def build_graph() -> StateGraph:
           ↓
         classify_severity
           ↓ (conditional)
-          ├── low  → rag_retrieve → generate_response → END
-          └── high → classify_department
-                        ↓ (conditional)
-                        ├── dept_hr       → END
-                        ├── dept_ic       → END
-                        ├── dept_crm      → END
-                        ├── dept_csd      → END
-                        ├── dept_esg      → END
-                        └── dept_investors → END
+          ├── LOW    → rag_retrieve → generate_response → END
+          ├── MEDIUM → classify_department → dept_{X} → END  (L1, 48h SLA)
+          └── HIGH   → classify_department → dept_{X} → END  (L2, 24h SLA)
     """
     graph = StateGraph(GrievanceState)
 
@@ -75,7 +64,7 @@ def build_graph() -> StateGraph:
 
     # ── Conditional Edges ─────────────────────────────────────────────────
 
-    # After classify_severity → route by severity
+    # After classify_severity → route by severity (3-way)
     graph.add_conditional_edges(
         "classify_severity",
         route_after_severity,
@@ -147,7 +136,9 @@ def run_agent(
     Returns:
         dict with keys: response, sources, severity, severity_reason,
                         department, department_reason, routed,
-                        grievance_id, assigned_to, error
+                        grievance_id, assigned_to, initial_handler,
+                        assigned_tier, assigned_queue, sla_hours,
+                        chatbot_resolved, error
     """
     compiled = get_compiled_graph()
 
@@ -168,6 +159,11 @@ def run_agent(
         "routed": False,
         "grievance_id": "",
         "assigned_to": "",
+        "initial_handler": "",
+        "assigned_tier": "",
+        "assigned_queue": "",
+        "sla_hours": 0,
+        "chatbot_resolved": True,
     }
 
     try:
@@ -192,6 +188,11 @@ def run_agent(
             "routed": result.get("routed", False),
             "grievance_id": result.get("grievance_id", ""),
             "assigned_to": result.get("assigned_to", ""),
+            "initial_handler": result.get("initial_handler", ""),
+            "assigned_tier": result.get("assigned_tier", ""),
+            "assigned_queue": result.get("assigned_queue", ""),
+            "sla_hours": result.get("sla_hours", 0),
+            "chatbot_resolved": result.get("chatbot_resolved", True),
             "error": result.get("error", ""),
         }
 
@@ -207,5 +208,10 @@ def run_agent(
             "routed": False,
             "grievance_id": "",
             "assigned_to": "",
+            "initial_handler": "",
+            "assigned_tier": "",
+            "assigned_queue": "",
+            "sla_hours": 0,
+            "chatbot_resolved": True,
             "error": str(e),
         }

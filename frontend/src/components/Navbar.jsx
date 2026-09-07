@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import ThemeToggle from "./ThemeToggle";
+import NotificationDropdown from "./NotificationDropdown";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -77,9 +78,16 @@ function Navbar() {
           )}
 
           {/* THEME TOGGLE */}
-          <div className="me-4">
+          <div className="me-3">
             <ThemeToggle />
           </div>
+
+          {/* NOTIFICATION BELL */}
+          {user && (
+            <div className="me-3">
+              <NotificationDropdown />
+            </div>
+          )}
 
           {/* LANGUAGE DROPDOWN */}
           <select

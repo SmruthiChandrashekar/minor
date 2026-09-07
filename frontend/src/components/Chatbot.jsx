@@ -348,6 +348,60 @@ const Chatbot = () => {
     }
   };
 
+  // ── CHATBOT → HUMAN HANDOFF ──────────────────────────────────────────────
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const [handoffResult, setHandoffResult] = useState(null);
+
+  const handleHandoff = async () => {
+    if (handoffLoading) return;
+    setHandoffLoading(true);
+
+    // Collect last few messages as context
+    const recentMessages = messages
+      .filter(m => !m.isGreeting && m.text)
+      .slice(-5)
+      .map(m => m.text)
+      .join(' | ');
+    const description = recentMessages || 'User requested human assistance from chatbot';
+
+    try {
+      const res = await apiClient('/api/grievances/chatbot-handoff', {
+        method: 'POST',
+        body: JSON.stringify({
+          description: description.substring(0, 1000),
+          department: 'CRM',
+          session_id: sessionId,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setHandoffResult(data);
+        const confirmMsg = {
+          id: Date.now(),
+          text: `✅ **Your request has been forwarded to the support team.**\n\n📋 **Tracking ID**: ${data.grievance_id}\n👤 **Assigned to**: ${data.assigned_to || 'Available representative'}\n📊 **Tier**: ${data.assigned_tier}\n⏱️ **Response SLA**: ${data.sla_hours} hours\n\nYou'll receive a notification when a representative responds.`,
+          isBot: true,
+        };
+        setMessages(prev => [...prev, confirmMsg]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          text: '⚠️ Sorry, I was unable to connect you to a human representative right now. Please try again or submit a formal grievance.',
+          isBot: true,
+        }]);
+      }
+    } catch (err) {
+      console.error('Handoff error:', err);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        text: '⚠️ Connection error. Please try again.',
+        isBot: true,
+      }]);
+    } finally {
+      setHandoffLoading(false);
+    }
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') handleSendMessage(inputValue);
   };
@@ -643,6 +697,24 @@ const Chatbot = () => {
             
             <div ref={messagesEndRef} />
           </div>
+
+          {/* HANDOFF BUTTON */}
+          {messages.length > 2 && !handoffResult && (
+            <div className="text-center py-2 border-top" style={{ backgroundColor: 'var(--chat-bg)' }}>
+              <button
+                onClick={handleHandoff}
+                disabled={handoffLoading}
+                className="btn btn-sm btn-outline-warning rounded-pill px-3 fw-semibold"
+                style={{ fontSize: '12px', transition: 'all 0.2s' }}
+              >
+                {handoffLoading ? (
+                  <><span className="spinner-border spinner-border-sm me-1" role="status" /> Connecting...</>
+                ) : (
+                  <>🤝 Speak to a Human</>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* INPUT BOX */}
           <div className="border-top" style={{ flexShrink: 0, backgroundColor: 'var(--chat-bg)' }}>

@@ -34,6 +34,19 @@ from reportlab.lib.styles import getSampleStyleSheet
 from rag.query_data import initialize_rag, is_rag_ready, get_rag_response
 from backend.agent.graph import run_agent
 from backend.database.grievance_state import load_grievance_state, save_grievance_state
+from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route
+from backend.utils.notification_service import (
+    notify_user_grievance_received,
+    notify_user_tier_assigned,
+    notify_user_chatbot_handoff,
+    notify_user_resolved,
+    notify_admins_grievance_received,
+    notify_admins_tier_assigned,
+    notify_admins_chatbot_handoff,
+    notify_admins_resolved,
+    create_notification,
+)
+from backend.utils.sla_monitor import sla_monitor_loop
 
 # ── Configure logging for escalation agent ──
 logging.basicConfig(
@@ -68,6 +81,8 @@ app.add_middleware(
 async def startup_event():
     # Run warmup in background to not block server start
     asyncio.create_task(asyncio.to_thread(initialize_rag))
+    # Start SLA monitor background task
+    asyncio.create_task(sla_monitor_loop())
 
 @app.get("/api/agents/warmup")
 async def warmup_rag():
@@ -597,6 +612,11 @@ async def chat_with_agent(request: ChatRequest):
             "routed": agent_result.get("routed", False),
             "grievance_id": agent_result.get("grievance_id", ""),
             "assigned_to": agent_result.get("assigned_to", ""),
+            "initial_handler": agent_result.get("initial_handler", ""),
+            "assigned_tier": agent_result.get("assigned_tier", ""),
+            "assigned_queue": agent_result.get("assigned_queue", ""),
+            "sla_hours": agent_result.get("sla_hours", 0),
+            "chatbot_resolved": agent_result.get("chatbot_resolved", True),
         }
     except Exception as e:
         logging.error("Agent chat error: %s", e, exc_info=True)
@@ -651,13 +671,15 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
             )
         )
 
-        # 🔹 STEP 4: AUTO-ASSIGN TO ADMIN (High/Critical only)
+        # 🔹 STEP 4: DETERMINISTIC ROUTING — Tier/SLA Assignment
+        route_info = determine_initial_route(severity, category)
+
         assigned_to = None
         assigned_admin_name = None
-        status = "Open"
         dept = category
 
-        if severity in ["High", "Critical"]:
+        # Assign admin for MEDIUM/HIGH
+        if route_info["assigned_tier"]:
             admin_query = supabase.table("users").select("*").eq("role", "admin").eq("department", category).execute()
 
             if not admin_query.data:
@@ -668,7 +690,6 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
                 admin = admin_query.data[0]
                 assigned_to = admin["user_id"]
                 assigned_admin_name = admin["name"]
-                status = "Investigating"
 
         # 🔹 STEP 5: INSERT INTO SUPABASE
         # Handle anonymity
@@ -687,14 +708,20 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
             "severity": severity,
             "department": dept,
             "assigned_to": assigned_to,
-            "status": status,
+            "status": route_info["status"],
             "submitter_name": submitter_name,
             "contact_phone": contact_phone,
             "contact_email": contact_email,
             "location": location_val,
             "incident_date": date_val,
             "is_anonymous": is_anonymous_val,
-            "attachments": request.attachments
+            "attachments": request.attachments,
+            "initial_handler": route_info["initial_handler"],
+            "assigned_tier": route_info["assigned_tier"],
+            "assigned_queue": route_info["assigned_queue"],
+            "sla_hours": route_info["sla_hours"],
+            "sla_deadline": route_info["sla_deadline"].isoformat() if route_info["sla_deadline"] else None,
+            "escalation_history": [],
         }
 
         result = supabase.table("grievances").insert(grievance_data).execute()
@@ -704,7 +731,7 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
 
         new_grievance_id = result.data[0]["grievance_id"]
 
-        # 🔹 STEP 6: NOTIFY COMPLAINANT
+        # 🔹 STEP 6: NOTIFY COMPLAINANT (email)
         if contact_email:
             asyncio.create_task(
                 asyncio.to_thread(
@@ -715,12 +742,24 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
                 )
             )
 
+        # 🔹 STEP 7: IN-APP NOTIFICATIONS
+        user_id = meta.user_id if meta else None
+        if user_id:
+            notify_user_grievance_received(user_id, new_grievance_id)
+            if route_info["assigned_tier"]:
+                notify_user_tier_assigned(user_id, new_grievance_id, route_info["assigned_tier"])
+        notify_admins_grievance_received(dept, new_grievance_id)
+        if route_info["assigned_tier"]:
+            notify_admins_tier_assigned(dept, new_grievance_id, severity, route_info["assigned_tier"])
+
         return {
             "grievance_id": new_grievance_id,
             "category": category,
             "severity": severity,
             "assigned_to": assigned_admin_name,
-            "status": status,
+            "status": route_info["status"],
+            "assigned_tier": route_info["assigned_tier"],
+            "sla_hours": route_info["sla_hours"],
             "message": "Complaint processed successfully"
         }
 
@@ -756,7 +795,7 @@ async def get_admin_grievances(admin_id: str):
 @app.patch("/api/admin/update-status")
 async def update_grievance_status(request: UpdateStatusRequest, user: dict = Depends(require_admin)):
     try:
-        valid_statuses = ["Open", "Investigating", "Resolved", "Closed"]
+        valid_statuses = ["Open", "Investigating", "Resolved", "Closed", "CHATBOT_HANDLING", "HUMAN_HANDLING"]
         if request.status not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
 
@@ -782,6 +821,15 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
                 )
             )
 
+        # In-app resolved notifications
+        if request.status == "Resolved":
+            grievance_user_id = updated_grievance.get("user_id")
+            department = updated_grievance.get("department")
+            if grievance_user_id:
+                notify_user_resolved(grievance_user_id, request.grievance_id)
+            if department:
+                notify_admins_resolved(department, request.grievance_id)
+
         return {
             "message": "Status updated successfully",
             "grievance_id": request.grievance_id,
@@ -799,6 +847,128 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
 async def get_all_users():
     response = supabase.table("users").select("*").execute()
     return {"data": response.data}
+
+
+# ─── NOTIFICATION ENDPOINTS ───────────────────────────────────────────
+
+@app.get("/api/notifications")
+async def get_notifications(user: dict = Depends(get_current_user)):
+    """Get notifications for the current user."""
+    try:
+        user_id = user["user_id"]
+        result = (
+            supabase.table("notifications")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(50)
+            .execute()
+        )
+        return result.data or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/notifications/unread-count")
+async def get_unread_count(user: dict = Depends(get_current_user)):
+    """Get unread notification count for the current user."""
+    try:
+        user_id = user["user_id"]
+        result = (
+            supabase.table("notifications")
+            .select("notification_id", count="exact")
+            .eq("user_id", user_id)
+            .eq("is_read", False)
+            .execute()
+        )
+        return {"unread_count": result.count or 0}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
+    """Mark a single notification as read."""
+    try:
+        supabase.table("notifications").update({"is_read": True}).eq(
+            "notification_id", notification_id
+        ).eq("user_id", user["user_id"]).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/notifications/read-all")
+async def mark_all_read(user: dict = Depends(get_current_user)):
+    """Mark all notifications as read for the current user."""
+    try:
+        supabase.table("notifications").update({"is_read": True}).eq(
+            "user_id", user["user_id"]
+        ).eq("is_read", False).execute()
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─── CHATBOT HANDOFF ENDPOINT ─────────────────────────────────────────
+
+class ChatbotHandoffRequest(BaseModel):
+    description: str
+    department: str = "CRM"
+    session_id: Optional[str] = None
+
+
+@app.post("/api/grievances/chatbot-handoff")
+async def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(get_current_user)):
+    """Escalate a LOW-severity chatbot conversation to L1 human handling."""
+    try:
+        route_info = chatbot_handoff_route(request.department)
+        user_id = user["user_id"]
+
+        # Find admin
+        admin_query = supabase.table("users").select("user_id, name").eq(
+            "role", "admin"
+        ).eq("department", request.department).execute()
+        admin = admin_query.data[0] if admin_query.data else None
+
+        # Create grievance
+        grievance_data = {
+            "user_id": user_id,
+            "category": request.department,
+            "department": request.department,
+            "description": request.description,
+            "severity": "Low",
+            "status": route_info["status"],
+            "assigned_to": admin["user_id"] if admin else None,
+            "initial_handler": "CHATBOT",
+            "assigned_tier": route_info["assigned_tier"],
+            "assigned_queue": route_info["assigned_queue"],
+            "sla_hours": route_info["sla_hours"],
+            "sla_deadline": route_info["sla_deadline"].isoformat() if route_info["sla_deadline"] else None,
+            "escalation_history": [{"from_tier": "CHATBOT", "to_tier": "L1", "reason": "USER_REQUEST"}],
+        }
+
+        result = supabase.table("grievances").insert(grievance_data).execute()
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create handoff grievance")
+
+        grievance_id = result.data[0]["grievance_id"]
+
+        # Notifications
+        notify_user_chatbot_handoff(user_id, grievance_id)
+        notify_admins_chatbot_handoff(request.department, grievance_id)
+
+        return {
+            "grievance_id": grievance_id,
+            "assigned_to": admin["name"] if admin else None,
+            "assigned_tier": route_info["assigned_tier"],
+            "sla_hours": route_info["sla_hours"],
+            "message": "Your issue has been forwarded to a human representative.",
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
 # --- SUPER ADMIN: USER MANAGEMENT ---
 @app.get("/api/admin/users")
 async def get_privileged_users(user: dict = Depends(require_admin)):

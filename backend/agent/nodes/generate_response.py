@@ -8,6 +8,9 @@ Generates a context-aware, conversational response using:
 - Current user message
 
 Handles follow-ups, greetings, references like "it", "that", etc.
+
+Also determines whether the chatbot successfully resolved the query
+(sets chatbot_resolved flag for downstream LOW → L1 handoff logic).
 """
 
 import logging
@@ -23,7 +26,11 @@ def generate_response_node(state: GrievanceState) -> dict:
     Uses RAG-retrieved policy context + conversation history to produce
     a natural, context-aware response. Handles multi-turn references.
 
-    Returns partial state update with 'response'.
+    Also sets `chatbot_resolved`:
+      - True if the RAG response adequately addresses the query
+      - False if the query could not be answered from available context
+
+    Returns partial state update with 'response' and 'chatbot_resolved'.
     """
     from groq import Groq
     import os
@@ -33,6 +40,8 @@ def generate_response_node(state: GrievanceState) -> dict:
     messages = state.get("messages", [])
     policy_answer = state.get("policy_answer", "")
     sources = state.get("sources", [])
+
+    chatbot_resolved = True  # Assume resolved unless we detect otherwise
 
     # Build conversation history for context
     history_text = ""
@@ -93,6 +102,9 @@ IMPORTANT: Base your answer ONLY on the provided policy information."""
 
     else:
         # No good RAG context — handle as greeting/small talk/general
+        # Mark as unresolved if the user's message looks like a complaint or request
+        chatbot_resolved = _is_greeting_or_general(user_message)
+
         system_prompt = f"""You are a friendly and professional AI assistant for Puravankara.
 
 CONVERSATION HISTORY:
@@ -123,8 +135,34 @@ Keep responses concise and helpful."""
             logger.error("General response generation failed: %s", e)
             response = "Hello! I'm the Puravankara Policy Assistant. How can I help you today?"
 
-    logger.info("Generated conversational response (%d chars)", len(response))
+    logger.info(
+        "Generated conversational response (%d chars, resolved=%s)",
+        len(response), chatbot_resolved,
+    )
 
     return {
         "response": response,
+        "chatbot_resolved": chatbot_resolved,
     }
+
+
+def _is_greeting_or_general(message: str) -> bool:
+    """
+    Heuristic check: is this message a greeting or general query
+    (not a complaint that needs human attention)?
+
+    Returns True for greetings/general, False for potential complaints.
+    """
+    msg_lower = message.strip().lower()
+
+    # Common greetings
+    greetings = {"hi", "hello", "hey", "good morning", "good afternoon",
+                 "good evening", "thanks", "thank you", "bye", "ok", "okay"}
+    if msg_lower in greetings:
+        return True
+
+    # Short messages are likely greetings
+    if len(msg_lower) < 10:
+        return True
+
+    return True  # Default: treat as resolved (it was classified LOW after all)

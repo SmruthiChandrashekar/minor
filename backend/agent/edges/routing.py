@@ -4,10 +4,11 @@ routing.py — Conditional edge functions for LangGraph.
 These functions inspect the current state and return the name of the
 next node to visit. They implement the control flow of the agent.
 
-New workflow:
+Workflow:
     classify_severity
-        ├── low → rag_retrieve → generate_response → END
-        └── high → classify_department → dept_{department} → END
+        ├── LOW    → rag_retrieve → generate_response → END
+        ├── MEDIUM → classify_department → dept_{department} → END
+        └── HIGH   → classify_department → dept_{department} → END
 """
 
 from backend.agent.state import GrievanceState
@@ -17,14 +18,16 @@ def route_after_severity(state: GrievanceState) -> str:
     """
     After severity classification, decide the next node.
 
-    low  → rag_retrieve (conversational RAG path)
-    high → classify_department (department routing path)
+    LOW    → rag_retrieve (chatbot/RAG path)
+    MEDIUM → classify_department (human L1 path)
+    HIGH   → classify_department (human L2 path)
     """
-    severity = state.get("severity", "low")
+    severity = state.get("severity", "LOW").strip().upper()
 
-    if severity == "high":
+    if severity in ("MEDIUM", "HIGH"):
         return "classify_department"
     else:
+        # LOW (or any fallback) → chatbot/RAG
         return "rag_retrieve"
 
 
@@ -50,7 +53,7 @@ def route_to_department(state: GrievanceState) -> str:
     return node
 
 
-# ── Legacy edge functions (kept for backward compatibility) ───────────────
+# ── Legacy edge functions (kept for backward compatibility) ───────────
 
 def route_after_classify(state: GrievanceState) -> str:
     """Legacy: After intent classification, decide the next node."""

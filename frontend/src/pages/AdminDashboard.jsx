@@ -17,6 +17,7 @@ const AdminDashboard = () => {
   const [translating, setTranslating] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [viewingAttachments, setViewingAttachments] = useState(null);
+  const [tierFilter, setTierFilter] = useState("ALL");
 
   // --- FETCH GRIEVANCES ---
   const fetchGrievances = async () => {
@@ -52,7 +53,7 @@ const AdminDashboard = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [navigate]);
+  }, [navigate, admin]);
 
   // --- TRANSLATE DESCRIPTIONS when grievances or language changes ---
   useEffect(() => {
@@ -66,12 +67,20 @@ const AdminDashboard = () => {
     return () => { cancelled = true; };
   }, [grievances, language]);
 
-  // --- FILTER BY ADMIN DEPARTMENT ---
-  const filtered = admin
+  // --- FILTER BY ADMIN DEPARTMENT & TIER ---
+  const isTierLocked = Boolean(admin?.admin_tier && ["L1", "L2", "L3"].includes(admin.admin_tier));
+  const effectiveTier = isTierLocked ? admin.admin_tier : tierFilter;
+
+  const departmentGrievances = admin
     ? translatedGrievances.filter(
         (g) => isSuperAdmin || g.department === admin.department || g.category === admin.department
       )
     : [];
+
+  const filtered = departmentGrievances.filter((g) => {
+    if (effectiveTier === "ALL") return true;
+    return g.assigned_tier === effectiveTier;
+  });
 
   // --- STATUS UPDATE ---
   const handleStatusChange = async (grievanceId, newStatus) => {
@@ -118,10 +127,12 @@ const AdminDashboard = () => {
   // --- STATUS BADGE (uses i18n for labels) ---
   const getStatusBadge = (status) => {
     const styles = {
-      Open:          { bg: "#e8f4fd", color: "#0c7cd5", label: t("pending") },
-      Investigating: { bg: "#fff8e1", color: "#f59e0b", label: t("inProgress") },
-      Resolved:      { bg: "#e8f5e9", color: "#2e7d32", label: t("resolved") },
-      Closed:        { bg: "#fce4ec", color: "#c62828", label: t("rejected") },
+      Open:              { bg: "#e8f4fd", color: "#0c7cd5", label: t("pending") },
+      Investigating:     { bg: "#fff8e1", color: "#f59e0b", label: t("inProgress") },
+      Resolved:          { bg: "#e8f5e9", color: "#2e7d32", label: t("resolved") },
+      Closed:            { bg: "#fce4ec", color: "#c62828", label: t("rejected") },
+      CHATBOT_HANDLING:  { bg: "#f3e8ff", color: "#7c3aed", label: "Chatbot" },
+      HUMAN_HANDLING:    { bg: "#fef3c7", color: "#d97706", label: "Human" },
     };
     const s = styles[status] || { bg: "#f5f5f5", color: "#666", label: status };
     return (
@@ -145,6 +156,36 @@ const AdminDashboard = () => {
       <span className="px-2 py-1 rounded-pill fw-semibold"
         style={{ backgroundColor: s.bg, color: s.color, fontSize: "11px" }}>
         {severity}
+      </span>
+    );
+  };
+
+  // --- SLA STATUS HELPER ---
+  const getSlaStatus = (g) => {
+    if (!g.sla_deadline || !g.assigned_tier) return null;
+    if (g.status === 'Resolved' || g.status === 'Closed') return null;
+    const deadline = new Date(g.sla_deadline);
+    const now = new Date();
+    const hoursLeft = (deadline - now) / 3600000;
+    if (hoursLeft < 0) return { label: 'Breached', color: '#dc2626', bg: '#fef2f2' };
+    if (hoursLeft < 4) return { label: `${Math.round(hoursLeft)}h left`, color: '#d97706', bg: '#fffbeb' };
+    return { label: `${Math.round(hoursLeft)}h left`, color: '#16a34a', bg: '#f0fdf4' };
+  };
+
+  // --- TIER BADGE ---
+  const getTierBadge = (tier) => {
+    if (!tier) return <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>;
+    const colors = {
+      L1:   { bg: '#dbeafe', color: '#1d4ed8' },
+      L2:   { bg: '#fef3c7', color: '#b45309' },
+      L3:   { bg: '#fce7f3', color: '#be185d' },
+      HEAD: { bg: '#fecaca', color: '#991b1b' },
+    };
+    const c = colors[tier] || { bg: '#f3f4f6', color: '#4b5563' };
+    return (
+      <span className="px-2 py-1 rounded-pill fw-bold"
+        style={{ backgroundColor: c.bg, color: c.color, fontSize: '11px' }}>
+        {tier}
       </span>
     );
   };
@@ -207,6 +248,19 @@ const AdminDashboard = () => {
               style={{ backgroundColor: "#e8f4fd", color: "#0c7cd5" }}>
               {admin.department}
             </span>{" "}
+            {admin.admin_tier ? (
+              <span className="badge px-2 py-1 rounded-pill ms-1"
+                style={{
+                  backgroundColor: admin.admin_tier === "HEAD" ? "#fecaca" : "#dbeafe",
+                  color: admin.admin_tier === "HEAD" ? "#991b1b" : "#1d4ed8",
+                }}>
+                {admin.admin_tier === "HEAD" ? "Department Head" : `${admin.admin_tier} Queue`}
+              </span>
+            ) : (
+              <span className="badge bg-secondary px-2 py-1 rounded-pill ms-1">
+                All Tiers
+              </span>
+            )}{" "}
             {t("department")}
           </p>
         </div>
@@ -240,6 +294,53 @@ const AdminDashboard = () => {
       {/* ADVANCED ANALYTICS & FILTERS */}
       <AdminAnalytics adminDepartment={isSuperAdmin ? "" : (admin?.department || "")} />
 
+      {/* TIER QUEUE SELECTOR / SCOPE INDICATOR */}
+      {isTierLocked ? (
+        <div className="d-flex align-items-center justify-content-between p-3 mb-3 rounded shadow-sm"
+          style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe" }}>
+          <div className="d-flex align-items-center gap-2">
+            <span className="badge bg-primary px-3 py-2 rounded-pill fw-bold" style={{ fontSize: "12px" }}>
+              {admin.admin_tier} QUEUE
+            </span>
+            <span className="text-dark" style={{ fontSize: "14px" }}>
+              Viewing tickets assigned to <strong>{admin.department} {admin.admin_tier}</strong> handling.
+            </span>
+          </div>
+          <span className="badge bg-light text-primary border border-primary px-3 py-2 rounded-pill fw-bold">
+            {filtered.length} ticket{filtered.length === 1 ? "" : "s"}
+          </span>
+        </div>
+      ) : (
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div className="d-flex gap-2 align-items-center flex-wrap">
+            <span className="text-muted fw-bold me-1" style={{ fontSize: "13px" }}>Queue:</span>
+            {["ALL", "L1", "L2", "L3", "HEAD"].map((t) => {
+              const count = departmentGrievances.filter((g) => t === "ALL" || g.assigned_tier === t).length;
+              const isActive = tierFilter === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTierFilter(t)}
+                  className={`btn btn-sm rounded-pill fw-semibold ${isActive ? "btn-dark shadow-sm" : "btn-outline-secondary"}`}
+                  style={{ fontSize: "12px", padding: "5px 14px" }}
+                >
+                  {t === "ALL" ? "All Tiers" : t === "HEAD" ? "HEAD (Escalations)" : `${t} Queue`}
+                  <span className={`badge ms-2 rounded-pill ${isActive ? "bg-light text-dark" : "bg-secondary text-light"}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {admin.admin_tier === "HEAD" && (
+            <span className="badge bg-danger bg-opacity-10 text-danger border border-danger px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "12px" }}>
+              Department Head View
+            </span>
+          )}
+        </div>
+      )}
+
       {/* TABLE */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-0">
@@ -254,7 +355,7 @@ const AdminDashboard = () => {
             <div className="text-center py-5 text-muted">
               <h5 className="fw-bold mb-1">No complaints assigned</h5>
               <p className="mb-0" style={{ fontSize: "14px" }}>
-                Grievances matching your <strong>{admin.department}</strong> department will appear here in real-time.
+                Grievances matching your <strong>{admin.department}</strong> {isTierLocked ? `${admin.admin_tier} queue` : "department"} will appear here in real-time.
               </p>
             </div>
           ) : (
@@ -264,8 +365,10 @@ const AdminDashboard = () => {
                   <tr>
                     <th className="text-muted py-3 ps-4" style={{ fontSize: "12px" }}>ID</th>
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>{t("category")}</th>
-                    <th className="text-muted py-3" style={{ fontSize: "12px" }}>{t("status")}</th>
+                    <th className="text-muted py-3" style={{ fontSize: "12px" }}>Severity</th>
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>Description</th>
+                    <th className="text-muted py-3" style={{ fontSize: "12px" }}>Tier</th>
+                    <th className="text-muted py-3" style={{ fontSize: "12px" }}>SLA</th>
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>{t("dateSubmitted")}</th>
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>{t("status")}</th>
                     <th className="text-muted py-3 text-end pe-4" style={{ fontSize: "12px" }}>{t("actions")}</th>
@@ -285,6 +388,19 @@ const AdminDashboard = () => {
                         {translating
                           ? <span className="spinner-border spinner-border-sm text-secondary" role="status" />
                           : g.description}
+                      </td>
+                      <td>{getTierBadge(g.assigned_tier)}</td>
+                      <td>
+                        {(() => {
+                          const sla = getSlaStatus(g);
+                          if (!sla) return <span style={{ color: '#94a3b8', fontSize: '12px' }}>—</span>;
+                          return (
+                            <span className="px-2 py-1 rounded-pill fw-semibold"
+                              style={{ backgroundColor: sla.bg, color: sla.color, fontSize: '11px' }}>
+                              {sla.label}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="text-muted" style={{ fontSize: "13px" }}>
                         {new Date(g.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
@@ -311,6 +427,7 @@ const AdminDashboard = () => {
                           >
                             <option value="Open">{t("pending")}</option>
                             <option value="Investigating">{t("inProgress")}</option>
+                            <option value="HUMAN_HANDLING">Human Handling</option>
                             <option value="Resolved">{t("resolved")}</option>
                             <option value="Closed">{t("rejected")}</option>
                           </select>
