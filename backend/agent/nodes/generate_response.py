@@ -101,9 +101,9 @@ IMPORTANT: Base your answer ONLY on the provided policy information."""
             response = policy_answer + source_citations
 
     else:
-        # No good RAG context — handle as greeting/small talk/general
-        # Mark as unresolved if the user's message looks like a complaint or request
-        chatbot_resolved = _is_greeting_or_general(user_message)
+        # No sufficient policy context available — check if greeting or unresolved query
+        is_greeting = _is_greeting(user_message)
+        chatbot_resolved = is_greeting
 
         system_prompt = f"""You are a friendly and professional AI assistant for Puravankara.
 
@@ -112,11 +112,10 @@ CONVERSATION HISTORY:
 
 You help with company policy questions and grievance-related queries.
 If the user is greeting you, respond warmly and ask how you can help.
-If the user is asking something you cannot answer from policy context,
-let them know politely and suggest what topics you can help with
-(company policies, grievance procedures, POSH compliance, leave policies, etc.).
+If the user is asking a specific policy or grievance question that you cannot answer from official policy context,
+let them know clearly that official documentation is not available for this topic, and that they can lodge a formal grievance form so the appropriate department can review and assist them.
 
-Keep responses concise and helpful."""
+Keep responses concise, clear, and professional."""
 
         prompt = f"User: {user_message}"
 
@@ -133,7 +132,7 @@ Keep responses concise and helpful."""
             response = llm_response.choices[0].message.content.strip()
         except Exception as e:
             logger.error("General response generation failed: %s", e)
-            response = "Hello! I'm the Puravankara Policy Assistant. How can I help you today?"
+            response = "I am sorry, but the available Puravankara policy documents do not provide sufficient information to resolve your query. You may submit a formal grievance form for direct assistance."
 
     logger.info(
         "Generated conversational response (%d chars, resolved=%s)",
@@ -146,23 +145,14 @@ Keep responses concise and helpful."""
     }
 
 
-def _is_greeting_or_general(message: str) -> bool:
+def _is_greeting(message: str) -> bool:
     """
-    Heuristic check: is this message a greeting or general query
-    (not a complaint that needs human attention)?
-
-    Returns True for greetings/general, False for potential complaints.
+    Check if the user message is just a greeting or small talk rather than a substantive query/complaint.
     """
     msg_lower = message.strip().lower()
-
-    # Common greetings
     greetings = {"hi", "hello", "hey", "good morning", "good afternoon",
-                 "good evening", "thanks", "thank you", "bye", "ok", "okay"}
-    if msg_lower in greetings:
+                 "good evening", "thanks", "thank you", "bye", "ok", "okay", "test"}
+    if msg_lower in greetings or len(msg_lower) < 6:
         return True
+    return False
 
-    # Short messages are likely greetings
-    if len(msg_lower) < 10:
-        return True
-
-    return True  # Default: treat as resolved (it was classified LOW after all)

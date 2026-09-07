@@ -1,11 +1,12 @@
-import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { supabase } from "../services/supabaseClient";
 import { useAuth } from "../context/AuthProvider";
 
 function Track() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
   const { user } = useAuth();
   const [trackingId, setTrackingId] = useState("");
@@ -13,11 +14,8 @@ function Track() {
   const [isTracking, setIsTracking] = useState(false);
   const [trackedData, setTrackedData] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const cleanedId = trackingId.trim();
-
+  const fetchComplaint = async (rawId) => {
+    const cleanedId = (rawId || "").trim();
     if (!cleanedId) {
       setError("Tracking ID is required");
       return;
@@ -27,17 +25,13 @@ function Track() {
     setError("");
     setTrackedData(null);
 
-    console.log("🔍 Tracking ID:", cleanedId);
-
     try {
       let data = null;
       let fetchError = null;
 
-      // Check if input looks like a full UUID
       const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanedId);
 
       if (isFullUUID) {
-        // Exact match for full UUID
         const result = await supabase
           .from("grievances")
           .select("*")
@@ -47,7 +41,6 @@ function Track() {
         data = result.data;
         fetchError = result.error;
       } else {
-        // Partial match — fetch recent complaints and match by prefix
         const result = await supabase
           .from("grievances")
           .select("*")
@@ -68,8 +61,6 @@ function Track() {
         }
       }
 
-      console.log("📦 Result:", data);
-
       if (fetchError || !data) {
         setError("No complaint found with this Tracking ID. Please check and try again.");
         setTrackedData(null);
@@ -81,6 +72,12 @@ function Track() {
           status: data.status,
           department: data.department,
           description: data.description,
+          assigned_tier: data.assigned_tier,
+          assigned_queue: data.assigned_queue,
+          sla_hours: data.sla_hours,
+          sla_deadline: data.sla_deadline,
+          initial_handler: data.initial_handler,
+          assigned_to: data.assigned_to,
           date: new Date(data.created_at).toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "short",
@@ -95,6 +92,19 @@ function Track() {
     } finally {
       setIsTracking(false);
     }
+  };
+
+  useEffect(() => {
+    if (location.state?.trackingId) {
+      const incomingId = location.state.trackingId;
+      setTrackingId(incomingId);
+      fetchComplaint(incomingId);
+    }
+  }, [location.state]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    fetchComplaint(trackingId);
   };
 
   const getStatusBadge = (status) => {
@@ -133,7 +143,65 @@ function Track() {
     );
   };
 
-  // --- STATUS TIMELINE ---
+  const getRoutingLevelInfo = (data) => {
+    const tier = data.assigned_tier;
+    const sev = (data.severity || "").toUpperCase();
+
+    if (tier === "HEAD") {
+      return {
+        levelBadge: "Level 4 (HEAD)",
+        title: "Executive Head / Committee Review",
+        color: "#880e4f",
+        bg: "#fce4ec",
+        border: "#f8bbd0",
+        description: "Assigned for direct executive oversight and critical grievance redressal.",
+        slaLabel: "4 Hours Target SLA"
+      };
+    }
+    if (tier === "L3") {
+      return {
+        levelBadge: "Level 3 (L3)",
+        title: "Senior Department Lead Escalation",
+        color: "#4a148c",
+        bg: "#f3e5f5",
+        border: "#e1bee7",
+        description: "Escalated to specialized departmental lead authority for advanced review.",
+        slaLabel: "12 Hours Target SLA"
+      };
+    }
+    if (tier === "L2" || sev === "HIGH" || sev === "CRITICAL") {
+      return {
+        levelBadge: "Level 2 (L2)",
+        title: "Immediate Department Escalation",
+        color: "#b71c1c",
+        bg: "#ffebee",
+        border: "#ffcdd2",
+        description: "Assigned to Level 2 authority for expedited investigation and 24h SLA compliance.",
+        slaLabel: "24 Hours Target SLA"
+      };
+    }
+    if (tier === "L1" || sev === "MEDIUM") {
+      return {
+        levelBadge: "Level 1 (L1)",
+        title: "Department L1 Handling",
+        color: "#0d47a1",
+        bg: "#e3f2fd",
+        border: "#bbdefb",
+        description: "Assigned to departmental operations officer for review and resolution within 48h.",
+        slaLabel: "48 Hours Target SLA"
+      };
+    }
+    return {
+      levelBadge: "Normal Level",
+      title: "Standard Review Queue",
+      color: "#1b5e20",
+      bg: "#e8f5e9",
+      border: "#c8e6c9",
+      description: "Standard review and automated assistance workflow.",
+      slaLabel: "Standard Target SLA"
+    };
+  };
+
   const getStatusTimeline = (status) => {
     const steps = ["Open", "Investigating", "Resolved", "Closed"];
     const currentIndex = steps.indexOf(status);
@@ -185,58 +253,47 @@ function Track() {
     );
   };
 
+  const routingInfo = trackedData ? getRoutingLevelInfo(trackedData) : null;
+
   return (
-    <div className="container mt-5 mb-5">
+    <div className="container py-5" style={{ minHeight: "80vh" }}>
       <div className="row justify-content-center">
-        <div className="col-md-8 col-lg-7">
-          {!trackedData ? (
-            <div className="card shadow-lg p-5 border-0" style={{ borderRadius: "16px" }}>
-              <div className="text-center mb-4">
-                <div
-                  className="mx-auto mb-3 d-flex justify-content-center align-items-center rounded-circle shadow-sm"
-                  style={{ width: "70px", height: "70px", backgroundColor: "#e0f7fa", color: "#00acc1" }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
-                  </svg>
-                </div>
-                <h3 className="fw-bold" style={{ color: "#001a4d" }}>{t("trackYourGrievance")}</h3>
-                <p className="text-muted">{t("trackSubtitle")}</p>
-              </div>
+        <div className="col-12 col-md-9 col-lg-8">
+          
+          <div className="text-center mb-5">
+            <h2 className="fw-bold mb-2" style={{ color: "#001a4d" }}>{t("trackComplaint")}</h2>
+            <p className="text-muted">{t("trackSubtitle")}</p>
+          </div>
 
-              {error && (
-                <div className="alert alert-danger shadow-sm border-0 text-center fw-semibold" style={{ fontSize: "14px" }}>
-                  {error}
-                </div>
-              )}
-
+          {!trackedData && (
+            <div className="card border-0 shadow-sm p-4 p-md-5 mb-4" style={{ borderRadius: "12px" }}>
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                  <label className="fw-semibold mb-2 text-dark">
-                    {t("complaintId")}
+                  <label htmlFor="trackingIdInput" className="form-label fw-bold" style={{ color: "#001a4d" }}>
+                    {t("trackingId")}
                   </label>
                   <input
+                    id="trackingIdInput"
                     type="text"
-                    className="form-control form-control-lg bg-light border-0 shadow-sm"
+                    className={`form-control form-control-lg ${error ? "is-invalid" : ""}`}
                     placeholder={t("trackIdPlaceholder")}
                     value={trackingId}
                     onChange={(e) => { setTrackingId(e.target.value); setError(""); }}
+                    style={{ borderRadius: "8px", border: "1px solid #ced4da" }}
+                    autoFocus
                   />
-                  <small className="text-muted mt-1 d-block">
-                    {t("trackIdHint")}
-                  </small>
+                  {error && <div className="invalid-feedback d-block mt-2">{error}</div>}
                 </div>
-
                 <button
                   type="submit"
+                  className="btn btn-lg w-100 fw-bold shadow-sm text-white"
+                  style={{ backgroundColor: "#001a4d", borderColor: "#001a4d", borderRadius: "8px" }}
                   disabled={isTracking}
-                  className="btn w-100 py-3 fw-bold shadow-sm text-white d-flex justify-content-center align-items-center gap-2"
-                  style={{ backgroundColor: "#001a4d", fontSize: "1.1rem", borderRadius: "8px" }}
                 >
                   {isTracking ? (
                     <>
-                      <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                      {t("searching")}
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      {t("checkingStatus")}
                     </>
                   ) : (
                     t("trackStatus")
@@ -244,19 +301,19 @@ function Track() {
                 </button>
               </form>
             </div>
-          ) : (
-            <div className="card shadow-lg p-5 border-0" style={{ borderRadius: "16px" }}>
+          )}
+
+          {trackedData && (
+            <div className="card border-0 shadow-sm p-4 p-md-5 mb-4" style={{ borderRadius: "12px" }}>
               <div className="text-center mb-4">
                 <div
-                  className="mx-auto mb-3 d-flex justify-content-center align-items-center rounded-circle"
-                  style={{
-                    width: "60px",
-                    height: "60px",
-                    backgroundColor: trackedData.status === "Resolved" ? "#e8f5e9" : "#e8f4fd",
-                    color: trackedData.status === "Resolved" ? "#2e7d32" : "#0c7cd5",
-                  }}
+                  className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                  style={{ width: "64px", height: "64px", backgroundColor: "#e8f4fd" }}
                 >
-                  {trackedData.status === "Resolved" ? "✓" : "📋"}
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#001a4d" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
                 </div>
                 <h3 className="fw-bold mb-1" style={{ color: "#001a4d" }}>{t("complaintStatus")}</h3>
                 <p className="text-muted mb-0">
@@ -269,40 +326,105 @@ function Track() {
                 {getStatusTimeline(trackedData.status)}
               </div>
 
+              {/* Routing Level Notification Banner */}
+              {routingInfo && (
+                <div 
+                  className="p-3 rounded-3 mb-4 border d-flex align-items-center justify-content-between flex-wrap gap-2"
+                  style={{ 
+                    backgroundColor: routingInfo.bg, 
+                    borderColor: routingInfo.border 
+                  }}
+                >
+                  <div>
+                    <div className="d-flex align-items-center gap-2 mb-1">
+                      <span className="badge px-2 py-1 fw-bold" style={{ backgroundColor: routingInfo.color, color: "#fff", fontSize: "11px" }}>
+                        {routingInfo.levelBadge}
+                      </span>
+                      <span className="fw-bold" style={{ color: routingInfo.color, fontSize: "14px" }}>
+                        {routingInfo.title}
+                      </span>
+                    </div>
+                    <div className="text-muted" style={{ fontSize: "12px" }}>
+                      {routingInfo.description}
+                    </div>
+                  </div>
+                  <div className="text-end">
+                    <span className="text-muted d-block" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Resolution Commitment
+                    </span>
+                    <span className="fw-bold" style={{ color: routingInfo.color, fontSize: "13px" }}>
+                      {trackedData.sla_hours ? `${trackedData.sla_hours} Hours SLA` : routingInfo.slaLabel}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Details Grid */}
               <div className="bg-light p-4 rounded-3 mb-4 border shadow-sm">
                 <div className="row g-3">
-                  <div className="col-6">
+                  <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
                       {t("trackingId").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">#{trackedData.id.substring(0, 8)}</span>
                   </div>
-                  <div className="col-6">
+                  <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
                       {t("status").toUpperCase()}
                     </span>
                     {getStatusBadge(trackedData.status)}
                   </div>
-                  <div className="col-6">
+                  <div className="col-6 col-md-4">
+                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                      ROUTED LEVEL
+                    </span>
+                    <span 
+                      className="badge px-2 py-1 fw-semibold"
+                      style={{ 
+                        backgroundColor: routingInfo?.bg || "#e3f2fd", 
+                        color: routingInfo?.color || "#0d47a1", 
+                        border: `1px solid ${routingInfo?.border || "#bbdefb"}`,
+                        fontSize: "12px" 
+                      }}
+                    >
+                      {routingInfo?.levelBadge || "Normal Level"}
+                    </span>
+                  </div>
+                  <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
                       {t("category").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.category}</span>
                   </div>
-                  <div className="col-6">
+                  <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                      Severity
+                      SEVERITY
                     </span>
                     {getSeverityBadge(trackedData.severity)}
                   </div>
-                  <div className="col-6">
+                  <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
                       {t("department").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.department || "—"}</span>
                   </div>
-                  <div className="col-6">
+                  <div className="col-6 col-md-4">
+                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                      ASSIGNED QUEUE
+                    </span>
+                    <span className="fw-semibold text-dark">
+                      {trackedData.assigned_queue || "Standard Queue"}
+                    </span>
+                  </div>
+                  <div className="col-6 col-md-4">
+                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                      RESOLUTION SLA
+                    </span>
+                    <span className="fw-bold" style={{ color: routingInfo?.color || "#0d47a1" }}>
+                      {trackedData.sla_hours ? `${trackedData.sla_hours} Hours` : "Standard SLA"}
+                    </span>
+                  </div>
+                  <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
                       {t("dateSubmitted").toUpperCase()}
                     </span>
@@ -311,7 +433,7 @@ function Track() {
                   {trackedData.description && (
                     <div className="col-12 mt-2">
                       <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
-                        Description
+                        DESCRIPTION
                       </span>
                       <p className="text-dark mb-0" style={{ fontSize: "14px", lineHeight: "1.6" }}>
                         {trackedData.description}

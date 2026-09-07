@@ -55,12 +55,31 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   };
 
+  const refreshUserDetails = async () => {
+    if (user?.id) {
+      await fetchUserDetails(user.id);
+    }
+  };
+
+  const updateUserDetailsLocally = (updatedFields) => {
+    setUserDetails(prev => ({ ...prev, ...updatedFields }));
+  };
+
   // Derived state for role-based access
   const isAdmin = ["super_admin", "admin"].includes(userDetails?.role);
   const isSuperAdmin = userDetails?.role === "super_admin";
 
   return (
-    <AuthContext.Provider value={{ user, userDetails, isAdmin, isSuperAdmin, loading, logout }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      userDetails, 
+      isAdmin, 
+      isSuperAdmin, 
+      loading, 
+      logout,
+      refreshUserDetails,
+      updateUserDetailsLocally
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   );

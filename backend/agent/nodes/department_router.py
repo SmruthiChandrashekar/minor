@@ -158,17 +158,41 @@ def _create_in_app_notifications(grievance_id: str, department: str, severity: s
         logger.error("Failed to create in-app notifications: %s", e)
 
 
+def _generate_rag_recommendations_async(grievance_id: str, user_message: str, department: str, severity: str):
+    """Run RAG policy analysis asynchronously and attach to newly created grievance."""
+    import threading
+    def _worker():
+        try:
+            from rag.policy_recommender import generate_policy_recommendation
+            rec = generate_policy_recommendation(
+                grievance_text=user_message,
+                category=department,
+                severity=severity,
+                ticket_id=grievance_id
+            )
+            supabase = _get_supabase()
+            supabase.table("grievances").update({
+                "rag_recommendation": rec,
+                "policy_matched": rec.get("has_policy_match", False)
+            }).eq("grievance_id", grievance_id).execute()
+            logger.info("Attached RAG policy recommendation to grievance %s (match=%s)", grievance_id, rec.get("has_policy_match"))
+        except Exception as err:
+            logger.warning("Failed to attach RAG recommendation to %s: %s", grievance_id, err)
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
 def department_route_node(state: GrievanceState) -> dict:
     """
-    Route the MEDIUM/HIGH severity query to its classified department.
+    Unified department routing node.
 
-    This function:
-    1. Determines initial tier/SLA using the deterministic router
-    2. Creates a grievance record in the database
-    3. Assigns an admin from the target department
-    4. Sends email notifications for HIGH severity
+    1. Determines tier/SLA using determine_initial_route()
+    2. Finds the admin for this department
+    3. Creates the grievance record in Supabase
+    4. Sends email notification to admin (HIGH severity)
     5. Creates in-app notifications for admins
-    6. Returns a confirmation response
+    6. Attaches RAG policy recommendations for HIGH severity / policy tickets
+    7. Returns a confirmation response
 
     Used by all 6 department nodes (dept_hr, dept_ic, dept_crm, etc.).
     """
@@ -202,30 +226,47 @@ def department_route_node(state: GrievanceState) -> dict:
         if grievance_id:
             _create_in_app_notifications(grievance_id, department, severity, route_info)
 
+        # Trigger RAG recommendations for High/Critical tickets or policy departments
+        if grievance_id and (severity.upper() in ["HIGH", "CRITICAL"] or department in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]):
+            _generate_rag_recommendations_async(grievance_id, user_message, department, severity)
+
     except Exception as e:
         logger.error("Department routing failed: %s", e)
 
     # Build response
-    tier_label = route_info["assigned_tier"] or "support"
+    tier = route_info.get("assigned_tier")
+    if tier == "HEAD":
+        routing_level_label = "Level 4 (Executive Head Review)"
+    elif tier == "L3":
+        routing_level_label = "Level 3 (Department Lead Review)"
+    elif tier == "L2" or severity.upper() in ["HIGH", "CRITICAL"]:
+        routing_level_label = "Level 2 (Immediate Department Escalation)"
+    elif tier == "L1" or severity.upper() == "MEDIUM":
+        routing_level_label = "Level 1 (Department L1 Review)"
+    else:
+        routing_level_label = "Standard Review"
+
     response_parts = [
-        f"Your issue has been classified as **{severity.upper()} severity** and has been routed to the **{department}** department.",
+        f"Your grievance has been classified as **{severity.upper()} severity** and successfully registered.",
+        f"\n**Department**: {department}",
+        f"**Routing Level**: {routing_level_label}",
     ]
 
     if grievance_id:
-        response_parts.append(f"\n📋 **Tracking ID**: {grievance_id}")
+        response_parts.append(f"**Tracking ID**: {grievance_id}")
 
-    if route_info["assigned_tier"]:
-        response_parts.append(f"📊 **Assigned Tier**: {route_info['assigned_tier']}")
+    if route_info.get("assigned_queue"):
+        response_parts.append(f"**Assigned Queue**: {route_info['assigned_queue']}")
 
     if assigned_to_name:
-        response_parts.append(f"👤 **Assigned to**: {assigned_to_name}")
+        response_parts.append(f"**Assigned Officer**: {assigned_to_name}")
 
-    if route_info["sla_hours"]:
-        response_parts.append(f"⏱️ **SLA**: {route_info['sla_hours']} hours")
+    if route_info.get("sla_hours"):
+        response_parts.append(f"**Target SLA**: {route_info['sla_hours']} hours")
 
     response_parts.append(
         "\nA representative from the department will review your concern and follow up with you. "
-        "You can track the status of your issue using the tracking ID above."
+        "You can track the live status anytime using the Tracking ID above on the Track page."
     )
 
     response = "\n".join(response_parts)

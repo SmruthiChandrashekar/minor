@@ -36,6 +36,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Precache all built assets (JS, CSS, HTML, images)
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
 

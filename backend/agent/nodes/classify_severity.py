@@ -48,34 +48,37 @@ def classify_severity_node(state: GrievanceState) -> dict:
 
 Your task is to classify the user's message into exactly one severity level:
 
-- LOW: General questions, policy inquiries, information requests, greetings, small talk,
-  routine requests, minor concerns, or any query that can be answered from a knowledge base.
+- LOW: General questions, policy inquiries, information requests, greetings, routine service requests,
+  portal access, or queries that can be answered from policy/knowledge base.
   Examples: "What is the leave policy?", "How do I apply for reimbursement?", "Hello",
-  "What are the working hours?", "Can I report anonymously?"
+  "Kindly share the AGM video conference link", "How do I update my bank mandate?", "Can I report anonymously?"
 
-- MEDIUM: Moderate complaints or concerns that require human attention but are not urgent
-  or critical. Issues that need investigation but don't involve immediate danger, serious
-  violations, or time-sensitive emergencies. Non-urgent workplace issues, process complaints,
-  delays, general dissatisfaction, minor policy violations.
-  Examples: "My reimbursement has been pending for 3 weeks", "There are delays in project delivery",
-  "The contractor is not following some guidelines", "I have an issue with my attendance records",
-  "There are coordination problems between teams"
+- MEDIUM: Moderate complaints or unresolved grievances requiring departmental investigation or L1 attention,
+  repeated follow-ups, delayed handovers, unrectified physical snags, salary/leave balance discrepancies,
+  or non-urgent customer/investor disputes.
+  Examples: "Repeated delay in resolving customer snag for 3 weeks", "Unresolved leave balance discrepancy in LMS",
+  "Delayed dividend credited or share transmission pending with RTA", "Registration delayed due to pending Khata approval",
+  "Moderate construction dust or noise complaints during daytime"
 
-- HIGH: Serious issues requiring urgent departmental intervention, critical matters, complaints
-  about significant problems, reports of violations, harassment, safety threats, financial
-  irregularities, compliance breaches, critical escalations, or anything that needs
-  immediate human attention from a specific department.
-  Examples: "I want to report sexual harassment", "There is a safety violation at site",
-  "Serious environmental compliance issue", "Financial reporting irregularities",
-  "Employee being discriminated against", "Client has escalated a critical complaint",
-  "Child labor observed at construction site"
+- HIGH: Critical matters requiring immediate departmental intervention or senior escalation:
+  1. Sexual harassment or POSH complaints (IC)
+  2. Bribery, corruption, extortion, or kickback demands (e.g., sales rep demanding cash for flat handover)
+  3. Life-safety risks, falls from height, workers without PPE, or structural collapse risks
+  4. Major environmental damage, community flooding, toxic chemical discharge, or unauthorized tree felling
+  5. Systemic financial fraud, accounting misrepresentation, or insider trading allegations
+  6. Threats of legal action, statutory notices (RERA, SEBI, NGT, Labor Dept), or systemic customer harm
+  Examples: "The sales executive asked for an under-the-table payment of 50k to fast-track registration",
+  "My manager makes sexually suggestive remarks and makes me uncomfortable",
+  "Workers at the 14th floor are working without safety harnesses and safety nets",
+  "Construction debris has blocked the municipal canal causing severe flooding in residential areas",
+  "Senior executives traded shares right before quarterly earnings disclosure"
 
 IMPORTANT:
-- When in doubt between LOW and MEDIUM, classify as LOW (user will still get a helpful response).
-- When in doubt between MEDIUM and HIGH, classify as MEDIUM.
-- Complaints and reports of serious issues are always HIGH.
-- Simple questions or greetings are always LOW.
-- Moderate complaints that need human review but aren't urgent are MEDIUM.
+- Sexual harassment/POSH complaints are ALWAYS HIGH.
+- Bribery, extortion, corruption, or kickback demands are ALWAYS HIGH.
+- Life-safety risks, hazardous environmental violations, or fraud allegations are ALWAYS HIGH.
+- Routine queries or informational requests are LOW.
+- Unresolved grievances, persistent delays, or snags needing departmental intervention are MEDIUM.
 
 Respond with ONLY a JSON object:
 {"severity": "LOW" or "MEDIUM" or "HIGH", "reason": "Brief explanation"}"""

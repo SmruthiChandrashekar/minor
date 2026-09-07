@@ -32,6 +32,7 @@ from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from rag.query_data import initialize_rag, is_rag_ready, get_rag_response
+from rag.policy_recommender import generate_policy_recommendation
 from backend.agent.graph import run_agent
 from backend.database.grievance_state import load_grievance_state, save_grievance_state
 from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route
@@ -93,6 +94,26 @@ async def warmup_rag():
     # Trigger in a separate thread so we don't block the response
     asyncio.create_task(asyncio.to_thread(initialize_rag))
     return {"status": "initializing", "message": "Warmup started in background"}
+
+
+def async_generate_and_save_rag_recommendation(grievance_id: str, description: str, category: str, severity: str):
+    """Run RAG policy analysis in the background and update grievance in Supabase."""
+    try:
+        recommendation = generate_policy_recommendation(
+            grievance_text=description,
+            category=category,
+            severity=severity,
+            ticket_id=grievance_id
+        )
+        has_match = recommendation.get("has_policy_match", False)
+        supabase.table("grievances").update({
+            "rag_recommendation": recommendation,
+            "policy_matched": has_match
+        }).eq("grievance_id", grievance_id).execute()
+        logging.info("Saved RAG policy recommendation for grievance %s (match=%s)", grievance_id, has_match)
+    except Exception as err:
+        logging.error("Failed to generate/save RAG recommendation for %s: %s", grievance_id, err)
+
 
 # --- LOAD CLASSIFICATION MODEL ---
 print("loading clasf model")
@@ -602,6 +623,22 @@ async def chat_with_agent(request: ChatRequest):
 
         print(f"Total Agent Response Time: {round(time.time() - start_time, 3)}s")
 
+        severity_val = agent_result.get("severity", "").lower()
+        chatbot_resolved_val = agent_result.get("chatbot_resolved", True)
+
+        # Determine if a grievance form should be triggered or redirected to
+        trigger_form = False
+        form_reason = ""
+        if severity_val in ["high", "critical"]:
+            trigger_form = True
+            form_reason = "high_severity"
+        elif severity_val == "medium":
+            trigger_form = True
+            form_reason = "medium_severity"
+        elif not chatbot_resolved_val:
+            trigger_form = True
+            form_reason = "unresolved_low_query"
+
         return {
             "response": final_response,
             "sources": agent_result.get("sources", []),
@@ -616,7 +653,10 @@ async def chat_with_agent(request: ChatRequest):
             "assigned_tier": agent_result.get("assigned_tier", ""),
             "assigned_queue": agent_result.get("assigned_queue", ""),
             "sla_hours": agent_result.get("sla_hours", 0),
-            "chatbot_resolved": agent_result.get("chatbot_resolved", True),
+            "chatbot_resolved": chatbot_resolved_val,
+            "trigger_form": trigger_form,
+            "form_reason": form_reason,
+            "original_query": request.message,
         }
     except Exception as e:
         logging.error("Agent chat error: %s", e, exc_info=True)
@@ -752,6 +792,18 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         if route_info["assigned_tier"]:
             notify_admins_tier_assigned(dept, new_grievance_id, severity, route_info["assigned_tier"])
 
+        # 🔹 STEP 8: RAG POLICY RESOLUTION RECOMMENDATION (High Severity or Policy-Related)
+        if severity.lower() in ["high", "critical"] or category in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]:
+            asyncio.create_task(
+                asyncio.to_thread(
+                    async_generate_and_save_rag_recommendation,
+                    new_grievance_id,
+                    description_en,
+                    category,
+                    severity
+                )
+            )
+
         return {
             "grievance_id": new_grievance_id,
             "category": category,
@@ -840,6 +892,98 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# 🤖 RAG POLICY RESOLUTION RECOMMENDATIONS FOR ADMINS
+@app.get("/api/admin/grievances/{grievance_id}/recommendation")
+async def get_grievance_rag_recommendation(grievance_id: str, user: dict = Depends(get_current_user)):
+    try:
+        # Fetch grievance
+        res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Grievance not found")
+
+        grievance = res.data
+        existing_rec = grievance.get("rag_recommendation")
+
+        # If recommendation already exists, return it
+        if existing_rec:
+            return {
+                "grievance_id": grievance_id,
+                "recommendation": existing_rec,
+                "cached": True
+            }
+
+        # If not cached yet, generate on the fly
+        recommendation = await asyncio.to_thread(
+            generate_policy_recommendation,
+            grievance_text=grievance.get("description", ""),
+            category=grievance.get("category") or grievance.get("department") or "General",
+            severity=grievance.get("severity", "High"),
+            ticket_id=grievance_id
+        )
+
+        has_match = recommendation.get("has_policy_match", False)
+        # Cache to Supabase (graceful fallback if migration 013 not yet executed in Supabase SQL editor)
+        try:
+            supabase.table("grievances").update({
+                "rag_recommendation": recommendation,
+                "policy_matched": has_match
+            }).eq("grievance_id", grievance_id).execute()
+        except Exception as cache_err:
+            logging.warning("Could not persist RAG recommendation to DB (run migration 013 to persist): %s", cache_err)
+
+        return {
+            "grievance_id": grievance_id,
+            "recommendation": recommendation,
+            "cached": False
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        logging.error("Failed to get RAG recommendation: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/grievances/{grievance_id}/recommendation")
+async def regenerate_grievance_rag_recommendation(grievance_id: str, user: dict = Depends(get_current_user)):
+    try:
+        # Fetch grievance
+        res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Grievance not found")
+
+        grievance = res.data
+
+        # Force re-query Chroma & Groq
+        recommendation = await asyncio.to_thread(
+            generate_policy_recommendation,
+            grievance_text=grievance.get("description", ""),
+            category=grievance.get("category") or grievance.get("department") or "General",
+            severity=grievance.get("severity", "High"),
+            ticket_id=grievance_id
+        )
+
+        has_match = recommendation.get("has_policy_match", False)
+        try:
+            supabase.table("grievances").update({
+                "rag_recommendation": recommendation,
+                "policy_matched": has_match
+            }).eq("grievance_id", grievance_id).execute()
+        except Exception as cache_err:
+            logging.warning("Could not persist RAG recommendation to DB (run migration 013 to persist): %s", cache_err)
+
+        return {
+            "grievance_id": grievance_id,
+            "recommendation": recommendation,
+            "regenerated": True
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        logging.error("Failed to regenerate RAG recommendation: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 # 🛠 DEBUG
@@ -1131,3 +1275,124 @@ async def add_chat_message(req: ChatMessageRequest, user: dict = Depends(get_cur
         with open("debug_error.log", "a") as f:
             f.write(f"add_chat_message error: {str(e)}\n")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── PROFILE MANAGEMENT ENDPOINTS ──────────────────────────────────────────────
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    alternate_phone: Optional[str] = None
+    designation: Optional[str] = None
+    location: Optional[str] = None
+    bio: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    avatar_url: Optional[str] = None
+    stakeholder_type: Optional[str] = None
+    associated_project: Optional[str] = None
+    agency_name: Optional[str] = None
+    employee_id: Optional[str] = None
+    preferred_contact_method: Optional[str] = None
+
+@app.get("/api/profile/me")
+async def get_my_profile(current_user: dict = Depends(get_current_user)):
+    """Fetch complete profile details for authenticated user/admin."""
+    try:
+        user_id = current_user["user_id"]
+        res = supabase.table("users").select("*").eq("user_id", user_id).execute()
+        if not res.data:
+            return {
+                "user_id": user_id,
+                "email": current_user.get("email"),
+                "name": current_user.get("name") or "User",
+                "role": current_user.get("role", "user"),
+                "department": current_user.get("department"),
+                "phone": None,
+                "avatar_url": None,
+                "user_type": "Internal",
+                "is_active": True
+            }
+        return res.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/profile/me")
+async def update_my_profile(req: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
+    """Update profile details for current user/admin."""
+    try:
+        user_id = current_user["user_id"]
+        update_data = {}
+        for field, value in req.dict(exclude_unset=True).items():
+            if value is not None:
+                update_data[field] = value
+        
+        if not update_data:
+            return {"status": "no_changes"}
+
+        try:
+            res = supabase.table("users").update(update_data).eq("user_id", user_id).execute()
+            if not res.data:
+                # Row might not exist yet, insert
+                update_data["user_id"] = user_id
+                update_data["email"] = current_user.get("email")
+                res = supabase.table("users").insert(update_data).execute()
+            return {"status": "success", "profile": res.data[0] if res.data else update_data}
+        except Exception as db_err:
+            err_str = str(db_err)
+            # If any custom column doesn't exist yet in users table (code 42703), fallback to core columns
+            if "does not exist" in err_str or "42703" in err_str:
+                core_data = {k: v for k, v in update_data.items() if k in ["name", "phone"]}
+                if core_data:
+                    res = supabase.table("users").update(core_data).eq("user_id", user_id).execute()
+                    return {
+                        "status": "partial_success",
+                        "message": "Core profile updated. Please run 012_add_user_profile_fields.sql in Supabase SQL editor for extended fields.",
+                        "profile": res.data[0] if res.data else core_data
+                    }
+            raise db_err
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/profile/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload user avatar to Supabase storage and update profile avatar_url."""
+    try:
+        user_id = current_user["user_id"]
+        file_bytes = await file.read()
+        if len(file_bytes) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Avatar image size exceeds 5MB limit")
+
+        ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+        file_path = f"avatars/{user_id}_{int(time.time())}.{ext}"
+
+        # Upload to Supabase Storage 'attachments' bucket
+        try:
+            supabase.storage.from_("attachments").upload(
+                file_path,
+                file_bytes,
+                file_options={"content-type": file.content_type or "image/png"}
+            )
+        except Exception as upload_err:
+            # If storage upload fails, check if already exists or try upsert
+            pass
+
+        # Get public URL
+        url_res = supabase.storage.from_("attachments").get_public_url(file_path)
+        public_url = url_res if isinstance(url_res, str) else getattr(url_res, "public_url", str(url_res))
+
+        # Update in users table if column exists
+        try:
+            supabase.table("users").update({"avatar_url": public_url}).eq("user_id", user_id).execute()
+        except Exception:
+            pass
+
+        return {"status": "success", "avatar_url": public_url}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+

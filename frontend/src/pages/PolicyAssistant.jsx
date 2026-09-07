@@ -209,17 +209,21 @@ function PolicyAssistant() {
       const data = await res.json();
       let responseText = data.response || "Sorry, I couldn't find an answer.";
       if (data.sources?.length > 0) {
-        responseText += `\n\n📄 ${t("sources") || "Sources"}: ${data.sources.map(s => `${s.source} (p.${s.page})`).join(", ")}`;
+        responseText += `\n\n${t("sources") || "Sources"}: ${data.sources.map(s => `${s.source} (p.${s.page})`).join(", ")}`;
       }
       const botMsg = {
         id: Date.now() + 1,
         text: responseText,
         isBot: true,
-        severity: data.severity || '',
+        severity: data.severity ? data.severity.toLowerCase() : '',
         department: data.department || '',
         routed: data.routed || false,
         grievance_id: data.grievance_id || '',
         assigned_to: data.assigned_to || '',
+        trigger_form: data.trigger_form || false,
+        form_reason: data.form_reason || '',
+        chatbot_resolved: data.chatbot_resolved !== false,
+        original_query: text
       };
       setMessages(prev => [...prev, botMsg]);
       if (currentSessionId) {
@@ -229,7 +233,7 @@ function PolicyAssistant() {
         });
       }
     } catch {
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: "⚠️ Sorry, I'm having trouble connecting to the policy engine. Please try again in a moment.", isBot: true }]);
+      setMessages(prev => [...prev, { id: Date.now() + 1, text: "Sorry, I'm having trouble connecting to the policy engine. Please try again in a moment.", isBot: true }]);
     } finally { setIsTyping(false); }
   };
 
@@ -333,7 +337,9 @@ function PolicyAssistant() {
           {/* Welcome / empty state */}
           {messages.length <= 1 && (
             <div className="pa-welcome">
-              <div className="pa-welcome-icon">🤖</div>
+              <div className="pa-welcome-icon">
+                <img src="/assistant_logo.png" alt="Policy Assistant" style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover" }} />
+              </div>
               <h4 className="fw-bold mb-2">How can I help you today?</h4>
               <p className="text-muted mb-4">Ask me anything about company policies, grievance procedures, POSH compliance, or how to file a complaint.</p>
               <div className="pa-prompts-grid">
@@ -343,7 +349,6 @@ function PolicyAssistant() {
                     className="pa-prompt-chip"
                     onClick={() => handleSendMessage(prompt)}
                   >
-                    <span className="pa-prompt-icon">💬</span>
                     {prompt}
                   </button>
                 ))}
@@ -378,6 +383,98 @@ function PolicyAssistant() {
                         <span>Policy Assistant</span>
                       </div>
                     )}
+
+                    {/* TRIGGER GRIEVANCE FORM CARD FOR HIGH / MEDIUM COMPLAINTS */}
+                    {msg.trigger_form && (msg.severity === 'high' || msg.severity === 'medium' || msg.form_reason === 'high_severity' || msg.form_reason === 'medium_severity') && (
+                      <div 
+                        className="mt-3 p-3 rounded-3 border text-start shadow-sm"
+                        style={{
+                          backgroundColor: '#ffffff',
+                          borderColor: '#e2e8f0',
+                          borderLeft: '4px solid #001a4d'
+                        }}
+                      >
+                        <div className="d-flex align-items-center justify-content-between mb-2">
+                          <span 
+                            className="badge rounded-pill px-2 py-1 text-uppercase fw-bold"
+                            style={{ 
+                              backgroundColor: msg.severity === 'high' ? '#c4122f' : '#d97706',
+                              color: '#ffffff',
+                              fontSize: '10px'
+                            }}
+                          >
+                            {msg.severity ? `${msg.severity} Severity Complaint` : 'Formal Complaint'}
+                          </span>
+                          {msg.department && (
+                            <span className="small text-muted fw-semibold">
+                              Dept: {msg.department}
+                            </span>
+                          )}
+                        </div>
+                        <p className="small mb-3 fw-semibold text-dark">
+                          Formal grievance lodging is required for prioritized administrative investigation and SLA tracking.
+                        </p>
+                        <button
+                          type="button"
+                          className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2"
+                          style={{
+                            background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '7px 14px',
+                            fontSize: '13px'
+                          }}
+                          onClick={() => {
+                            navigate(getLodgeRoute(), {
+                              state: {
+                                description: msg.original_query || msg.text,
+                                department: msg.department || ''
+                              }
+                            });
+                          }}
+                        >
+                          <span>Open Grievance Form</span>
+                          <span>→</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* REDIRECT TO FORM FOR UNRESOLVED LOW COMPLAINTS */}
+                    {msg.trigger_form && (msg.form_reason === 'unresolved_low_query' || (!msg.chatbot_resolved && msg.severity === 'low')) && (
+                      <div 
+                        className="mt-3 p-3 rounded-3 border text-start shadow-sm"
+                        style={{
+                          backgroundColor: '#ffffff',
+                          borderColor: '#e2e8f0',
+                          borderLeft: '4px solid #475569'
+                        }}
+                      >
+                        <div className="d-flex align-items-center gap-1 mb-2">
+                          <span className="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1" style={{ fontSize: '10px', fontWeight: '600' }}>
+                            Policy Unresolved
+                          </span>
+                        </div>
+                        <p className="small mb-3 text-muted">
+                          The automated assistant could not resolve this from official policy documents. Would you like to submit an official ticket?
+                        </p>
+                        <button
+                          type="button"
+                          className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
+                          style={{ padding: '6px 14px', fontSize: '12.5px' }}
+                          onClick={() => {
+                            navigate(getLodgeRoute(), {
+                              state: {
+                                description: msg.original_query || msg.text,
+                                department: msg.department || ''
+                              }
+                            });
+                          }}
+                        >
+                          <span>Lodge as Formal Grievance</span>
+                          <span>→</span>
+                        </button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   msg.text
@@ -407,7 +504,7 @@ function PolicyAssistant() {
         <div className="pa-input-area">
           {voiceError && (
             <div className="pa-voice-error">
-              <span>⚠️ {voiceError}</span>
+              <span>{voiceError}</span>
               <button onClick={() => setVoiceError('')}>×</button>
             </div>
           )}

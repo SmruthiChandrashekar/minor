@@ -61,52 +61,6 @@ function Index() {
         </div>
       </div>
 
-      {/* AI ASSISTANT CTA */}
-      <section style={{ padding: "0 20px", marginTop: "-40px", position: "relative", zIndex: 2 }}>
-        <div
-          onClick={() => navigate("/assistant")}
-          style={{
-            maxWidth: "900px",
-            margin: "0 auto",
-            background: "linear-gradient(135deg, #0d6efd 0%, #0b5ed7 50%, #6610f2 100%)",
-            borderRadius: "20px",
-            padding: "32px 40px",
-            display: "flex",
-            alignItems: "center",
-            gap: "24px",
-            cursor: "pointer",
-            boxShadow: "0 20px 60px rgba(13, 110, 253, 0.3)",
-            transition: "all 0.3s ease",
-            color: "#fff"
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 24px 70px rgba(13, 110, 253, 0.4)"; }}
-          onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 20px 60px rgba(13, 110, 253, 0.3)"; }}
-        >
-          <div style={{
-            width: "64px", height: "64px", borderRadius: "16px",
-            background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "32px", flexShrink: 0
-          }}>
-            🤖
-          </div>
-          <div style={{ flex: 1 }}>
-            <h4 className="fw-bold mb-1" style={{ fontSize: "1.3rem" }}>
-              Talk to our AI Policy Assistant
-            </h4>
-            <p className="mb-0" style={{ opacity: 0.85, fontSize: "14px" }}>
-              Not sure about a policy? Ask our AI-powered assistant before filing a complaint. Get instant answers about POSH, grievance procedures, and more.
-            </p>
-          </div>
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "8px" }}>
-            <span className="fw-bold" style={{ fontSize: "15px" }}>Try Now</span>
-            <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </div>
-        </div>
-      </section>
 
       {/* ABOUT US SECTION */}
       <section style={{

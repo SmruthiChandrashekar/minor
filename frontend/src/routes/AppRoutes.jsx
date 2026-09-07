@@ -17,6 +17,7 @@ import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
 import SuperAdminPortal from "../pages/SuperAdminPortal";
 import PolicyAssistant from "../pages/PolicyAssistant";
+import Profile from "../pages/Profile";
 
 const MainRoutes = () => {
   const { user, isAdmin, isSuperAdmin, loading } = useAuth();
@@ -49,6 +50,7 @@ const MainRoutes = () => {
         <Route path="/lodge-contract" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <ProtectedRoute><LodgeContract /></ProtectedRoute>} />
         <Route path="/lodge-external" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <ProtectedRoute><LodgeExternal /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Public Routes */}
         <Route path="/assistant" element={<PolicyAssistant />} />

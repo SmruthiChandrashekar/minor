@@ -170,7 +170,14 @@ function Dashboard() {
             {t("welcomeBack")} <span className="fw-bold text-dark">{userDetails?.name || "User"}</span>. {t("dashboardOverview")}
           </p>
         </div>
-        <div>
+        <div className="d-flex align-items-center gap-2">
+          <button 
+            className="btn btn-outline-primary px-3 shadow-sm rounded-pill fw-semibold"
+            style={{ borderColor: "#002b66", color: "#002b66" }}
+            onClick={() => navigate("/profile")}
+          >
+            My Profile
+          </button>
           <button 
             className="btn btn-danger px-4 shadow-sm" 
             onClick={() => {
@@ -240,6 +247,7 @@ function Dashboard() {
                     <tr>
                       <th scope="col" className="text-muted small">{t("trackingId")}</th>
                       <th scope="col" className="text-muted small">{t("category")}</th>
+                      <th scope="col" className="text-muted small">Level</th>
                       <th scope="col" className="text-muted small">Description</th>
                       <th scope="col" className="text-muted small">{t("dateSubmitted")}</th>
                       <th scope="col" className="text-muted small">{t("status")}</th>
@@ -251,6 +259,19 @@ function Dashboard() {
                       <tr key={g.grievance_id}>
                         <td className="fw-bold" style={{ color: "var(--text-color)" }}>#{g.grievance_id.substring(0, 8)}</td>
                         <td style={{ color: "var(--text-color)" }}>{g.category}</td>
+                        <td>
+                          <span 
+                            className="badge px-2 py-1 fw-semibold" 
+                            style={{
+                              backgroundColor: g.assigned_tier === "L2" || g.severity === "High" ? "#ffebee" : "#e3f2fd",
+                              color: g.assigned_tier === "L2" || g.severity === "High" ? "#b71c1c" : "#0d47a1",
+                              fontSize: "11px",
+                              border: `1px solid ${g.assigned_tier === "L2" || g.severity === "High" ? "#ffcdd2" : "#bbdefb"}`
+                            }}
+                          >
+                            {g.assigned_tier ? `Level ${g.assigned_tier.replace("L", "")}` : (g.severity === "High" ? "Level 2" : "Level 1")}
+                          </span>
+                        </td>
                         <td className="text-muted" style={{ maxWidth: "220px" }}>
                           {translating ? (
                             <span className="spinner-border spinner-border-sm text-secondary" role="status" />
@@ -282,7 +303,10 @@ function Dashboard() {
                           </span>
                         </td>
                         <td>
-                          <button className="btn btn-sm btn-outline-secondary px-3" onClick={() => navigate("/track")}>
+                          <button 
+                            className="btn btn-sm btn-outline-secondary px-3" 
+                            onClick={() => navigate("/track", { state: { trackingId: g.grievance_id } })}
+                          >
                             {t("view")}
                           </button>
                         </td>

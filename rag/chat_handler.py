@@ -9,19 +9,74 @@ from groq import Groq
 import os
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-def call_llm(prompt):
+
+def ensure_complete_sentence(text: str) -> str:
+    """Trim any hanging partial sentence at the end so the response never ends abruptly."""
+    text = text.strip()
+    if not text:
+        return text
+    if text[-1] in ".!?\"'":
+        return text
+    last_punct = max(text.rfind("."), text.rfind("!"), text.rfind("?"))
+    if last_punct > len(text) // 3:
+        return text[:last_punct + 1].strip()
+    return text
+
+
+def summarize_text(text: str, max_words: int = 90) -> str:
+    """Summarize text cleanly so it forms a complete thought without cutting off."""
+    try:
+        summary_response = client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a concise corporate assistant for Puravankara. "
+                        f"Summarize the provided content into a complete, clear response under {max_words} words. "
+                        "Do not end abruptly. Ensure the last sentence is complete."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Summarize this:\n\n{text}"
+                }
+            ],
+            max_tokens=600,
+            temperature=0.2
+        )
+        summary = summary_response.choices[0].message.content.strip()
+        return ensure_complete_sentence(summary)
+    except Exception as err:
+        print("SUMMARIZATION ERROR:", err)
+        return ensure_complete_sentence(text)
+
+
+def call_llm(prompt: str, max_tokens: int = 600, auto_summarize: bool = True, max_words: int = 90) -> str:
     try:
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=150
+            max_tokens=max_tokens
         )
-        return response.choices[0].message.content
+        choice = response.choices[0]
+        content = choice.message.content.strip()
+        finish_reason = choice.finish_reason
+
+        # If response exceeds target word limit or hit token limit, summarize cleanly
+        words = content.split()
+        if auto_summarize and (finish_reason == "length" or len(words) > max_words):
+            print(f"[INFO] Response has {len(words)} words (finish_reason={finish_reason}). Auto-summarizing cleanly...")
+            content = summarize_text(content, max_words=max_words)
+
+        return ensure_complete_sentence(content)
     except Exception as e:
-        print("GROQ ERROR:", e)   # 🔥 ADD THIS
+        print("GROQ ERROR:", e)
         return "Error contacting LLM"
+
+
 
 
 # =========================
@@ -207,6 +262,12 @@ Response:
     rag_result = get_rag_response(clean_query)
     rag_answer = rag_result["answer"]
     rag_sources = rag_result["sources"]
+
+    # If RAG answer exceeds 150 tokens (~100 words), summarize it cleanly
+    if len(rag_answer.split()) > 100:
+        print(f"[INFO] RAG answer is long ({len(rag_answer.split())} words). Summarizing for 150 token budget...")
+        rag_answer = summarize_text(rag_answer, max_tokens=150)
+
 
     # =========================
     # RAG RESPONSE

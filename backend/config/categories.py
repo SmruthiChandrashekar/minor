@@ -69,14 +69,15 @@ DEPARTMENTS_PROMPT_LIST = "\n".join(f"- {d}" for d in DEPARTMENTS)
 
 # Department descriptions for LLM classification
 DEPARTMENT_DESCRIPTIONS = {
-    "HR": "Human Resources — employee relations, harassment, workplace conduct, hiring, benefits, leave disputes, payroll issues",
-    "IC": "Internal Compliance — regulatory compliance, internal audits, policy violations, ethics, legal compliance, whistleblower",
-    "CRM": "Customer Relationship Management — client complaints, service quality, customer satisfaction, sales disputes",
-    "CSD": "Customer Service Department — customer support failures, response times, service delivery, helpdesk issues",
-    "ESG": "Environmental, Social & Governance — environmental violations, sustainability, social responsibility, governance concerns",
-    "Investors": "Investor Relations — financial reporting, shareholder concerns, investment disputes, dividend issues, fund management",
+    "IC": "Internal Committee (POSH) — sexual harassment, unwelcome advances, hostile work environment based on gender/sex, POSH Act compliance",
+    "HR": "Human Resources — employee relations, non-sexual workplace conduct/bullying, payroll & salary disputes, leave policies, manager conflicts, appraisals",
+    "CRM": "Customer Relationship Management — customer-facing sales & commercial issues, booking/allotment, agreements, registration/Khata, possession commitments, pricing disputes, customer-directed bribes or kickbacks",
+    "CSD": "Customer Service Department — post-possession maintenance, construction quality defects, water seepage, electrical/plumbing faults, snags, facility management",
+    "ESG": "Environmental, Social & Governance — environmental violations, construction dust/noise pollution, sewage/STP, drainage/flooding, waste, worker/public safety violations, tree cutting, community impact",
+    "Investors": "Investor Relations — shareholder queries, dividends, annual report disclosures, stock transfer, financial reporting, SEBI compliance, insider trading allegations",
 }
 
 DEPARTMENT_DESCRIPTIONS_PROMPT = "\n".join(
     f"- {dept}: {desc}" for dept, desc in DEPARTMENT_DESCRIPTIONS.items()
 )
+

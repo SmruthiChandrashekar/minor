@@ -160,6 +160,8 @@ def normalize_severity(severity: str) -> str:
     # Handle legacy values
     if cleaned in ("CRITICAL",):
         return "HIGH"
+    if cleaned in ("POLICY",):
+        return "LOW"
 
     return "LOW"
 

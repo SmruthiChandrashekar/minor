@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
@@ -9,6 +9,7 @@ import { saveToQueue } from "../services/offlineQueue";
 
 function LodgeContract() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [submittedId, setSubmittedId] = useState(null);
   const [queryRedirect, setQueryRedirect] = useState(null); // set when intent = Query or severity = Low/Policy
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,7 +21,7 @@ function LodgeContract() {
     contractorCompany: "",
     workSiteLocation: "",
     incidentDate: "",
-    description: "",
+    description: location.state?.description || "",
     isAnonymous: false,
     attachments: []
   });
@@ -301,7 +302,7 @@ function LodgeContract() {
                   <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
                     {t("submitAnother")}
                   </button>
-                  <button onClick={() => navigate("/track")} className="btn btn-danger px-4 py-2 fw-bold shadow-sm">
+                  <button onClick={() => navigate("/track", { state: { trackingId: submittedId } })} className="btn btn-danger px-4 py-2 fw-bold shadow-sm">
                     {t("trackStatus")}
                   </button>
                 </div>

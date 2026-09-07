@@ -194,10 +194,10 @@ select.form-select {
   gap: 10px;
   margin: 12px 14px;
   padding: 12px 18px;
-  border: 1.5px dashed rgba(13, 110, 253, 0.4);
+  border: 1.5px dashed rgba(0, 26, 77, 0.35);
   border-radius: 12px;
   background: transparent;
-  color: #0d6efd;
+  color: #002b66;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
@@ -205,8 +205,8 @@ select.form-select {
   flex-shrink: 0;
 }
 .pa-new-chat-btn:hover {
-  background: rgba(13, 110, 253, 0.06);
-  border-color: #0d6efd;
+  background: rgba(0, 26, 77, 0.06);
+  border-color: #001a4d;
 }
 
 .pa-sessions-list {
@@ -237,11 +237,11 @@ select.form-select {
   transition: all 0.15s;
 }
 .pa-session-item:hover {
-  background: rgba(13, 110, 253, 0.04);
+  background: rgba(0, 26, 77, 0.04);
 }
 .pa-session-item.active {
-  background: rgba(13, 110, 253, 0.08);
-  border-left-color: #0d6efd;
+  background: rgba(0, 26, 77, 0.08);
+  border-left-color: #001a4d;
 }
 
 .pa-session-title {
@@ -405,10 +405,10 @@ select.form-select {
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .pa-prompt-chip:hover {
-  border-color: #0d6efd;
-  background: rgba(13, 110, 253, 0.04);
+  border-color: #001a4d;
+  background: rgba(0, 26, 77, 0.04);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 26, 77, 0.1);
 }
 
 .pa-prompt-icon {
@@ -461,10 +461,10 @@ select.form-select {
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .pa-msg-bubble.user {
-  background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+  background: linear-gradient(135deg, #001a4d, #003366);
   color: #fff;
   border-radius: 18px 4px 18px 18px;
-  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 26, 77, 0.25);
 }
 
 /* Typing dots */
@@ -507,8 +507,8 @@ select.form-select {
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .pa-input-row:focus-within {
-  border-color: #0d6efd;
-  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+  border-color: #001a4d;
+  box-shadow: 0 0 0 3px rgba(0, 26, 77, 0.1);
 }
 
 .pa-input {
@@ -539,7 +539,7 @@ select.form-select {
   height: 44px;
   border-radius: 12px;
   border: none;
-  background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+  background: linear-gradient(135deg, #001a4d, #003366);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -547,11 +547,11 @@ select.form-select {
   justify-content: center;
   flex-shrink: 0;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 26, 77, 0.3);
 }
 .pa-send-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  box-shadow: 0 4px 14px rgba(13, 110, 253, 0.4);
+  box-shadow: 0 4px 14px rgba(0, 26, 77, 0.4);
 }
 .pa-send-btn:disabled {
   opacity: 0.4;
@@ -684,7 +684,7 @@ select.form-select {
 .pa-flow-connector {
   width: 2px;
   height: 20px;
-  background: linear-gradient(180deg, #0d6efd, rgba(13, 110, 253, 0.3));
+  background: linear-gradient(180deg, #001a4d, rgba(0, 26, 77, 0.3));
   margin: 0 auto;
   border-radius: 2px;
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { apiClient } from "../services/api";
 import { useAuth } from "../context/AuthProvider";
@@ -20,11 +21,22 @@ const formatBotMessage = (text) => {
 };
 
 const Chatbot = () => {
+  const navigate = useNavigate();
   const { langCode, t } = useLanguage();
-  const { user } = useAuth(); // We need to know if user is logged in
+  const { user, userDetails } = useAuth();
   
   const [isOpen, setIsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const getLodgeRoute = () => {
+    if (!userDetails?.user_type) return "/lodge-selection";
+    switch (userDetails.user_type) {
+      case "Internal": return "/lodge-internal";
+      case "Contract": return "/lodge-contract";
+      case "External": return "/lodge-external";
+      default: return "/lodge-selection";
+    }
+  };
   
   // Chat History States
   const [sessionId, setSessionId] = useState(null);
@@ -322,10 +334,22 @@ const Chatbot = () => {
         const sourceList = data.sources
           .map(s => `${s.source} (p.${s.page})`)
           .join(", ");
-        responseText += `\n\n📄 ${t("sources") || "Sources"}: ${sourceList}`;
+        responseText += `\n\n${t("sources") || "Sources"}: ${sourceList}`;
       }
 
-      setMessages(prev => [...prev, { id: Date.now() + 1, text: responseText, isBot: true }]);
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        text: responseText,
+        isBot: true,
+        severity: data.severity ? data.severity.toLowerCase() : '',
+        department: data.department || '',
+        routed: data.routed || false,
+        grievance_id: data.grievance_id || '',
+        trigger_form: data.trigger_form || false,
+        form_reason: data.form_reason || '',
+        chatbot_resolved: data.chatbot_resolved !== false,
+        original_query: text
+      }]);
 
       // Save bot message to backend
       if (currentSessionId) {
@@ -340,7 +364,7 @@ const Chatbot = () => {
       console.error("RAG chat error:", err);
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
-        text: "⚠️ Sorry, I'm having trouble connecting to the policy engine. Please try again in a moment.",
+        text: "Sorry, I'm having trouble connecting to the policy engine. Please try again in a moment.",
         isBot: true
       }]);
     } finally {
@@ -414,16 +438,20 @@ const Chatbot = () => {
     <>
       <style>{`
         @keyframes pulseGlow {
-          0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4); }
-          70% { box-shadow: 0 0 0 15px rgba(13, 110, 253, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+          0% { box-shadow: 0 0 0 0 rgba(0, 26, 77, 0.5); }
+          70% { box-shadow: 0 0 0 15px rgba(0, 26, 77, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(0, 26, 77, 0); }
         }
         .chatbot-btn {
           animation: pulseGlow 2.5s infinite;
+          background: linear-gradient(135deg, #001a4d 0%, #003366 100%) !important;
+          border: none !important;
+          color: #fff !important;
         }
         .chatbot-btn:hover {
           transform: scale(1.04);
           animation: none;
+          background: linear-gradient(135deg, #00143a 0%, #00264d 100%) !important;
         }
         .chatbot-btn.btn-open {
           width: 60px !important;
@@ -499,11 +527,11 @@ const Chatbot = () => {
           transition: background 0.2s;
         }
         .session-item:hover {
-          background: rgba(13, 110, 253, 0.05);
+          background: rgba(0, 26, 77, 0.05);
         }
         .session-item.active {
-          background: rgba(13, 110, 253, 0.1);
-          border-left: 4px solid #0d6efd;
+          background: rgba(0, 26, 77, 0.1);
+          border-left: 4px solid #001a4d;
         }
       `}</style>
 
@@ -535,7 +563,7 @@ const Chatbot = () => {
           setShowHint(false);
           if (nextState) apiClient("/api/agents/warmup").catch(err => console.error("Warmup failed", err));
         }}
-        className={`btn btn-primary shadow-lg d-flex align-items-center chatbot-btn ${isOpen ? 'btn-open' : ''}`}
+        className={`btn shadow-lg d-flex align-items-center chatbot-btn ${isOpen ? 'btn-open' : ''}`}
         style={{
           position: 'fixed', bottom: '24px', right: '24px', height: '54px',
           borderRadius: '27px', padding: '0 24px', zIndex: 9999,
@@ -579,7 +607,11 @@ const Chatbot = () => {
             </button>
           </div>
           <div className="p-2 border-bottom">
-            <button className="btn btn-primary w-100 fw-bold rounded-pill shadow-sm" onClick={handleNewConversation}>
+            <button 
+              className="btn w-100 fw-bold rounded-pill shadow-sm text-white" 
+              onClick={handleNewConversation}
+              style={{ background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)', border: 'none' }}
+            >
               + New Conversation
             </button>
           </div>
@@ -608,7 +640,7 @@ const Chatbot = () => {
         {/* MAIN CHAT AREA */}
         <div className={`chat-main d-flex flex-column w-100 h-100 ${isSidebarOpen ? 'shifted' : ''}`} style={{ backgroundColor: 'var(--bg-color)' }}>
           {/* HEADER */}
-          <div className="bg-primary text-white p-3 d-flex justify-content-between align-items-center" style={{ flexShrink: 0 }}>
+          <div className="text-white p-3 d-flex justify-content-between align-items-center" style={{ flexShrink: 0, background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)' }}>
             <div className="d-flex align-items-center gap-2">
               <button 
                 className="btn btn-sm text-white p-0 border-0 shadow-none d-flex align-items-center justify-content-center me-1"
@@ -646,8 +678,16 @@ const Chatbot = () => {
                   {suggestedPrompts.map((prompt, idx) => (
                     <button 
                       key={idx} onClick={() => handlePromptClick(prompt)}
-                      className="btn btn-sm btn-outline-primary rounded-pill"
-                      style={{ fontSize: '13px', backgroundColor: 'var(--card-bg)', color: 'var(--text-color)' }}
+                      className="btn btn-sm rounded-pill"
+                      style={{ 
+                        fontSize: '13px', 
+                        backgroundColor: 'var(--card-bg)', 
+                        color: 'var(--text-color)',
+                        border: '1px solid #002b66',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 43, 102, 0.08)'; }}
+                      onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--card-bg)'; }}
                     >
                       {prompt}
                     </button>
@@ -659,11 +699,12 @@ const Chatbot = () => {
             {messages.map((msg) => (
               <div key={msg.id} className={`d-flex mb-3 ${msg.isBot ? 'justify-content-start' : 'justify-content-end'}`}>
                 <div 
-                  className={`p-3 shadow-sm ${msg.isBot ? '' : 'bg-primary text-white'}`}
+                  className="p-3 shadow-sm"
                   style={{
                     maxWidth: '85%',
                     backgroundColor: msg.isBot ? 'var(--chat-bubble-bot)' : undefined,
-                    color: msg.isBot ? 'var(--text-color)' : undefined,
+                    background: msg.isBot ? undefined : 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
+                    color: msg.isBot ? 'var(--text-color)' : '#ffffff',
                     borderTopLeftRadius: '16px', borderTopRightRadius: '16px',
                     borderBottomLeftRadius: msg.isBot ? '4px' : '16px',
                     borderBottomRightRadius: msg.isBot ? '16px' : '4px',
@@ -674,7 +715,103 @@ const Chatbot = () => {
                   {msg.isGreeting ? (
                     t('chatbotGreeting') || "Hi! I'm the AI Policy Assistant. How can I help you today?"
                   ) : msg.isBot ? (
-                    <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
+                    <>
+                      <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
+
+                      {/* TRIGGER GRIEVANCE FORM CARD FOR HIGH / MEDIUM COMPLAINTS */}
+                      {msg.trigger_form && (msg.severity === 'high' || msg.severity === 'medium' || msg.form_reason === 'high_severity' || msg.form_reason === 'medium_severity') && (
+                        <div 
+                          className="mt-3 p-3 rounded-3 border text-start shadow-sm"
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderColor: '#e2e8f0',
+                            borderLeft: '4px solid #001a4d'
+                          }}
+                        >
+                          <div className="d-flex align-items-center justify-content-between mb-2">
+                            <span 
+                              className="badge rounded-pill px-2 py-1 text-uppercase fw-bold"
+                              style={{ 
+                                backgroundColor: msg.severity === 'high' ? '#c4122f' : '#d97706',
+                                color: '#ffffff',
+                                fontSize: '10px'
+                              }}
+                            >
+                              {msg.severity ? `${msg.severity} Severity Complaint` : 'Formal Complaint'}
+                            </span>
+                            {msg.department && (
+                              <span className="small text-muted fw-semibold">
+                                Dept: {msg.department}
+                              </span>
+                            )}
+                          </div>
+                          <p className="small mb-3 fw-semibold text-dark">
+                            Formal grievance lodging is required for prioritized administrative investigation and SLA tracking.
+                          </p>
+                          <button
+                            type="button"
+                            className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2"
+                            style={{
+                              background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
+                              color: '#ffffff',
+                              border: 'none',
+                              padding: '7px 14px',
+                              fontSize: '13px'
+                            }}
+                            onClick={() => {
+                              setIsOpen(false);
+                              navigate(getLodgeRoute(), {
+                                state: {
+                                  description: msg.original_query || msg.text,
+                                  department: msg.department || ''
+                                }
+                              });
+                            }}
+                          >
+                            <span>Open Grievance Form</span>
+                            <span>→</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* REDIRECT TO FORM FOR UNRESOLVED LOW COMPLAINTS */}
+                      {msg.trigger_form && (msg.form_reason === 'unresolved_low_query' || (!msg.chatbot_resolved && msg.severity === 'low')) && (
+                        <div 
+                          className="mt-3 p-3 rounded-3 border text-start shadow-sm"
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderColor: '#e2e8f0',
+                            borderLeft: '4px solid #475569'
+                          }}
+                        >
+                          <div className="d-flex align-items-center gap-1 mb-2">
+                            <span className="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1" style={{ fontSize: '10px', fontWeight: '600' }}>
+                              Policy Unresolved
+                            </span>
+                          </div>
+                          <p className="small mb-3 text-muted">
+                            The automated assistant could not resolve this from official policy documents. Would you like to submit an official ticket?
+                          </p>
+                          <button
+                            type="button"
+                            className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
+                            style={{ padding: '6px 14px', fontSize: '12.5px' }}
+                            onClick={() => {
+                              setIsOpen(false);
+                              navigate(getLodgeRoute(), {
+                                state: {
+                                  description: msg.original_query || msg.text,
+                                  department: msg.department || ''
+                                }
+                              });
+                            }}
+                          >
+                            <span>Lodge as Formal Grievance</span>
+                            <span>→</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     msg.text
                   )}
@@ -710,7 +847,7 @@ const Chatbot = () => {
                 {handoffLoading ? (
                   <><span className="spinner-border spinner-border-sm me-1" role="status" /> Connecting...</>
                 ) : (
-                  <>🤝 Speak to a Human</>
+                  <>Speak to a Human</>
                 )}
               </button>
             </div>
@@ -741,7 +878,7 @@ const Chatbot = () => {
                     {fmtTime(recordSecs)}
                   </span>
                 </div>
-                <button onClick={stopListening} title="Stop and send" className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px', flexShrink: 0, border: 'none' }}>
+                <button onClick={stopListening} title="Stop and send" className="btn rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px', flexShrink: 0, border: 'none', background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)', color: '#fff' }}>
                   <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
                 </button>
               </div>
@@ -763,7 +900,20 @@ const Chatbot = () => {
                   <button type="button" className="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center me-2" onClick={startListening} disabled={!isSpeechSupported || isTyping || isTranscribing} style={{ width: '45px', height: '45px', flexShrink: 0 }}>
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/><path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/></svg>
                   </button>
-                  <button className="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" onClick={() => handleSendMessage(inputValue)} disabled={!inputValue.trim() || isTyping || isTranscribing} style={{ width: '45px', height: '45px', flexShrink: 0 }}>
+                  <button 
+                    className="btn rounded-circle d-flex align-items-center justify-content-center" 
+                    onClick={() => handleSendMessage(inputValue)} 
+                    disabled={!inputValue.trim() || isTyping || isTranscribing} 
+                    style={{ 
+                      width: '45px', 
+                      height: '45px', 
+                      flexShrink: 0,
+                      background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
+                      color: '#fff',
+                      border: 'none',
+                      opacity: (!inputValue.trim() || isTyping || isTranscribing) ? 0.5 : 1
+                    }}
+                  >
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
                   </button>
                 </div>

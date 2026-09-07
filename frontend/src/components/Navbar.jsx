@@ -37,7 +37,7 @@ function Navbar() {
             to="/assistant" 
             className="me-4 text-decoration-none d-flex align-items-center gap-1"
             style={{ 
-              color: location.pathname === '/assistant' ? '#0d6efd' : 'var(--text-color)',
+              color: location.pathname === '/assistant' ? '#001a4d' : 'var(--text-color)',
               fontWeight: location.pathname === '/assistant' ? '700' : '600',
               opacity: location.pathname === '/assistant' ? 1 : 0.85,
               transition: 'all 0.2s',
@@ -70,6 +70,16 @@ function Navbar() {
           <Link to="/help" className="me-4 text-decoration-none nav-link-custom">
             {t("help")}
           </Link>
+
+          {user && (
+            <Link 
+              to="/profile" 
+              className="me-4 text-decoration-none nav-link-custom"
+              style={{ fontWeight: location.pathname === '/profile' ? '700' : 'normal' }}
+            >
+              Profile
+            </Link>
+          )}
 
           {isSuperAdmin && (
             <Link to="/admin/portal" className="me-4 text-decoration-none nav-link-custom" style={{ color: "#d32f2f", fontWeight: "bold" }}>
@@ -106,17 +116,31 @@ function Navbar() {
           {isAdmin ? (
             // Admin is logged in
             <div className="d-flex align-items-center">
-              <div className="me-3 d-flex align-items-center">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
-                  style={{ width: "32px", height: "32px", backgroundColor: "#001a4d", fontWeight: "bold" }}
-                >
-                  {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "A"}
-                </div>
+              <Link 
+                to="/profile" 
+                className="me-3 d-flex align-items-center text-decoration-none p-1 rounded-pill"
+                style={{ transition: "all 0.2s" }}
+                title="View Admin Profile"
+              >
+                {userDetails?.avatar_url ? (
+                  <img
+                    src={userDetails.avatar_url}
+                    alt={userDetails.name || "Admin"}
+                    className="rounded-circle me-2 shadow-sm"
+                    style={{ width: "34px", height: "34px", objectFit: "cover", border: "2px solid #001a4d" }}
+                  />
+                ) : (
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
+                    style={{ width: "34px", height: "34px", backgroundColor: "#001a4d", fontWeight: "bold" }}
+                  >
+                    {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "A"}
+                  </div>
+                )}
                 <span style={{ fontSize: "14px", color: "#6c757d" }}>
-                  <span style={{ color: "#001a4d", fontWeight: "bold" }}>{userDetails?.name}</span>
+                  <span style={{ color: "#001a4d", fontWeight: "bold" }}>{userDetails?.name || "Admin"}</span>
                 </span>
-              </div>
+              </Link>
               <button onClick={handleAdminLogout} className="btn btn-outline-danger px-3 fw-semibold" style={{ fontSize: "14px" }}>
                 {t("logout")}
               </button>
@@ -124,17 +148,31 @@ function Navbar() {
           ) : user ? (
             // Regular user logged in
             <div className="d-flex align-items-center">
-              <div className="me-3 d-flex align-items-center">
-                <div
-                  className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
-                  style={{ width: "32px", height: "32px", backgroundColor: "#ff5722", fontWeight: "bold" }}
-                >
-                  {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
-                </div>
+              <Link 
+                to="/profile" 
+                className="me-3 d-flex align-items-center text-decoration-none p-1 rounded-pill"
+                style={{ transition: "all 0.2s" }}
+                title="View My Profile"
+              >
+                {userDetails?.avatar_url ? (
+                  <img
+                    src={userDetails.avatar_url}
+                    alt={userDetails.name || "User"}
+                    className="rounded-circle me-2 shadow-sm"
+                    style={{ width: "34px", height: "34px", objectFit: "cover", border: "2px solid #00838f" }}
+                  />
+                ) : (
+                  <div
+                    className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
+                    style={{ width: "34px", height: "34px", backgroundColor: "#ff5722", fontWeight: "bold" }}
+                  >
+                    {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
+                  </div>
+                )}
                 <span style={{ fontSize: "15px", color: "#6c757d" }}>
                   <i style={{ opacity: 0.8 }}>{t("hi")}</i> <span style={{ color: "#00838f", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>{userDetails?.name || "User"}</span>
                 </span>
-              </div>
+              </Link>
               <button onClick={handleLogout} className="btn btn-danger">
                 {t("logout")}
               </button>

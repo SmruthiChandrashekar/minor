@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
 import { translateList } from "../services/translationService";
+import { apiClient } from "../services/api";
 import AdminAnalytics from "../components/AdminAnalytics";
 
 const AdminDashboard = () => {
@@ -18,6 +19,12 @@ const AdminDashboard = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [viewingAttachments, setViewingAttachments] = useState(null);
   const [tierFilter, setTierFilter] = useState("ALL");
+
+  // --- RAG POLICY ADVISORY STATE ---
+  const [selectedRagTicket, setSelectedRagTicket] = useState(null);
+  const [ragRecommendation, setRagRecommendation] = useState(null);
+  const [loadingRag, setLoadingRag] = useState(false);
+  const [copiedRecommendation, setCopiedRecommendation] = useState(false);
 
   // --- FETCH GRIEVANCES ---
   const fetchGrievances = async () => {
@@ -123,6 +130,85 @@ const AdminDashboard = () => {
       setUpdatingId(null);
     }
   };
+
+  // --- OPEN RAG RESOLUTION ADVISORY ---
+  const handleOpenRag = async (ticket) => {
+    setSelectedRagTicket(ticket);
+    setRagRecommendation(ticket.rag_recommendation || null);
+    setCopiedRecommendation(false);
+
+    // If no cached recommendation yet, fetch or generate via API
+    if (!ticket.rag_recommendation) {
+      setLoadingRag(true);
+      try {
+        const res = await apiClient(`/api/admin/grievances/${ticket.grievance_id}/recommendation`);
+        if (res.ok) {
+          const json = await res.json();
+          setRagRecommendation(json.recommendation);
+          setGrievances((prev) =>
+            prev.map((g) =>
+              g.grievance_id === ticket.grievance_id
+                ? { ...g, rag_recommendation: json.recommendation, policy_matched: json.recommendation?.has_policy_match }
+                : g
+            )
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load RAG recommendation:", err);
+      } finally {
+        setLoadingRag(false);
+      }
+    }
+  };
+
+  const handleRegenerateRag = async (grievanceId) => {
+    setLoadingRag(true);
+    try {
+      const res = await apiClient(`/api/admin/grievances/${grievanceId}/recommendation`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setRagRecommendation(json.recommendation);
+        setGrievances((prev) =>
+          prev.map((g) =>
+            g.grievance_id === grievanceId
+              ? { ...g, rag_recommendation: json.recommendation, policy_matched: json.recommendation?.has_policy_match }
+              : g
+          )
+        );
+      }
+    } catch (err) {
+      console.error("Failed to regenerate RAG recommendation:", err);
+    } finally {
+      setLoadingRag(false);
+    }
+  };
+
+  const handleCopyRecommendation = () => {
+    if (!ragRecommendation) return;
+    const stepsText = (ragRecommendation.recommended_steps || [])
+      .map((s) => `${s.step_number}. ${s.title}: ${s.detail} (${s.deadline})`)
+      .join("\n\n");
+    const fullText = `PURAVANKARA RAG POLICY RESOLUTION GUIDANCE
+Ticket ID: #${selectedRagTicket?.grievance_id}
+Category: ${selectedRagTicket?.category} | Severity: ${selectedRagTicket?.severity}
+Primary Policy: ${ragRecommendation.primary_policy || "General Operating Standards"}
+
+Executive Summary:
+${ragRecommendation.executive_summary || ""}
+
+Recommended Procedural Steps:
+${stepsText}
+
+Compliance & SLA Notes:
+${ragRecommendation.compliance_notes || ""}`;
+
+    navigator.clipboard.writeText(fullText);
+    setCopiedRecommendation(true);
+    setTimeout(() => setCopiedRecommendation(false), 3000);
+  };
+
 
   // --- STATUS BADGE (uses i18n for labels) ---
   const getStatusBadge = (status) => {
@@ -265,6 +351,12 @@ const AdminDashboard = () => {
           </p>
         </div>
         <div className="d-flex gap-2 align-items-center">
+          <button 
+            onClick={() => navigate("/profile")} 
+            className="btn btn-outline-secondary btn-sm fw-bold shadow-sm rounded-pill px-3"
+          >
+            My Profile
+          </button>
           <button onClick={() => handleExport("csv")} className="btn btn-outline-primary btn-sm fw-bold shadow-sm" style={{ borderRadius: "8px" }}>
             <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="me-1 mb-1">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -408,14 +500,41 @@ const AdminDashboard = () => {
                       <td>{getStatusBadge(g.status)}</td>
                       <td className="text-end pe-4">
                         <div className="d-flex align-items-center justify-content-end gap-2">
+                          {/* Grounded RAG Policy Advice button for High/Critical tickets or policy-matched tickets */}
+                          {(g.severity === "High" || g.severity === "Critical" || g.policy_matched || g.rag_recommendation) && (
+                            <button
+                              className="btn btn-sm shadow-sm d-flex align-items-center gap-1"
+                              title="View Grounded AI Policy & Resolution Recommendations"
+                              onClick={() => handleOpenRag(g)}
+                              style={{
+                                background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
+                                color: "#ffffff",
+                                borderRadius: "6px",
+                                padding: "4px 9px",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                border: "none",
+                                whiteSpace: "nowrap"
+                              }}
+                            >
+                              <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                              </svg>
+                              Policy Advice
+                            </button>
+                          )}
+
                           {g.attachments && g.attachments.length > 0 && (
                             <button
-                              className="btn btn-outline-secondary btn-sm shadow-sm"
+                              className="btn btn-outline-secondary btn-sm shadow-sm d-flex align-items-center gap-1"
                               title="View Attachments"
                               onClick={() => setViewingAttachments(g.attachments)}
-                              style={{ borderRadius: "6px", padding: "4px 8px" }}
+                              style={{ borderRadius: "6px", padding: "4px 8px", fontSize: "12px" }}
                             >
-                              📎 {g.attachments.length}
+                              <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                              </svg>
+                              {g.attachments.length}
                             </button>
                           )}
                           <select
@@ -467,17 +586,20 @@ const AdminDashboard = () => {
                     const isPdf = url.toLowerCase().endsWith('.pdf');
                     return (
                       <div key={idx} className="col-12 col-md-6">
-                        <div className="border rounded p-2 h-100 d-flex flex-column align-items-center justify-content-center bg-light">
+                        <div className="border rounded p-3 h-100 d-flex flex-column align-items-center justify-content-center bg-light">
                           {isPdf ? (
                             <div className="text-center">
-                              <div style={{ fontSize: "3rem" }}>📄</div>
-                              <a href={url} target="_blank" rel="noreferrer" className="btn btn-sm btn-primary mt-2">Open PDF</a>
+                              <svg width="48" height="48" fill="#c4122f" viewBox="0 0 16 16" className="mb-2">
+                                <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
+                                <path d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.09.215-.323.593-.548 1.135-.672.482-.11 1.05-.164 1.704-.164.767 0 1.455.074 2.064.22.453.11.83.256 1.13.439.439.268.618.617.535 1.045-.078.406-.388.7-.93.882-.542.183-1.25.274-2.126.274-.848 0-1.57-.087-2.164-.26a3.864 3.864 0 0 1-.99-.444z"/>
+                              </svg>
+                              <div><a href={url} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-danger mt-1 fw-bold">Open PDF Document</a></div>
                             </div>
                           ) : isVideo ? (
-                            <video src={url} controls className="img-fluid rounded" style={{ maxHeight: "300px" }} />
+                            <video src={url} controls className="img-fluid rounded shadow-sm" style={{ maxHeight: "300px" }} />
                           ) : (
                             <a href={url} target="_blank" rel="noreferrer">
-                              <img src={url} alt={`Attachment ${idx + 1}`} className="img-fluid rounded" style={{ maxHeight: "300px", objectFit: "contain" }} />
+                              <img src={url} alt={`Attachment ${idx + 1}`} className="img-fluid rounded shadow-sm" style={{ maxHeight: "300px", objectFit: "contain" }} />
                             </a>
                           )}
                         </div>
@@ -492,6 +614,250 @@ const AdminDashboard = () => {
             <div className="modal-footer border-top-0 pt-0">
               <button type="button" className="btn btn-secondary" onClick={() => setViewingAttachments(null)}>Close</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RAG POLICY RESOLUTION ADVISORY MODAL */}
+      <div className={`modal fade ${selectedRagTicket ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+        <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+          <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            
+            {/* MODAL HEADER */}
+            <div 
+              className="modal-header border-0 px-4 py-3 text-white" 
+              style={{ background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)" }}
+            >
+              <div className="d-flex align-items-center gap-3">
+                <div 
+                  className="rounded-circle d-flex align-items-center justify-content-center"
+                  style={{ width: "42px", height: "42px", background: "rgba(255,255,255,0.12)" }}
+                >
+                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                  </svg>
+                </div>
+                <div>
+                  <h5 className="modal-title fw-bold mb-0 text-white">AI Policy & Resolution Advisory</h5>
+                  <p className="small mb-0 opacity-75 text-white">
+                    Grounded recommendations from Puravankara policy documents for Ticket #{selectedRagTicket?.grievance_id?.substring(0, 8)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="d-flex align-items-center gap-2">
+                <span className="badge bg-danger rounded-pill px-3 py-2 fw-semibold" style={{ fontSize: "12px" }}>
+                  {selectedRagTicket?.severity?.toUpperCase() || "HIGH"} SEVERITY
+                </span>
+                <button 
+                  type="button" 
+                  className="btn-close btn-close-white" 
+                  onClick={() => setSelectedRagTicket(null)}
+                ></button>
+              </div>
+            </div>
+
+            {/* MODAL BODY */}
+            <div className="modal-body p-4" style={{ backgroundColor: "#f8fafc" }}>
+              {loadingRag ? (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }} role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                  <h6 className="fw-bold mt-4 text-dark">Consulting Policy Vector Store...</h6>
+                  <p className="text-muted small mb-0">
+                    Retrieving matching Puravankara policy clauses and generating structured resolution protocol.
+                  </p>
+                </div>
+              ) : ragRecommendation ? (
+                <div className="d-flex flex-column gap-4">
+                  
+                  {/* GRIEVANCE CONTEXT HEADER */}
+                  <div className="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <span className="badge bg-secondary-subtle text-secondary px-3 py-1 rounded-pill fw-semibold">
+                          {selectedRagTicket?.category || "General"}
+                        </span>
+                        <span className="badge bg-primary-subtle text-primary px-3 py-1 rounded-pill fw-semibold">
+                          Queue: {selectedRagTicket?.assigned_tier || "L2 Queue"}
+                        </span>
+                      </div>
+                      <span className="text-muted small">
+                        Submitted: {selectedRagTicket?.created_at ? new Date(selectedRagTicket.created_at).toLocaleString("en-IN") : "Recent"}
+                      </span>
+                    </div>
+                    <p className="mb-0 text-dark small fst-italic bg-light p-2 rounded border">
+                      "{selectedRagTicket?.description}"
+                    </p>
+                  </div>
+
+                  {/* EXECUTIVE SUMMARY & PRIMARY POLICY MATCH */}
+                  <div className="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                      <h6 className="fw-bold mb-0" style={{ color: "#001a4d" }}>
+                        Applicable Policy Framework
+                      </h6>
+                      {ragRecommendation.has_policy_match ? (
+                        <span className="badge rounded-pill px-3 py-1" style={{ background: "#001a4d", color: "#fff", fontSize: "12px" }}>
+                          Policy Match Verified
+                        </span>
+                      ) : (
+                        <span className="badge bg-secondary rounded-pill px-3 py-1" style={{ fontSize: "12px" }}>
+                          Standard GRM SOP
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="p-3 rounded-3 mb-3" style={{ backgroundColor: "#f1f5f9", borderLeft: "4px solid #001a4d" }}>
+                      <div className="fw-bold mb-1" style={{ color: "#001a4d", fontSize: "14px" }}>
+                        {ragRecommendation.primary_policy || "Puravankara Grievance Redressal Policy"}
+                      </div>
+                      <p className="mb-0 text-dark small">
+                        {ragRecommendation.executive_summary}
+                      </p>
+                    </div>
+
+                    {/* POLICY CITATIONS & CLAUSES */}
+                    {ragRecommendation.citations && ragRecommendation.citations.length > 0 && (
+                      <div>
+                        <div className="text-muted small fw-bold mb-2 text-uppercase" style={{ letterSpacing: "0.5px", fontSize: "11px" }}>
+                          Retrieved Policy References ({ragRecommendation.citations.length})
+                        </div>
+                        <div className="row g-2">
+                          {ragRecommendation.citations.map((c, i) => (
+                            <div key={i} className="col-12 col-md-6">
+                              <div className="border rounded-3 p-2 h-100 bg-light small">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <strong className="text-truncate" style={{ maxWidth: "200px", color: "#001a4d" }}>
+                                    {c.source}
+                                  </strong>
+                                  <span className="badge bg-secondary-subtle text-dark" style={{ fontSize: "10px" }}>
+                                    Page {c.page} {c.section ? `• ${c.section}` : ""}
+                                  </span>
+                                </div>
+                                <p className="text-muted mb-0 text-truncate-3" style={{ fontSize: "11px", lineHeight: "1.4" }}>
+                                  {c.excerpt}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* RECOMMENDED PROCEDURAL RESOLUTION STEPS */}
+                  <div className="card border-0 shadow-sm rounded-3 p-3 bg-white">
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                      <h6 className="fw-bold mb-0" style={{ color: "#001a4d" }}>
+                        Actionable Resolution Protocol
+                      </h6>
+                      <span className="text-muted small">
+                        {ragRecommendation.recommended_steps?.length || 0} Recommended Steps
+                      </span>
+                    </div>
+
+                    <div className="d-flex flex-column gap-3">
+                      {ragRecommendation.recommended_steps && ragRecommendation.recommended_steps.map((step, idx) => (
+                        <div 
+                          key={idx} 
+                          className="d-flex align-items-start gap-3 p-3 rounded-3 border"
+                          style={{ backgroundColor: "#ffffff" }}
+                        >
+                          <div 
+                            className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0"
+                            style={{ 
+                              width: "32px", 
+                              height: "32px", 
+                              backgroundColor: "#001a4d",
+                              fontSize: "14px"
+                            }}
+                          >
+                            {step.step_number || idx + 1}
+                          </div>
+
+                          <div className="flex-grow-1">
+                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                              <strong className="text-dark" style={{ fontSize: "14px" }}>
+                                {step.title}
+                              </strong>
+                              {step.deadline && (
+                                <span 
+                                  className="badge rounded-pill px-2 py-1"
+                                  style={{ backgroundColor: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe", fontSize: "11px" }}
+                                >
+                                  {step.deadline}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-muted small mb-0">
+                              {step.detail}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* COMPLIANCE & SLA MANDATES */}
+                  {ragRecommendation.compliance_notes && (
+                    <div 
+                      className="card border-0 rounded-3 p-3"
+                      style={{ backgroundColor: "#fef2f2", borderLeft: "4px solid #c4122f" }}
+                    >
+                      <div className="d-flex align-items-center gap-2 mb-1">
+                        <svg width="16" height="16" fill="#c4122f" viewBox="0 0 16 16">
+                          <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                        </svg>
+                        <strong style={{ color: "#991b1b", fontSize: "13px" }}>
+                          Statutory & SLA Compliance Alert
+                        </strong>
+                      </div>
+                      <p className="small mb-0" style={{ color: "#7f1d1d" }}>
+                        {ragRecommendation.compliance_notes}
+                      </p>
+                    </div>
+                  )}
+
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted">
+                  <p className="mb-0">No advisory generated yet. Click "Generate Recommendations" below.</p>
+                </div>
+              )}
+            </div>
+
+            {/* MODAL FOOTER */}
+            <div className="modal-footer border-top bg-white px-4 py-3 d-flex justify-content-between align-items-center">
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary btn-sm rounded-pill px-3"
+                disabled={loadingRag}
+                onClick={() => handleRegenerateRag(selectedRagTicket?.grievance_id)}
+              >
+                {loadingRag ? "Regenerating..." : "Re-analyze Policy"}
+              </button>
+
+              <div className="d-flex gap-2">
+                <button 
+                  type="button" 
+                  className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm"
+                  disabled={!ragRecommendation || loadingRag}
+                  onClick={handleCopyRecommendation}
+                >
+                  {copiedRecommendation ? "Copied to Clipboard!" : "Copy Guidance"}
+                </button>
+                <button 
+                  type="button" 
+                  className="btn btn-dark btn-sm rounded-pill px-4 shadow-sm"
+                  onClick={() => setSelectedRagTicket(null)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
