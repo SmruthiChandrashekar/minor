@@ -166,12 +166,38 @@ def normalize_severity(severity: str) -> str:
     return "LOW"
 
 
+def normalize_department(department: str) -> str:
+    """
+    Normalize department to one of VALID_DEPARTMENTS.
+    Defaults to 'CRM' if invalid, missing, or unknown.
+    """
+    if not department:
+        return "CRM"
+
+    cleaned = department.strip()
+    for valid in VALID_DEPARTMENTS:
+        if valid.lower() == cleaned.lower():
+            return valid
+
+    # Common aliases / mappings
+    alias_map = {
+        "posh": "IC",
+        "safety": "ESG",
+        "child labour": "ESG",
+        "compliance": "CRM",
+        "unknown": "CRM",
+    }
+    return alias_map.get(cleaned.lower(), "CRM")
+
+
 def build_queue_name(department: str, tier: str) -> str:
     """
     Build a queue name from department and tier.
     Example: build_queue_name("CRM", "L1") → "crm_l1_queue"
     """
-    return f"{department.lower()}_{tier.lower()}_queue"
+    dept = normalize_department(department)
+    return f"{dept.lower()}_{tier.lower()}_queue"
+
 
 
 def get_next_tier(current_tier: str) -> str | None:
