@@ -35,6 +35,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 from rag.query_data import initialize_rag, is_rag_ready, get_rag_response
 from rag.policy_recommender import generate_policy_recommendation
 from backend.agent.graph import run_agent
+from backend.agent.nodes.classify_severity import classify_severity_node
+from backend.agent.nodes.classify_department import classify_department_node
 from backend.database.grievance_state import load_grievance_state, save_grievance_state
 from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route, escalate, ESCALATION_CHAIN
 from backend.utils.notification_service import (
@@ -118,7 +120,8 @@ def async_generate_and_save_rag_recommendation(grievance_id: str, description: s
 
 # --- LOAD CLASSIFICATION MODEL (lazy — graceful fallback if model files missing) ---
 device = torch.device("cpu")
-MODEL_PATH = "agents/classification/model"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_PATH = os.path.join(BASE_DIR, "agents", "classification", "model")
 
 try:
     print("loading clasf model")
@@ -141,7 +144,7 @@ reverse_map = {
 }
 
 # --- LOAD SEVERITY MODEL (lazy — graceful fallback if model files missing) ---
-severity_model_path = "severity_model"
+severity_model_path = os.path.join(BASE_DIR, "severity_model")
 
 try:
     print("loading sev model")
@@ -541,42 +544,20 @@ async def classify_complaint(request: ClassifyRequest, user: dict = Depends(get_
                 "message": "This will be handled by chatbot"
             }
 
-        # 🔻 EXISTING CODE CONTINUES BELOW
-        # 🔹 STEP 1: CATEGORY (Agent 1)
-        if not MODELS_READY:
-            # Models not loaded — return unknown so frontend can still proceed
-            return {
-                "category": "Unknown",
-                "severity": "Unknown",
-                "_warning": "Classification models not available on this instance"
-            }
+        # 🔹 CLASSIFY CATEGORY & SEVERITY (using LangGraph LLM agent classifier)
+        sev_res = classify_severity_node({"user_message": text})
+        dept_res = classify_department_node({"user_message": text})
 
-        inputs = tokenizer(
-            request.text,
-            return_tensors="pt",
-            truncation=True,
-            padding=True,
-            max_length=128
-        ).to(device)
-
-        with torch.no_grad():
-            outputs = model(**inputs)
-
-        pred = torch.argmax(outputs.logits).item()
-        category = reverse_map[pred]
-
-        # 🔹 STEP 2: SEVERITY (Agent 2 - Hybrid)
-        severity = get_severity(
-            request.text,
-            severity_tokenizer,
-            severity_model,
-            device,
-            severity_map
-        )
+        severity = sev_res.get("severity", "LOW").capitalize()
+        category = dept_res.get("department", "CRM")
 
         return {
+            "intent": "Complaint",
             "category": category,
-            "severity": severity
+            "department": category,
+            "severity": severity,
+            "severity_reason": sev_res.get("severity_reason", ""),
+            "department_reason": dept_res.get("department_reason", "")
         }
 
     except Exception as e:
@@ -730,35 +711,12 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         description_en = translate_to_english(description_original)
         clean_desc_en = clean_complaint_description(description_en)
 
-        # 🔹 STEP 2: CLASSIFY CATEGORY (always use English text)
-        if MODELS_READY:
-            inputs = tokenizer(
-                clean_desc_en,
-                return_tensors="pt",
-                truncation=True,
-                padding=True,
-                max_length=128
-            ).to(device)
+        # 🔹 STEP 2 & 3: CLASSIFY CATEGORY & SEVERITY VIA LLM AGENT
+        sev_res = classify_severity_node({"user_message": clean_desc_en})
+        dept_res = classify_department_node({"user_message": clean_desc_en})
 
-            with torch.no_grad():
-                outputs = model(**inputs)
-
-            pred = torch.argmax(outputs.logits).item()
-            category = reverse_map[pred]
-
-            # 🔹 STEP 3: CLASSIFY SEVERITY (always use English text)
-            severity = get_severity(
-                clean_desc_en,
-                severity_tokenizer,
-                severity_model,
-                device,
-                severity_map
-            )
-        else:
-            # Models unavailable — fall back to safe defaults so complaint still gets saved
-            logging.warning("ML models not loaded — submitting complaint with Unknown category/severity")
-            category = "Unknown"
-            severity = "Medium"  # Default to Medium so it still gets attention
+        category = dept_res.get("department", "CRM")
+        severity = sev_res.get("severity", "MEDIUM").capitalize()
 
         # 🔹 STEP 3.5: ESCALATION AGENT (non-blocking)
         # Runs email/SMS notifications in the background
