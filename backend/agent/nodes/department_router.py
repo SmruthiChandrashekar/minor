@@ -251,8 +251,8 @@ def department_route_node(state: GrievanceState) -> dict:
         if grievance_id:
             _create_in_app_notifications(grievance_id, department, severity, route_info)
 
-        # Trigger RAG recommendations for High/Critical tickets or policy departments
-        if grievance_id and (severity.upper() in ["HIGH", "CRITICAL"] or department in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]):
+        # Trigger RAG recommendations for Medium/High/Critical tickets or policy departments
+        if grievance_id and (severity.upper() in ["MEDIUM", "HIGH", "CRITICAL"] or department in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]):
             _generate_rag_recommendations_async(grievance_id, user_message, department, severity)
 
     except Exception as e:

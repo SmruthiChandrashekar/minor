@@ -852,8 +852,8 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         if route_info["assigned_tier"]:
             notify_admins_tier_assigned(dept, new_grievance_id, severity, route_info["assigned_tier"])
 
-        # 🔹 STEP 8: RAG POLICY RESOLUTION RECOMMENDATION (High Severity or Policy-Related)
-        if severity.lower() in ["high", "critical"] or category in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]:
+        # 🔹 STEP 8: RAG POLICY RESOLUTION RECOMMENDATION (Medium/High/Critical Severity or Policy-Related)
+        if severity.lower() in ["medium", "high", "critical"] or category in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]:
             asyncio.create_task(
                 asyncio.to_thread(
                     async_generate_and_save_rag_recommendation,

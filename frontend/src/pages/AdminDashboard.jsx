@@ -928,7 +928,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                       )}
 
                       {/* Policy Advice */}
-                      {(selectedTicket.severity === "High" || selectedTicket.severity === "Critical" || selectedTicket.policy_matched || selectedTicket.rag_recommendation) && (
+                      {(["medium", "high", "critical"].includes(selectedTicket.severity?.toLowerCase()) || selectedTicket.policy_matched || selectedTicket.rag_recommendation) && (
                         <button
                           onClick={() => { handleOpenRag(selectedTicket); setSelectedTicket(null); }}
                           style={{
@@ -1108,8 +1108,11 @@ ${ragRecommendation.compliance_notes || ""}`;
               </div>
 
               <div className="d-flex align-items-center gap-2">
-                <span className="badge bg-danger rounded-pill px-3 py-2 fw-semibold" style={{ fontSize: "12px" }}>
-                  {selectedRagTicket?.severity?.toUpperCase() || "HIGH"} SEVERITY
+                <span 
+                  className={`badge rounded-pill px-3 py-2 fw-semibold ${selectedRagTicket?.severity?.toLowerCase() === "medium" ? "bg-warning text-dark" : "bg-danger text-white"}`} 
+                  style={{ fontSize: "12px" }}
+                >
+                  {selectedRagTicket?.severity?.toUpperCase() || "MEDIUM"} SEVERITY
                 </span>
                 <button 
                   type="button" 
