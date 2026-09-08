@@ -23,6 +23,7 @@ from agents.escalation.notifier import Notifier
 from backend.middleware.auth import get_current_user, require_admin, require_role, require_super_admin
 from backend.utils.audit import log_audit
 from backend.utils.translator import translate_text, translate_to_english
+from backend.utils.report_generator import generate_employee_report, generate_admin_report
 from groq import Groq
 import io
 import time
@@ -35,7 +36,7 @@ from rag.query_data import initialize_rag, is_rag_ready, get_rag_response
 from rag.policy_recommender import generate_policy_recommendation
 from backend.agent.graph import run_agent
 from backend.database.grievance_state import load_grievance_state, save_grievance_state
-from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route
+from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route, escalate, ESCALATION_CHAIN
 from backend.utils.notification_service import (
     notify_user_grievance_received,
     notify_user_tier_assigned,
@@ -115,15 +116,20 @@ def async_generate_and_save_rag_recommendation(grievance_id: str, description: s
         logging.error("Failed to generate/save RAG recommendation for %s: %s", grievance_id, err)
 
 
-# --- LOAD CLASSIFICATION MODEL ---
-print("loading clasf model")
+# --- LOAD CLASSIFICATION MODEL (lazy — graceful fallback if model files missing) ---
+device = torch.device("cpu")
 MODEL_PATH = "agents/classification/model"
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
-
-device = torch.device("cpu")
-model.to(device)
+try:
+    print("loading clasf model")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+    model.to(device)
+    print("[OK] Classification model loaded")
+except Exception as _clf_err:
+    print(f"[WARN] Classification model not found — form classification will be unavailable. ({_clf_err})")
+    tokenizer = None
+    model = None
 
 reverse_map = {
     0: "HR",
@@ -133,14 +139,20 @@ reverse_map = {
     4: "Compliance",
     5: "Other"
 }
-# 🔥 LOAD SEVERITY MODEL
-print("loading sev model")
+
+# --- LOAD SEVERITY MODEL (lazy — graceful fallback if model files missing) ---
 severity_model_path = "severity_model"
 
-severity_tokenizer = AutoTokenizer.from_pretrained(severity_model_path)
-severity_model = AutoModelForSequenceClassification.from_pretrained(severity_model_path)
-
-severity_model.to(device)
+try:
+    print("loading sev model")
+    severity_tokenizer = AutoTokenizer.from_pretrained(severity_model_path)
+    severity_model = AutoModelForSequenceClassification.from_pretrained(severity_model_path)
+    severity_model.to(device)
+    print("[OK] Severity model loaded")
+except Exception as _sev_err:
+    print(f"[WARN] Severity model not found — form severity classification will be unavailable. ({_sev_err})")
+    severity_tokenizer = None
+    severity_model = None
 
 severity_map = {
     0: "Policy",
@@ -149,6 +161,8 @@ severity_map = {
     3: "High",
     4: "Critical"
 }
+
+MODELS_READY = model is not None and severity_model is not None
 
 # --- INIT ESCALATION AGENT ---
 print("loading escalation agent")
@@ -197,6 +211,13 @@ class SubmitComplaintRequest(BaseModel):
 class UpdateStatusRequest(BaseModel):
     grievance_id: str
     status: str
+    resolution_reason: Optional[str] = None
+    notes: Optional[str] = None
+
+class EscalateGrievanceRequest(BaseModel):
+    grievance_id: str
+    reason: Optional[str] = "Manual Escalation"
+    notes: Optional[str] = None
 
 class FeedbackRequest(BaseModel):
     grievance_id: str
@@ -522,6 +543,14 @@ async def classify_complaint(request: ClassifyRequest, user: dict = Depends(get_
 
         # 🔻 EXISTING CODE CONTINUES BELOW
         # 🔹 STEP 1: CATEGORY (Agent 1)
+        if not MODELS_READY:
+            # Models not loaded — return unknown so frontend can still proceed
+            return {
+                "category": "Unknown",
+                "severity": "Unknown",
+                "_warning": "Classification models not available on this instance"
+            }
+
         inputs = tokenizer(
             request.text,
             return_tensors="pt",
@@ -664,6 +693,30 @@ async def chat_with_agent(request: ChatRequest):
 
 
 
+def clean_complaint_description(text: str) -> str:
+    """Removes emojis and cleans whitespace to keep complaint descriptions clean and professional."""
+    if not text:
+        return ""
+    import re
+    emoji_pattern = re.compile(
+        "["
+        "\U0001f600-\U0001f64f"
+        "\U0001f300-\U0001f5ff"
+        "\U0001f680-\U0001f6ff"
+        "\U0001f1e0-\U0001f1ff"
+        "\U00002702-\U000027b0"
+        "\U000024c2-\U0001f251"
+        "\U0001f900-\U0001f9ff"
+        "\U0001fa00-\U0001fa6f"
+        "\U0001fa70-\U0001faff"
+        "\U00002600-\U000026ff"
+        "]+",
+        flags=re.UNICODE
+    )
+    cleaned = emoji_pattern.sub("", text)
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
 # 📝 SUBMIT COMPLAINT (Frontend calls this)
 @app.post("/submit-complaint")
 async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends(get_current_user)):
@@ -675,36 +728,43 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         # 🔹 STEP 1: Normalize description to English for ML models
         # If user wrote in Hindi/Kannada, translate first so models work correctly
         description_en = translate_to_english(description_original)
+        clean_desc_en = clean_complaint_description(description_en)
 
         # 🔹 STEP 2: CLASSIFY CATEGORY (always use English text)
-        inputs = tokenizer(
-            description_en,
-            return_tensors="pt",
-            truncation=True,
-            padding=True,
-            max_length=128
-        ).to(device)
+        if MODELS_READY:
+            inputs = tokenizer(
+                clean_desc_en,
+                return_tensors="pt",
+                truncation=True,
+                padding=True,
+                max_length=128
+            ).to(device)
 
-        with torch.no_grad():
-            outputs = model(**inputs)
+            with torch.no_grad():
+                outputs = model(**inputs)
 
-        pred = torch.argmax(outputs.logits).item()
-        category = reverse_map[pred]
+            pred = torch.argmax(outputs.logits).item()
+            category = reverse_map[pred]
 
-        # 🔹 STEP 3: CLASSIFY SEVERITY (always use English text)
-        severity = get_severity(
-            description_en,
-            severity_tokenizer,
-            severity_model,
-            device,
-            severity_map
-        )
+            # 🔹 STEP 3: CLASSIFY SEVERITY (always use English text)
+            severity = get_severity(
+                clean_desc_en,
+                severity_tokenizer,
+                severity_model,
+                device,
+                severity_map
+            )
+        else:
+            # Models unavailable — fall back to safe defaults so complaint still gets saved
+            logging.warning("ML models not loaded — submitting complaint with Unknown category/severity")
+            category = "Unknown"
+            severity = "Medium"  # Default to Medium so it still gets attention
 
         # 🔹 STEP 3.5: ESCALATION AGENT (non-blocking)
         # Runs email/SMS notifications in the background
         asyncio.create_task(
             escalation_agent.process_async(
-                complaint=description_en,
+                complaint=clean_desc_en,
                 category=category,
                 severity=severity,
                 metadata=meta.dict() if meta else {}
@@ -740,11 +800,11 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         location_val = meta.location if meta else None
         date_val = meta.date if meta else None
 
-        # Store original (for audit/display) + English (for ML re-processing)
+        # Store clean, emoji-free description
         grievance_data = {
             "user_id": meta.user_id if meta else None,
             "category": category,
-            "description": description_en,   # English (normalized) — ML models expect this
+            "description": clean_desc_en,
             "severity": severity,
             "department": dept,
             "assigned_to": assigned_to,
@@ -847,16 +907,43 @@ async def get_admin_grievances(admin_id: str):
 @app.patch("/api/admin/update-status")
 async def update_grievance_status(request: UpdateStatusRequest, user: dict = Depends(require_admin)):
     try:
-        valid_statuses = ["Open", "Investigating", "Resolved", "Closed", "CHATBOT_HANDLING", "HUMAN_HANDLING"]
+        valid_statuses = ["Open", "Investigating", "Resolved", "Rejected", "Closed", "CHATBOT_HANDLING", "HUMAN_HANDLING"]
         if request.status not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
 
-        # Update status and timestamp
+        # Require resolution_reason when closing a ticket
+        if request.status in ("Resolved", "Rejected") and not request.resolution_reason:
+            raise HTTPException(status_code=400, detail="A resolution reason is required when resolving or rejecting a grievance.")
+
+        # Update status, reason, and timestamp
         from datetime import datetime
-        result = supabase.table("grievances").update({
+        now_iso = datetime.now().isoformat()
+        update_payload = {
             "status": request.status,
-            "updated_at": datetime.now().isoformat()
-        }).eq("grievance_id", request.grievance_id).execute()
+            "updated_at": now_iso
+        }
+        if request.resolution_reason:
+            update_payload["resolution_reason"] = request.resolution_reason
+
+        # Append action log to escalation_history so subsequent tiers (L2, L3, HEAD) can see what prior handlers did
+        try:
+            curr_res = supabase.table("grievances").select("escalation_history").eq("grievance_id", request.grievance_id).single().execute()
+            history = list((curr_res.data or {}).get("escalation_history") or [])
+            user_tier = user.get("admin_tier") or user.get("role") or "Admin"
+            user_email = user.get("email") or "Admin"
+            notes = request.resolution_reason or request.notes or ""
+            history.append({
+                "tier": user_tier,
+                "handler": user_email,
+                "action": f"Status updated to {request.status}",
+                "notes": notes,
+                "timestamp": now_iso
+            })
+            update_payload["escalation_history"] = history
+        except Exception as hist_err:
+            logging.warning("Could not append status update to escalation_history: %s", hist_err)
+
+        result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Grievance not found or not assigned to you.")
@@ -873,14 +960,20 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
                 )
             )
 
-        # In-app resolved notifications
-        if request.status == "Resolved":
+        # In-app notifications + employee report generation
+        if request.status in ("Resolved", "Rejected"):
             grievance_user_id = updated_grievance.get("user_id")
             department = updated_grievance.get("department")
             if grievance_user_id:
                 notify_user_resolved(grievance_user_id, request.grievance_id)
-            if department:
+            if department and request.status == "Resolved":
                 notify_admins_resolved(department, request.grievance_id)
+
+            # Generate employee PDF report in background
+            asyncio.create_task(asyncio.to_thread(
+                _generate_and_store_employee_report,
+                request.grievance_id
+            ))
 
         return {
             "message": "Status updated successfully",
@@ -888,6 +981,187 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
             "new_status": request.status
         }
 
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        err_str = str(e)
+        if "resolution_reason" in err_str or "PGRST204" in err_str:
+            raise HTTPException(
+                status_code=500,
+                detail="Database column missing: Please execute '014_add_resolution_fields.sql' in Supabase SQL Editor to add the 'resolution_reason' column."
+            )
+        raise HTTPException(status_code=500, detail=err_str)
+
+
+def _generate_and_store_employee_report(grievance_id: str):
+    """Background task: generate employee PDF and save URL to grievances table."""
+    try:
+        res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
+        if not res.data:
+            return
+        grievance = res.data
+        pdf_bytes = generate_employee_report(grievance)
+        # Store in Supabase Storage bucket 'grievance-reports'
+        file_path = f"employee/{grievance_id}.pdf"
+        supabase.storage.from_("grievance-reports").upload(
+            file_path, pdf_bytes,
+            file_options={"content-type": "application/pdf", "upsert": "true"}
+        )
+        public_url = supabase.storage.from_("grievance-reports").get_public_url(file_path)
+        supabase.table("grievances").update({"report_url": public_url}).eq("grievance_id", grievance_id).execute()
+        logging.info("Employee report generated for grievance %s", grievance_id)
+    except Exception as err:
+        logging.error("Failed to generate employee report for %s: %s", grievance_id, err)
+
+
+# ── REPORT DOWNLOAD ENDPOINTS ─────────────────────────────────────────────
+
+@app.get("/api/grievances/{grievance_id}/report")
+async def download_employee_report(grievance_id: str, user: dict = Depends(get_current_user)):
+    """Employee downloads their own grievance resolution report."""
+    try:
+        res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Grievance not found")
+        grievance = res.data
+
+        # Security: only the complainant can download their own report
+        if grievance.get("user_id") != user["user_id"]:
+            raise HTTPException(status_code=403, detail="Not authorised to access this report")
+
+        if grievance.get("status") not in ("Resolved", "Rejected", "Closed"):
+            raise HTTPException(status_code=400, detail="Report is only available after the grievance is resolved or rejected")
+
+        pdf_bytes = generate_employee_report(grievance)
+        short_id = grievance_id[:8].upper()
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="grievance_report_{short_id}.pdf"'}
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/grievances/{grievance_id}/escalate")
+async def manual_escalate_grievance(
+    grievance_id: str,
+    request: EscalateGrievanceRequest,
+    user: dict = Depends(require_admin)
+):
+    """Manually escalate a grievance to the next tier in the escalation chain."""
+    try:
+        from datetime import datetime
+        now = datetime.now()
+
+        res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Grievance not found")
+        grievance = res.data
+
+        current_tier = grievance.get("assigned_tier") or "L1"
+        department = grievance.get("department") or grievance.get("category") or "General"
+
+        # Department scope check (super_admin can escalate any)
+        user_role = user.get("role")
+        user_dept = user.get("department")
+        if user_role != "super_admin" and user_dept and department.strip().lower() != user_dept.strip().lower():
+            raise HTTPException(status_code=403, detail="Not authorized to escalate grievances in other departments")
+
+        if current_tier == "HEAD":
+            raise HTTPException(status_code=400, detail="Grievance is already at the highest tier (HEAD)")
+
+        route_update = escalate(current_tier, department)
+        if not route_update:
+            raise HTTPException(status_code=400, detail=f"Cannot escalate from tier {current_tier}")
+
+        next_tier = route_update["assigned_tier"]
+        history = list(grievance.get("escalation_history") or [])
+        user_tier = user.get("admin_tier") or user.get("role") or "Admin"
+        user_email = user.get("email") or "Admin"
+
+        escalation_event = {
+            "from_tier": current_tier,
+            "to_tier": next_tier,
+            "tier": user_tier,
+            "handler": user_email,
+            "reason": request.reason or "Manual Escalation",
+            "notes": request.notes or "",
+            "action": f"Escalated from {current_tier} to {next_tier}",
+            "escalated_at": now.isoformat(),
+            "timestamp": now.isoformat(),
+        }
+        history.append(escalation_event)
+
+        update_data = {
+            "assigned_tier": route_update["assigned_tier"],
+            "assigned_queue": route_update["assigned_queue"],
+            "sla_hours": route_update["sla_hours"],
+            "sla_deadline": route_update["sla_deadline"].isoformat(),
+            "escalation_history": history,
+            "updated_at": now.isoformat(),
+        }
+
+        result = supabase.table("grievances").update(update_data).eq("grievance_id", grievance_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update grievance escalation")
+
+        return {
+            "message": f"Successfully escalated grievance to {next_tier}",
+            "grievance": result.data[0]
+        }
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/grievances/{grievance_id}/report")
+async def download_admin_report(grievance_id: str, user: dict = Depends(require_admin)):
+    """Admin downloads full case/admin report for a grievance.
+    Accessible to:
+    - super_admin (all tickets)
+    - HEAD admin of the department
+    - Current assigned tier admin or higher (e.g. L2 admin when ticket is at L2 or L1)
+    """
+    try:
+        user_tier = user.get("admin_tier")
+        user_role = user.get("role")
+        user_dept = user.get("department")
+
+        res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Grievance not found")
+        grievance = res.data
+
+        # Department scope check (super_admin bypasses)
+        if user_role != "super_admin":
+            grievance_dept = grievance.get("department") or grievance.get("category")
+            if user_dept and grievance_dept and user_dept.strip().lower() != grievance_dept.strip().lower():
+                raise HTTPException(status_code=403, detail="You can only generate reports for your department's grievances")
+
+            # Tier hierarchy check: HEAD can generate all; L1/L2/L3 can generate if their tier is >= assigned_tier
+            TIER_RANK = {"L1": 1, "L2": 2, "L3": 3, "HEAD": 4}
+            # Department heads or admins without explicit sub-tier default to HEAD
+            effective_tier = user_tier if user_tier in TIER_RANK else "HEAD"
+            user_rank = TIER_RANK.get(effective_tier, 4)
+            ticket_rank = TIER_RANK.get(grievance.get("assigned_tier"), 1)
+
+            if effective_tier != "HEAD" and user_rank < ticket_rank:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Admin tier {effective_tier} is not authorized to generate report for ticket at {grievance.get('assigned_tier')}. Requires current level ({grievance.get('assigned_tier')}) or higher."
+                )
+
+        pdf_bytes = generate_admin_report(grievance)
+        short_id = grievance_id[:8].upper()
+        return StreamingResponse(
+            io.BytesIO(pdf_bytes),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="admin_report_{short_id}.pdf"'}
+        )
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e

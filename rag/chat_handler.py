@@ -273,7 +273,7 @@ Response:
     # RAG RESPONSE
     # =========================
     if rag_sources:
-        source_text = "\n\n📄 Sources:\n"
+        source_text = "\n\nSources:\n"
         for s in rag_sources:
             source_text += f"- {s['source']} (p.{s['page']})\n"
         response = rag_answer + source_text
@@ -531,7 +531,7 @@ Response:
 
     else:
         if rag_sources:
-            source_text = "\n\n📚 Sources:\n"
+            source_text = "\n\nSources:\n"
             for s in rag_sources:
                 source_text += f"- {s['source']} (page {s['page']})\n"
 

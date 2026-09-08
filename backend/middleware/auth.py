@@ -39,12 +39,12 @@ async def get_current_user(request: Request) -> dict:
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Token verification failed: {str(e)}")
         
-    # Fetch role from users table
-    result = supabase.table("users").select("role, department, name") \
+    # Fetch role and admin tier from users table
+    result = supabase.table("users").select("role, department, name, admin_tier") \
         .eq("user_id", user_id).execute()
     
     # Allow users who authenticated but aren't in `users` table yet
-    user_data = result.data[0] if result.data else {"role": "user", "department": None, "name": None}
+    user_data = result.data[0] if result.data else {"role": "user", "department": None, "name": None, "admin_tier": None}
     
     return {
         "user_id": user_id, 

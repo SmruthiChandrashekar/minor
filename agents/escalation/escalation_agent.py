@@ -180,7 +180,7 @@ class EscalationAgent:
             elif severity_lower == "critical":
                 email_ok = self.notifier.send_email(
                     recipient=admin_email,
-                    subject=f"🚨 [CRITICAL ALERT] Urgent {category} Grievance",
+                    subject=f"[CRITICAL ALERT] Urgent {category} Grievance",
                     body=self._format_message(complaint, category, severity, admin_name, metadata),
                 )
                 if email_ok:

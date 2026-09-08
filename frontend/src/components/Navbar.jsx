@@ -26,7 +26,7 @@ function Navbar() {
 
         {/* LOGO */}
         <Link className="navbar-brand d-flex align-items-center text-decoration-none" to="/">
-          <img src="/purvankaraimg.png" alt="Puravankara" style={{ height: "55px", objectFit: "contain", marginRight: "6px" }} />
+          <img src="/purvankaraimg.png" alt="Puravankara" className="navbar-brand-logo" style={{ height: "55px", objectFit: "contain", marginRight: "6px" }} />
           <span style={{ color: "#c4122f", fontWeight: "800", fontSize: "1.6rem", letterSpacing: "1px", fontFamily: "Arial Black, sans-serif" }}>GRM</span>
         </Link>
 
@@ -35,26 +35,56 @@ function Navbar() {
 
           <Link 
             to="/assistant" 
-            className="me-4 text-decoration-none d-flex align-items-center gap-1"
+            className="me-4 text-decoration-none d-flex align-items-center gap-2"
             style={{ 
-              color: location.pathname === '/assistant' ? '#001a4d' : 'var(--text-color)',
+              color: location.pathname === '/assistant' ? 'var(--brand-navy)' : 'var(--text-color)',
               fontWeight: location.pathname === '/assistant' ? '700' : '600',
               opacity: location.pathname === '/assistant' ? 1 : 0.85,
               transition: 'all 0.2s',
               fontSize: '14.5px'
             }}
           >
-            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style={{ marginRight: '2px' }}>
-              <path d="M6 12.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5ZM3 8.062C3 6.76 4.235 5.765 5.53 5.886a26.58 26.58 0 0 0 4.94 0C11.765 5.765 13 6.76 13 8.062v1.157a.933.933 0 0 1-.765.935c-.845.147-2.34.346-4.235.346-1.895 0-3.39-.2-4.235-.346A.933.933 0 0 1 3 9.219V8.062Zm4.542-.827a.25.25 0 0 0-.217.068l-.92.9a24.767 24.767 0 0 1-1.871-.183.25.25 0 0 0-.068.495c.55.076 1.232.149 2.02.193a.25.25 0 0 0 .189-.071l.754-.736.847 1.71a.25.25 0 0 0 .404.062l.932-.97a25.286 25.286 0 0 0 1.922-.188.25.25 0 0 0-.068-.495c-.538.074-1.207.145-1.98.189a.25.25 0 0 0-.166.076l-.754.785-.842-1.7a.25.25 0 0 0-.182-.135Z"/>
-              <path d="M8.5 1.866a1 1 0 1 0-1 0V3h-2A4.5 4.5 0 0 0 1 7.5V8a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1v-.5A4.5 4.5 0 0 0 10.5 3h-2V1.866ZM14 7.5V13a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7.5A3.5 3.5 0 0 1 5.5 4h5A3.5 3.5 0 0 1 14 7.5Z"/>
-            </svg>
-            {t('policyAssistant') || "AI Assistant"}
+            {/* Purva mini avatar */}
+            <span className="purva-nav-avatar" style={{
+              display: 'inline-flex',
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              flexShrink: 0,
+              border: location.pathname === '/assistant' ? '1.5px solid #a78bfa' : '1.5px solid rgba(167, 139, 250, 0.4)',
+              boxShadow: location.pathname === '/assistant' ? '0 0 8px rgba(167, 139, 250, 0.5)' : 'none',
+              transition: 'all 0.2s',
+            }}>
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                <circle cx="32" cy="32" r="32" fill="url(#navBg)"/>
+                <rect x="26" y="40" width="12" height="8" rx="4" fill="#f4c2a1"/>
+                <ellipse cx="32" cy="56" rx="18" ry="12" fill="url(#navShirt)"/>
+                <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
+                <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
+                <path d="M19 27 Q17 36 20 40 Q19 32 21 28Z" fill="#5c3d2e"/>
+                <path d="M45 27 Q47 36 44 40 Q45 32 43 28Z" fill="#5c3d2e"/>
+                <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+                <defs>
+                  <radialGradient id="navBg" cx="50%" cy="35%" r="55%">
+                    <stop offset="0%" stopColor="#2d2d4a"/>
+                    <stop offset="100%" stopColor="#18181c"/>
+                  </radialGradient>
+                  <linearGradient id="navShirt" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6"/>
+                    <stop offset="100%" stopColor="#6d28d9"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+            <span>Purva</span>
             <span style={{ 
               display: 'inline-block',
               width: '6px', height: '6px', 
               borderRadius: '50%', 
               background: '#22c55e',
-              marginLeft: '2px',
               animation: 'pa-pulse-dot 2s ease-in-out infinite'
             }}></span>
           </Link>
@@ -127,18 +157,18 @@ function Navbar() {
                     src={userDetails.avatar_url}
                     alt={userDetails.name || "Admin"}
                     className="rounded-circle me-2 shadow-sm"
-                    style={{ width: "34px", height: "34px", objectFit: "cover", border: "2px solid #001a4d" }}
+                    style={{ width: "34px", height: "34px", objectFit: "cover", border: "2px solid var(--brand-navy)" }}
                   />
                 ) : (
                   <div
                     className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
-                    style={{ width: "34px", height: "34px", backgroundColor: "#001a4d", fontWeight: "bold" }}
+                    style={{ width: "34px", height: "34px", backgroundColor: "var(--brand-navy)", fontWeight: "bold" }}
                   >
                     {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "A"}
                   </div>
                 )}
-                <span style={{ fontSize: "14px", color: "#6c757d" }}>
-                  <span style={{ color: "#001a4d", fontWeight: "bold" }}>{userDetails?.name || "Admin"}</span>
+                <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>
+                  <span style={{ color: "var(--heading-color)", fontWeight: "bold" }}>{userDetails?.name || "Admin"}</span>
                 </span>
               </Link>
               <button onClick={handleAdminLogout} className="btn btn-outline-danger px-3 fw-semibold" style={{ fontSize: "14px" }}>
@@ -169,8 +199,8 @@ function Navbar() {
                     {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
                   </div>
                 )}
-                <span style={{ fontSize: "15px", color: "#6c757d" }}>
-                  <i style={{ opacity: 0.8 }}>{t("hi")}</i> <span style={{ color: "#00838f", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>{userDetails?.name || "User"}</span>
+                <span style={{ fontSize: "15px", color: "var(--text-muted)" }}>
+                  <i style={{ opacity: 0.8 }}>{t("hi")}</i> <span style={{ color: "var(--heading-color)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>{userDetails?.name || "User"}</span>
                 </span>
               </Link>
               <button onClick={handleLogout} className="btn btn-danger">

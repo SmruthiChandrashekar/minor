@@ -13,6 +13,7 @@ function Track() {
   const [error, setError] = useState("");
   const [isTracking, setIsTracking] = useState(false);
   const [trackedData, setTrackedData] = useState(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
 
   const fetchComplaint = async (rawId) => {
     const cleanedId = (rawId || "").trim();
@@ -78,6 +79,8 @@ function Track() {
           sla_deadline: data.sla_deadline,
           initial_handler: data.initial_handler,
           assigned_to: data.assigned_to,
+          resolution_reason: data.resolution_reason,
+          report_url: data.report_url,
           date: new Date(data.created_at).toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "short",
@@ -101,6 +104,31 @@ function Track() {
       fetchComplaint(incomingId);
     }
   }, [location.state]);
+
+  const handleDownloadReport = async () => {
+    setDownloadingReport(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { API_BASE_URL } = await import('../services/supabaseClient');
+      const res = await fetch(
+        `${API_BASE_URL}/api/grievances/${trackedData.id}/report`,
+        { headers: { Authorization: `Bearer ${session?.access_token}` } }
+      );
+      if (!res.ok) throw new Error("Could not download report");
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `grievance_report_${trackedData.id.substring(0, 8).toUpperCase()}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to download report: " + err.message);
+    } finally {
+      setDownloadingReport(false);
+    }
+  };
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -440,6 +468,29 @@ function Track() {
                       </p>
                     </div>
                   )}
+                  {/* Resolution Reason Box — shown when resolved or rejected */}
+                  {(trackedData.status === "Resolved" || trackedData.status === "Rejected") && trackedData.resolution_reason && (
+                    <div className="col-12 mt-2">
+                      <span
+                        className="text-muted d-block fw-semibold mb-1"
+                        style={{ fontSize: "11px", letterSpacing: "1px" }}
+                      >
+                        {trackedData.status === "Resolved" ? "RESOLUTION SUMMARY" : "REASON FOR REJECTION"}
+                      </span>
+                      <div
+                        className="p-3 rounded-3"
+                        style={{
+                          backgroundColor: trackedData.status === "Resolved" ? "#e8f5e9" : "#fce4ec",
+                          borderLeft: `4px solid ${trackedData.status === "Resolved" ? "#2e7d32" : "#c62828"}`,
+                          fontSize: "14px",
+                          lineHeight: "1.6",
+                          color: trackedData.status === "Resolved" ? "#1b5e20" : "#7f1d1d",
+                        }}
+                      >
+                        {trackedData.resolution_reason}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -451,6 +502,33 @@ function Track() {
                 >
                   {t("trackAnother")}
                 </button>
+
+                {/* Download Report button — only for logged-in users on resolved/rejected tickets */}
+                {user && (trackedData.status === "Resolved" || trackedData.status === "Rejected") && (
+                  <button
+                    onClick={handleDownloadReport}
+                    disabled={downloadingReport}
+                    className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm d-flex align-items-center justify-content-center gap-2"
+                    style={{
+                      background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
+                      borderRadius: "8px",
+                      border: "none",
+                    }}
+                  >
+                    {downloadingReport ? (
+                      <><span className="spinner-border spinner-border-sm" /> Generating...</>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                          <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                        </svg>
+                        Download Your Report
+                      </>
+                    )}
+                  </button>
+                )}
+
                 <button
                   onClick={() => navigate("/lodge-selection")}
                   className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm"

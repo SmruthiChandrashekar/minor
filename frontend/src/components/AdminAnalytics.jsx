@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, BarChart, Bar, Legend
+  PieChart, Pie, Cell, Legend
 } from "recharts";
 import { apiClient } from "../services/api";
+import { ThemeContext } from "../context/ThemeContext";
 
 const AdminAnalytics = ({ adminDepartment }) => {
+  const { theme } = useContext(ThemeContext);
+  const isDark = theme === "dark";
+
   const [trends, setTrends] = useState([]);
   const [metrics, setMetrics] = useState({ avg_resolution_time: 0 });
   const [insights, setInsights] = useState({ top_categories: [], high_severity: 0, status_distribution: {} });
   
   // Filters
   const [severity, setSeverity] = useState("");
-  
   const [filteredCount, setFilteredCount] = useState(0);
 
   // Fetch Dashboard Data
@@ -42,7 +45,10 @@ const AdminAnalytics = ({ adminDepartment }) => {
     fetchDashboardData();
   }, [adminDepartment, severity]);
 
-  const COLORS = ["#0c7cd5", "#f59e0b", "#2e7d32", "#c62828"];
+  const COLORS = isDark
+    ? ["#e4e4e7", "#fbbf24", "#34d399", "#f87171"]
+    : ["#0c7cd5", "#f59e0b", "#2e7d32", "#c62828"];
+
   const statusData = Object.keys(insights.status_distribution).map(key => ({
     name: key.charAt(0).toUpperCase() + key.slice(1),
     value: insights.status_distribution[key]
@@ -51,11 +57,14 @@ const AdminAnalytics = ({ adminDepartment }) => {
   return (
     <div className="mb-5">
       {/* Filters */}
-      <div className="card shadow-sm border-0 mb-4 p-3 bg-white" style={{ borderRadius: "12px" }}>
+      <div className="card shadow-sm border-0 mb-4 p-3" style={{ borderRadius: "12px" }}>
         <div className="row g-3 align-items-center">
           <div className="col-auto">
-            <span className="fw-bold" style={{ color: "#001a4d" }}>
-              <h5 className="mb-0 ms-2"><i className="bi bi-graph-up text-primary me-2"></i>{adminDepartment ? `${adminDepartment} Analytics` : 'Overall Analytics'}</h5>
+            <span className="fw-bold" style={{ color: "var(--heading-color)" }}>
+              <h5 className="mb-0 ms-2">
+                <i className="bi bi-graph-up me-2" style={{ color: isDark ? "#e4e4e7" : "var(--brand-blue)" }}></i>
+                {adminDepartment ? `${adminDepartment} Analytics` : 'Overall Analytics'}
+              </h5>
             </span>
           </div>
           <div className="col-md-3">
@@ -76,9 +85,9 @@ const AdminAnalytics = ({ adminDepartment }) => {
       {/* KPI Cards */}
       <div className="row g-3 mb-4 row-cols-2 row-cols-md-5">
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #001a4d" }}>
+          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#e4e4e7" : "#001a4d"}` }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Total Grievances</div>
-            <h3 className="fw-bold mb-0" style={{ color: "#001a4d" }}>{filteredCount}</h3>
+            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#fafafa" : "#001a4d" }}>{filteredCount}</h3>
           </div>
         </div>
         <div className="col">
@@ -88,24 +97,24 @@ const AdminAnalytics = ({ adminDepartment }) => {
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #2e7d32" }}>
+          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#34d399" : "#2e7d32"}` }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>User Satisfaction</div>
-            <h3 className="fw-bold mb-0" style={{ color: "#2e7d32" }}>
+            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#34d399" : "#2e7d32" }}>
               {metrics.avg_satisfaction ? `${metrics.avg_satisfaction} / 5` : "N/A"}
               {metrics.avg_satisfaction && <span className="text-warning ms-2" style={{ fontSize: "1.5rem", lineHeight: "1" }}>★</span>}
             </h3>
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #c62828" }}>
+          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#f87171" : "#c62828"}` }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>High/Critical Risk</div>
-            <h3 className="fw-bold mb-0" style={{ color: "#c62828" }}>{insights.high_severity}</h3>
+            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#f87171" : "#c62828" }}>{insights.high_severity}</h3>
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #0c7cd5" }}>
+          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#a1a1aa" : "#0c7cd5"}` }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Pending Cases</div>
-            <h3 className="fw-bold mb-0" style={{ color: "#0c7cd5" }}>
+            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#d4d4d8" : "#0c7cd5" }}>
               {(insights.status_distribution.open || 0) + (insights.status_distribution.investigating || 0)}
             </h3>
           </div>
@@ -116,15 +125,24 @@ const AdminAnalytics = ({ adminDepartment }) => {
       <div className="row g-3">
         <div className="col-md-8">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h6 className="fw-bold mb-3" style={{ color: "#001a4d" }}>Complaint Volume Trends</h6>
+            <h6 className="fw-bold mb-3" style={{ color: "var(--heading-color)" }}>Complaint Volume Trends</h6>
             <div style={{ height: "250px", width: "100%" }}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trends}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                  <XAxis dataKey="date" tick={{fontSize: 12}} />
-                  <YAxis tick={{fontSize: 12}} allowDecimals={false} />
-                  <RechartsTooltip />
-                  <Line type="monotone" dataKey="count" stroke="#001a4d" strokeWidth={3} dot={{r: 4}} activeDot={{r: 6}} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0"} />
+                  <XAxis dataKey="date" tick={{ fontSize: 12, fill: isDark ? "#a1a1aa" : "#64748b" }} stroke={isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"} />
+                  <YAxis tick={{ fontSize: 12, fill: isDark ? "#a1a1aa" : "#64748b" }} stroke={isDark ? "rgba(255,255,255,0.12)" : "#cbd5e1"} allowDecimals={false} />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? "#121215" : "#ffffff",
+                      borderColor: isDark ? "rgba(255,255,255,0.12)" : "#e2e8f0",
+                      color: isDark ? "#fafafa" : "#0f172a",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.35)"
+                    }}
+                    itemStyle={{ color: isDark ? "#fafafa" : "#0f172a" }}
+                  />
+                  <Line type="monotone" dataKey="count" stroke={isDark ? "#e4e4e7" : "#001a4d"} strokeWidth={3} dot={{ r: 4, fill: isDark ? "#fafafa" : "#001a4d" }} activeDot={{ r: 6 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -132,7 +150,7 @@ const AdminAnalytics = ({ adminDepartment }) => {
         </div>
         <div className="col-md-4">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h6 className="fw-bold mb-3" style={{ color: "#001a4d" }}>Status Distribution</h6>
+            <h6 className="fw-bold mb-3" style={{ color: "var(--heading-color)" }}>Status Distribution</h6>
             <div style={{ height: "200px", width: "100%" }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -149,8 +167,17 @@ const AdminAnalytics = ({ adminDepartment }) => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <RechartsTooltip />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{fontSize: "12px"}} />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: isDark ? "#121215" : "#ffffff",
+                      borderColor: isDark ? "rgba(255,255,255,0.12)" : "#e2e8f0",
+                      color: isDark ? "#fafafa" : "#0f172a",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.35)"
+                    }}
+                    itemStyle={{ color: isDark ? "#fafafa" : "#0f172a" }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: "12px", color: isDark ? "#a1a1aa" : "#64748b" }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

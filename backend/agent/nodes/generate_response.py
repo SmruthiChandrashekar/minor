@@ -58,7 +58,7 @@ def generate_response_node(state: GrievanceState) -> dict:
             source_name = s.get("source", "Policy")
             page = s.get("page", "")
             source_parts.append(f"{source_name} (p.{page})")
-        source_citations = "\n\n📄 Sources: " + ", ".join(source_parts)
+        source_citations = "\n\nSources: " + ", ".join(source_parts)
 
     # If RAG returned a good answer, use it with conversational wrapping
     if policy_answer and "do not provide sufficient information" not in policy_answer.lower():

@@ -98,12 +98,17 @@ def check_and_escalate():
                             grievance_id[:8], next_tier)
                 continue
 
-            # Record escalation event
+            # Record escalation event with clear automated reason and notes
             escalation_event = {
                 "from_tier": current_tier,
                 "to_tier": next_tier,
+                "tier": "System",
+                "handler": "SLA Monitor (Automated)",
+                "action": f"Auto-escalated from {current_tier} to {next_tier}",
                 "reason": "SLA_BREACH",
+                "notes": f"SLA deadline expired without resolution. Automatically escalated to {next_tier} queue ({route_update['sla_hours']}h SLA).",
                 "escalated_at": now.isoformat(),
+                "timestamp": now.isoformat(),
             }
             history.append(escalation_event)
 

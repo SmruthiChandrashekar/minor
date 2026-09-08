@@ -317,12 +317,53 @@ function PolicyAssistant() {
                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
               </button>
             )}
-            <div className="pa-topbar-avatar">
-              <img src="/assistant_logo.png" alt="AI" />
+            <div className="purva-avatar-topbar">
+              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="purva-avatar-svg">
+                {/* Glowing ring */}
+                <circle cx="32" cy="32" r="30" stroke="url(#purvaGlow)" strokeWidth="2" fill="none" opacity="0.7"/>
+                {/* Background circle */}
+                <circle cx="32" cy="32" r="28" fill="url(#purvaGradBg)"/>
+                {/* Neck */}
+                <rect x="26" y="40" width="12" height="8" rx="4" fill="#f4c2a1"/>
+                {/* Body / shoulders */}
+                <ellipse cx="32" cy="56" rx="18" ry="12" fill="url(#purvaShirt)"/>
+                {/* Head */}
+                <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
+                {/* Hair */}
+                <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
+                <path d="M19 27 Q17 36 20 40 Q19 32 21 28Z" fill="#5c3d2e"/>
+                <path d="M45 27 Q47 36 44 40 Q45 32 43 28Z" fill="#5c3d2e"/>
+                {/* Eyes */}
+                <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                {/* Eye shine */}
+                <circle cx="28" cy="27" r="0.7" fill="#fff"/>
+                <circle cx="38" cy="27" r="0.7" fill="#fff"/>
+                {/* Smile */}
+                <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+                {/* Cheeks */}
+                <ellipse cx="22" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
+                <ellipse cx="42" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
+                <defs>
+                  <radialGradient id="purvaGradBg" cx="50%" cy="35%" r="50%">
+                    <stop offset="0%" stopColor="#1e1e30"/>
+                    <stop offset="100%" stopColor="#12121e"/>
+                  </radialGradient>
+                  <linearGradient id="purvaShirt" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1"/>
+                    <stop offset="100%" stopColor="#4f46e5"/>
+                  </linearGradient>
+                  <linearGradient id="purvaGlow" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#a78bfa"/>
+                    <stop offset="50%" stopColor="#f472b6"/>
+                    <stop offset="100%" stopColor="#a78bfa"/>
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
             <div>
-              <h5 className="mb-0 fw-bold pa-topbar-title">{t('chatbotTitle') || 'Policy Assistant'}</h5>
-              <small className="pa-topbar-subtitle">RAG-Powered Grievance Intelligence</small>
+              <h5 className="mb-0 fw-bold pa-topbar-title">Purva</h5>
+              <small className="pa-topbar-subtitle">Your AI Grievance Companion</small>
             </div>
           </div>
           <div className="d-flex align-items-center gap-2">
@@ -337,11 +378,42 @@ function PolicyAssistant() {
           {/* Welcome / empty state */}
           {messages.length <= 1 && (
             <div className="pa-welcome">
-              <div className="pa-welcome-icon">
-                <img src="/assistant_logo.png" alt="Policy Assistant" style={{ width: "64px", height: "64px", borderRadius: "50%", objectFit: "cover" }} />
+              <div className="purva-welcome-avatar">
+                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="purva-welcome-svg">
+                  <circle cx="50" cy="50" r="47" stroke="url(#purvaWelcomeGlow)" strokeWidth="2.5" fill="none"/>
+                  <circle cx="50" cy="50" r="44" fill="url(#purvaWelcomeBg)"/>
+                  <rect x="39" y="62" width="22" height="14" rx="7" fill="#f4c2a1"/>
+                  <ellipse cx="50" cy="86" rx="28" ry="18" fill="url(#purvaWelcomeShirt)"/>
+                  <circle cx="50" cy="44" r="22" fill="#f4c2a1"/>
+                  <path d="M28 42 Q28 22 50 20 Q72 22 72 42 Q70 28 50 27 Q30 28 28 42Z" fill="#5c3d2e"/>
+                  <path d="M28 43 Q25 56 30 63 Q28 52 31 46Z" fill="#5c3d2e"/>
+                  <path d="M72 43 Q75 56 70 63 Q72 52 69 46Z" fill="#5c3d2e"/>
+                  <ellipse cx="42" cy="44" rx="3.5" ry="4" fill="#3d2b1f"/>
+                  <ellipse cx="58" cy="44" rx="3.5" ry="4" fill="#3d2b1f"/>
+                  <circle cx="44" cy="42" r="1.2" fill="#fff"/>
+                  <circle cx="60" cy="42" r="1.2" fill="#fff"/>
+                  <path d="M42 52 Q50 58 58 52" stroke="#c87941" strokeWidth="2" fill="none" strokeLinecap="round"/>
+                  <ellipse cx="35" cy="48" rx="5" ry="3.5" fill="#f9a8a8" opacity="0.45"/>
+                  <ellipse cx="65" cy="48" rx="5" ry="3.5" fill="#f9a8a8" opacity="0.45"/>
+                  <defs>
+                    <radialGradient id="purvaWelcomeBg" cx="50%" cy="35%" r="55%">
+                      <stop offset="0%" stopColor="#2d2d4a"/>
+                      <stop offset="100%" stopColor="#18181c"/>
+                    </radialGradient>
+                    <linearGradient id="purvaWelcomeShirt" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8b5cf6"/>
+                      <stop offset="100%" stopColor="#6d28d9"/>
+                    </linearGradient>
+                    <linearGradient id="purvaWelcomeGlow" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#a78bfa"/>
+                      <stop offset="50%" stopColor="#f472b6"/>
+                      <stop offset="100%" stopColor="#a78bfa"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
-              <h4 className="fw-bold mb-2">How can I help you today?</h4>
-              <p className="text-muted mb-4">Ask me anything about company policies, grievance procedures, POSH compliance, or how to file a complaint.</p>
+              <h4 className="fw-bold mb-2">Hi, I'm <span style={{ background: 'linear-gradient(135deg, #a78bfa, #f472b6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Purva</span></h4>
+              <p className="text-muted mb-4">Your AI companion for company policies, grievance procedures, POSH compliance, and filing complaints — I'm here to help!</p>
               <div className="pa-prompts-grid">
                 {suggestedPrompts.map((prompt, idx) => (
                   <button
@@ -360,13 +432,36 @@ function PolicyAssistant() {
           {messages.map((msg) => (
             <div key={msg.id} className={`pa-msg-row ${msg.isBot ? 'bot' : 'user'}`}>
               {msg.isBot && (
-                <div className="pa-msg-avatar">
-                  <img src="/assistant_logo.png" alt="AI" />
+                <div className="pa-msg-avatar purva-msg-avatar">
+                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                    <circle cx="32" cy="32" r="30" fill="url(#pMsgBg)" />
+                    <rect x="26" y="40" width="12" height="7" rx="3.5" fill="#f4c2a1"/>
+                    <ellipse cx="32" cy="54" rx="16" ry="10" fill="url(#pMsgShirt)"/>
+                    <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
+                    <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
+                    <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                    <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                    <circle cx="28" cy="27" r="0.7" fill="#fff"/>
+                    <circle cx="38" cy="27" r="0.7" fill="#fff"/>
+                    <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+                    <ellipse cx="22" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
+                    <ellipse cx="42" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
+                    <defs>
+                      <radialGradient id="pMsgBg" cx="50%" cy="35%" r="55%">
+                        <stop offset="0%" stopColor="#2d2d4a"/>
+                        <stop offset="100%" stopColor="#18181c"/>
+                      </radialGradient>
+                      <linearGradient id="pMsgShirt" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8b5cf6"/>
+                        <stop offset="100%" stopColor="#6d28d9"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
                 </div>
               )}
               <div className={`pa-msg-bubble ${msg.isBot ? 'bot' : 'user'}`}>
                 {msg.isGreeting ? (
-                  t('chatbotGreeting') || "Hi! I'm the AI Policy Assistant. How can I help you today?"
+                  t('chatbotGreeting') || "Hi! I'm Purva, your AI Grievance Companion. How can I help you today?"
                 ) : msg.isBot ? (
                   <>
                     <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
@@ -380,7 +475,7 @@ function PolicyAssistant() {
                     {msg.severity === 'low' && !msg.isGreeting && (
                       <div className="pa-routing-badge low">
                         <span className="pa-routing-dot"></span>
-                        <span>Policy Assistant</span>
+                        <span>Purva</span>
                       </div>
                     )}
 
@@ -425,9 +520,10 @@ function PolicyAssistant() {
                             fontSize: '13px'
                           }}
                           onClick={() => {
+                            const stripEmojis = (str) => str ? str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, '').replace(/\s+/g, ' ').trim() : '';
                             navigate(getLodgeRoute(), {
                               state: {
-                                description: msg.original_query || msg.text,
+                                description: stripEmojis(msg.original_query || ""),
                                 department: msg.department || ''
                               }
                             });
@@ -462,9 +558,10 @@ function PolicyAssistant() {
                           className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
                           style={{ padding: '6px 14px', fontSize: '12.5px' }}
                           onClick={() => {
+                            const stripEmojis = (str) => str ? str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, '').replace(/\s+/g, ' ').trim() : '';
                             navigate(getLodgeRoute(), {
                               state: {
-                                description: msg.original_query || msg.text,
+                                description: stripEmojis(msg.original_query || ""),
                                 department: msg.department || ''
                               }
                             });
@@ -486,8 +583,29 @@ function PolicyAssistant() {
           {/* Typing indicator */}
           {isTyping && (
             <div className="pa-msg-row bot">
-              <div className="pa-msg-avatar">
-                <img src="/assistant_logo.png" alt="AI" />
+              <div className="pa-msg-avatar purva-msg-avatar">
+                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
+                  <circle cx="32" cy="32" r="30" fill="url(#pTypBg)" />
+                  <rect x="26" y="40" width="12" height="7" rx="3.5" fill="#f4c2a1"/>
+                  <ellipse cx="32" cy="54" rx="16" ry="10" fill="url(#pTypShirt)"/>
+                  <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
+                  <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
+                  <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                  <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
+                  <circle cx="28" cy="27" r="0.7" fill="#fff"/>
+                  <circle cx="38" cy="27" r="0.7" fill="#fff"/>
+                  <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
+                  <defs>
+                    <radialGradient id="pTypBg" cx="50%" cy="35%" r="55%">
+                      <stop offset="0%" stopColor="#2d2d4a"/>
+                      <stop offset="100%" stopColor="#18181c"/>
+                    </radialGradient>
+                    <linearGradient id="pTypShirt" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8b5cf6"/>
+                      <stop offset="100%" stopColor="#6d28d9"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
               <div className="pa-msg-bubble bot pa-typing">
                 <span className="pa-dot"></span>
