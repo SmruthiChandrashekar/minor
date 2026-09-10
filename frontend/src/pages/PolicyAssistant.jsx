@@ -535,7 +535,7 @@ function PolicyAssistant() {
               )}
               <div className={`pa-msg-bubble ${msg.isBot ? 'bot' : 'user'}`}>
                 {msg.isGreeting ? (
-                  t('chatbotGreeting') || "Hi! I'm Purva, your AI Grievance Companion. How can I help you today?"
+                  t('chatbotGreeting') || `Hi${userDetails?.name ? ` ${userDetails.name.split(' ')[0]}` : ''}! I'm Purva, your AI Grievance Companion. How can I help you today?`
                 ) : msg.isBot ? (
                   <>
                     <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />

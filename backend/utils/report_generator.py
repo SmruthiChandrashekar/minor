@@ -8,6 +8,7 @@ Two variants:
 """
 
 import io
+import html
 from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -18,6 +19,21 @@ from reportlab.platypus import (
     HRFlowable, KeepTogether
 )
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
+
+def _safe_text(val, preserve_newlines: bool = True) -> str:
+    """Safely escape text for ReportLab XML parser and convert newlines to <br/>."""
+    if val is None or str(val).strip() == "":
+        return "—"
+    escaped = html.escape(str(val))
+    if preserve_newlines:
+        return escaped.replace("\n", "<br/>")
+    return escaped
+
+
+def _safe_p(val, style, preserve_newlines: bool = True) -> Paragraph:
+    """Create a ReportLab Paragraph with safely escaped text."""
+    return Paragraph(_safe_text(val, preserve_newlines), style)
 
 
 # ── Puravankara brand colours ───────────────────────────────────────────────
@@ -160,9 +176,9 @@ def _two_col_row(label1, val1, label2, val2, styles, col_widths=None):
     col_widths = col_widths or [3.5*cm, 5*cm, 3.5*cm, 5*cm]
     row = Table([[
         Paragraph(label1, styles["label"]),
-        Paragraph(str(val1 or "—"), styles["value"]),
+        _safe_p(val1, styles["value"], preserve_newlines=False),
         Paragraph(label2, styles["label"]),
-        Paragraph(str(val2 or "—"), styles["value"]),
+        _safe_p(val2, styles["value"], preserve_newlines=False),
     ]], colWidths=col_widths)
     row.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
@@ -269,7 +285,7 @@ def generate_employee_report(grievance: dict) -> bytes:
     story.append(Paragraph("Complaint Summary", styles["section_heading"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=GREY_BORDER, spaceAfter=6))
     story.append(_two_col_row(
-        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:5].upper()}",
+        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:8].upper()}",
         "Date Filed",   _fmt_date(grievance.get("created_at")),
         styles
     ))
@@ -287,7 +303,7 @@ def generate_employee_report(grievance: dict) -> bytes:
 
     if grievance.get("description"):
         story.append(Paragraph("Your Complaint", styles["label"]))
-        story.append(_box([Paragraph(grievance["description"], styles["body"])]))
+        story.append(_box([_safe_p(grievance["description"], styles["body"])]))
         story.append(Spacer(1, 0.3 * cm))
 
     # ── Section 2: Resolution ────────────────────────────────────────────
@@ -298,7 +314,7 @@ def generate_employee_report(grievance: dict) -> bytes:
     action_label = "Resolution Summary" if status == "Resolved" else "Reason for Rejection"
     story.append(Paragraph(action_label, styles["label"]))
     reason_bg = colors.HexColor("#e8f5e9") if status == "Resolved" else colors.HexColor("#fce4ec")
-    story.append(_box([Paragraph(reason, styles["body"])], bg=reason_bg))
+    story.append(_box([_safe_p(reason, styles["body"])], bg=reason_bg))
     story.append(Spacer(1, 0.3 * cm))
 
     # ── Section 3: Relevant Policy Reference ────────────────────────────
@@ -309,10 +325,10 @@ def generate_employee_report(grievance: dict) -> bytes:
         policy_name = rag.get("policy_name") or rag.get("source") or "HR Policy"
         summary     = rag.get("summary") or rag.get("recommendation") or ""
         policy_items = [
-            Paragraph(f"Policy: {policy_name}", styles["policy_box"]),
+            Paragraph(f"Policy: {_safe_text(policy_name, False)}", styles["policy_box"]),
         ]
         if summary:
-            policy_items.append(Paragraph(summary[:500], styles["policy_box"]))
+            policy_items.append(_safe_p(summary[:500], styles["policy_box"]))
         story.append(_box(policy_items, bg=colors.HexColor("#e3f2fd")))
         story.append(Spacer(1, 0.3 * cm))
 
@@ -377,7 +393,7 @@ def generate_admin_report(grievance: dict) -> bytes:
     story.append(Paragraph("Complaint Details", styles["section_heading"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=GREY_BORDER, spaceAfter=6))
     story.append(_two_col_row(
-        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:5].upper()}",
+        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:8].upper()}",
         "Date Filed",   _fmt_date(grievance.get("created_at")),
         styles
     ))
@@ -394,7 +410,7 @@ def generate_admin_report(grievance: dict) -> bytes:
     story.append(Spacer(1, 0.2 * cm))
     if grievance.get("description"):
         story.append(Paragraph("Description", styles["label"]))
-        story.append(_box([Paragraph(grievance["description"], styles["body"])]))
+        story.append(_box([_safe_p(grievance["description"], styles["body"])]))
         story.append(Spacer(1, 0.3 * cm))
 
     # ── Section 3: SLA Analysis ───────────────────────────────────────────
@@ -409,7 +425,7 @@ def generate_admin_report(grievance: dict) -> bytes:
         styles
     ))
     story.append(Paragraph("SLA Status", styles["label"]))
-    story.append(_box([Paragraph(sla_label, styles["body"])], bg=sla_bg))
+    story.append(_box([_safe_p(sla_label, styles["body"])], bg=sla_bg))
     story.append(_two_col_row(
         "Filed At",         _fmt_date(grievance.get("created_at")),
         "Last Updated At",  _fmt_date(grievance.get("updated_at")),
@@ -434,19 +450,26 @@ def generate_admin_report(grievance: dict) -> bytes:
             tier_handler = entry.get("tier") or entry.get("handler")
             if not tier_handler:
                 if entry.get("from_tier") or entry.get("to_tier"):
-                    tier_handler = f"{entry.get('from_tier', '?')} → {entry.get('to_tier', '?')}"
+                    tier_handler = f"{_safe_text(entry.get('from_tier'), False)} → {_safe_text(entry.get('to_tier'), False)}"
                 else:
                     tier_handler = "System"
             elif entry.get("handler") and entry.get("tier") and entry.get("handler") != entry.get("tier"):
-                tier_handler = f"[{entry.get('tier')}]<br/>{entry.get('handler')}"
+                tier_handler = f"[{_safe_text(entry.get('tier'), False)}]<br/>{_safe_text(entry.get('handler'), False)}"
+            else:
+                tier_handler = _safe_text(tier_handler, False)
 
-            action_text = entry.get("action") or (
-                f"Auto-escalated: SLA Breach ({entry.get('from_tier', '')} → {entry.get('to_tier', '')})"
-                if entry.get("reason") == "SLA_BREACH"
-                else (f"Escalated ({entry.get('reason')})" if entry.get("reason") else "Action logged")
-            )
+            if entry.get("reason") == "SLA_BREACH":
+                action_text = f"Auto-escalated: SLA Breach ({_safe_text(entry.get('from_tier', ''), False)} → {_safe_text(entry.get('to_tier', ''), False)})"
+            elif entry.get("action"):
+                action_text = _safe_text(entry.get("action"), False)
+            elif entry.get("reason"):
+                action_text = f"Escalated ({_safe_text(entry.get('reason'), False)})"
+            else:
+                action_text = "Action logged"
+
             if entry.get("notes"):
-                action_text += f"<br/><font color='#4b5563' size='7'><i>Note: {entry.get('notes')}</i></font>"
+                safe_notes = _safe_text(entry.get("notes"))
+                action_text += f"<br/><font color='#4b5563' size='7'><i>Note: {safe_notes}</i></font>"
 
             ts = _fmt_date(entry.get("timestamp") or entry.get("escalated_at") or entry.get("at"))
             esc_rows.append([
@@ -479,12 +502,12 @@ def generate_admin_report(grievance: dict) -> bytes:
         action_label = "Resolution Remarks" if status == "Resolved" else "Rejection Reason"
         reason_bg = colors.HexColor("#e8f5e9") if status == "Resolved" else colors.HexColor("#fce4ec")
         story.append(Paragraph(action_label, styles["label"]))
-        story.append(_box([Paragraph(reason, styles["body"])], bg=reason_bg))
+        story.append(_box([_safe_p(reason, styles["body"])], bg=reason_bg))
     else:
         story.append(Paragraph("Active Case Status", styles["label"]))
         story.append(_box([
             Paragraph(
-                f"This grievance is actively <b>{status}</b> and assigned to tier <b>{grievance.get('assigned_tier', 'L1')}</b>.<br/>"
+                f"This grievance is actively <b>{_safe_text(status, False)}</b> and assigned to tier <b>{_safe_text(grievance.get('assigned_tier', 'L1'), False)}</b>.<br/>"
                 "Review the Escalation & Action History above to inspect actions taken by prior tier handlers.",
                 styles["body"]
             )
@@ -501,11 +524,11 @@ def generate_admin_report(grievance: dict) -> bytes:
         match_bg    = colors.HexColor("#e3f2fd") if has_match else GREY_LIGHT
         policy_items = [
             Paragraph(match_label, styles["policy_box"]),
-            Paragraph(f"Policy: {rag.get('policy_name') or rag.get('source') or '—'}", styles["policy_box"]),
+            Paragraph(f"Policy: {_safe_text(rag.get('policy_name') or rag.get('source') or '—', False)}", styles["policy_box"]),
         ]
         summary = rag.get("summary") or rag.get("recommendation") or ""
         if summary:
-            policy_items.append(Paragraph(summary[:800], styles["policy_box"]))
+            policy_items.append(_safe_p(summary[:800], styles["policy_box"]))
         story.append(_box(policy_items, bg=match_bg))
         story.append(Spacer(1, 0.3 * cm))
 

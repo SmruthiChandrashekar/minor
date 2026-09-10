@@ -461,7 +461,7 @@ ${ragRecommendation.compliance_notes || ""}`;
     const hoursLeft = (deadline - now) / 3600000;
     if (hoursLeft < 0) {
       return {
-        label: 'Breached',
+        label: 'Escalated',
         color: isDark ? '#fda4af' : '#b91c1c',
         bg: isDark ? 'rgba(244, 63, 94, 0.16)' : '#fef2f2',
         border: isDark ? 'rgba(244, 63, 94, 0.3)' : '#fecaca',

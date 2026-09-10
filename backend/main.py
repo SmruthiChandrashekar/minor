@@ -81,6 +81,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 # --- RAG INITIALIZATION ---
@@ -525,6 +526,32 @@ async def get_audit_logs(user: dict = Depends(require_super_admin)):
     try:
         result = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(100).execute()
         return result.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/dept-category-distribution")
+async def get_dept_category_distribution(user: dict = Depends(require_super_admin)):
+    """Returns grievance counts grouped by department and category for the Super Admin pie chart."""
+    try:
+        result = supabase.table("grievances").select("department, category").execute()
+        data = result.data or []
+
+        # Aggregate: { department: { category: count } }
+        dept_map: dict = {}
+        for row in data:
+            dept = row.get("department") or "Unknown"
+            cat = row.get("category") or "Other"
+            if dept not in dept_map:
+                dept_map[dept] = {}
+            dept_map[dept][cat] = dept_map[dept].get(cat, 0) + 1
+
+        # Flatten for chart: [ { department, category, count } ]
+        flat = []
+        for dept, cats in dept_map.items():
+            for cat, count in cats.items():
+                flat.append({"department": dept, "category": cat, "count": count})
+
+        return flat
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1002,8 +1029,12 @@ async def download_employee_report(grievance_id: str, user: dict = Depends(get_c
             raise HTTPException(status_code=404, detail="Grievance not found")
         grievance = res.data
 
-        # Security: only the complainant can download their own report
-        if grievance.get("user_id") != user["user_id"]:
+        # Security check: owner, anonymous submission with tracking access, or staff/admin
+        is_owner = bool(grievance.get("user_id")) and grievance.get("user_id") == user.get("user_id")
+        is_anonymous = bool(grievance.get("is_anonymous")) or not grievance.get("user_id")
+        is_staff_or_admin = user.get("role") in ("admin", "super_admin", "hr", "safety", "compliance", "crm", "csd", "esg", "investors", "ic") or bool(user.get("admin_tier"))
+
+        if not is_owner and not is_anonymous and not is_staff_or_admin:
             raise HTTPException(status_code=403, detail="Not authorised to access this report")
 
         if grievance.get("status") not in ("Resolved", "Rejected", "Closed"):

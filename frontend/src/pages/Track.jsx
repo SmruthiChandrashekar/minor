@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { supabase } from "../services/supabaseClient";
 import { useAuth } from "../context/AuthProvider";
+import { apiClient } from "../services/api";
 
 function Track() {
   const navigate = useNavigate();
@@ -121,13 +122,15 @@ function Track() {
   const handleDownloadReport = async () => {
     setDownloadingReport(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { API_BASE_URL } = await import('../services/supabaseClient');
-      const res = await fetch(
-        `${API_BASE_URL}/api/grievances/${trackedData.id}/report`,
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
-      );
-      if (!res.ok) throw new Error("Could not download report");
+      const res = await apiClient(`/api/grievances/${trackedData.id}/report`);
+      if (!res.ok) {
+        let errMsg = "Could not download report";
+        try {
+          const errData = await res.json();
+          if (errData.detail) errMsg = errData.detail;
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
