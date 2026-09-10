@@ -209,56 +209,23 @@ def _generate_rag_recommendations_async(grievance_id: str, user_message: str, de
 
 def department_route_node(state: GrievanceState) -> dict:
     """
-    Unified department routing node.
+    Unified department routing node (classification only — NO DB insert).
 
-    1. Determines tier/SLA using determine_initial_route()
-    2. Finds the admin for this department
-    3. Creates the grievance record in Supabase
-    4. Sends email notification to admin (HIGH severity)
-    5. Creates in-app notifications for admins
-    6. Attaches RAG policy recommendations for HIGH severity / policy tickets
-    7. Returns a confirmation response
+    This node classifies the complaint and returns routing metadata so the
+    frontend can prompt the user to fill the formal grievance form.
+    The actual grievance record is created only when the form is submitted
+    via the /submit-complaint endpoint.
 
     Used by all 6 department nodes (dept_hr, dept_ic, dept_crm, etc.).
     """
     department = state.get("department", "CRM")
     department_reason = state.get("department_reason", "")
-    user_message = state.get("user_message", "")
     severity = state.get("severity", "HIGH")
-    severity_reason = state.get("severity_reason", "")
 
-    # Determine routing based on severity
+    # Determine routing based on severity (tier, SLA, queue — no DB write)
     route_info = determine_initial_route(severity, department)
 
-    grievance_id = None
-    assigned_to_name = None
-
-    try:
-        supabase = _get_supabase()
-
-        # Find admin for the department
-        admin = _find_admin(supabase, department)
-        assigned_to_name = admin["name"] if admin else None
-
-        # Create grievance record with tier/SLA fields
-        grievance_id = _create_grievance(supabase, user_message, department, severity, admin, route_info)
-
-        # Send email notifications (HIGH severity only)
-        if admin and grievance_id and severity.upper() == "HIGH":
-            _send_notifications(admin, department, user_message, grievance_id)
-
-        # Create in-app notifications
-        if grievance_id:
-            _create_in_app_notifications(grievance_id, department, severity, route_info)
-
-        # Trigger RAG recommendations for Medium/High/Critical tickets or policy departments
-        if grievance_id and (severity.upper() in ["MEDIUM", "HIGH", "CRITICAL"] or department in ["IC", "HR", "Whistleblower", "Compliance", "Safety"]):
-            _generate_rag_recommendations_async(grievance_id, user_message, department, severity)
-
-    except Exception as e:
-        logger.error("Department routing failed: %s", e)
-
-    # Build response
+    # Build response — classification info only, no tracking ID
     tier = route_info.get("assigned_tier")
     if tier == "HEAD":
         routing_level_label = "Level 4 (Executive Head Review)"
@@ -272,55 +239,45 @@ def department_route_node(state: GrievanceState) -> dict:
         routing_level_label = "Standard Review"
 
     response_parts = [
-        f"Your grievance has been classified as **{severity.upper()} severity** and successfully registered.",
+        f"Your concern has been classified as **{severity.upper()} severity**.",
         f"\n**Department**: {department}",
         f"**Routing Level**: {routing_level_label}",
     ]
 
-    if grievance_id:
-        response_parts.append(f"**Tracking ID**: {str(grievance_id)[:5]}")
-
     if route_info.get("assigned_queue"):
         response_parts.append(f"**Assigned Queue**: {route_info['assigned_queue']}")
-
-    if assigned_to_name:
-        response_parts.append(f"**Assigned Officer**: {assigned_to_name}")
 
     if route_info.get("sla_hours"):
         response_parts.append(f"**Target SLA**: {route_info['sla_hours']} hours")
 
     response_parts.append(
-        "\nA representative from the department will review your concern and follow up with you. "
-        "You can track the live status anytime using the Tracking ID above on the Track page."
+        "\nPlease fill out the formal grievance form to officially lodge your complaint. "
+        "Once submitted, you will receive a Tracking ID to monitor the live status on the Track page."
     )
 
     response = "\n".join(response_parts)
 
     logger.info(
-        "═══ DEPARTMENT ROUTING ═══\n"
+        "═══ DEPARTMENT CLASSIFICATION (pending form) ═══\n"
         "  Department: %s\n"
         "  Severity: %s\n"
         "  Tier: %s\n"
         "  Queue: %s\n"
         "  SLA: %s hours\n"
-        "  Grievance ID: %s\n"
-        "  Assigned To: %s\n"
         "  Reason: %s",
         department,
         severity,
         route_info["assigned_tier"] or "N/A",
         route_info["assigned_queue"] or "N/A",
         route_info["sla_hours"] or "N/A",
-        grievance_id or "N/A",
-        assigned_to_name or "Unassigned",
         department_reason,
     )
 
     return {
         "response": response,
         "routed": True,
-        "grievance_id": grievance_id or "",
-        "assigned_to": assigned_to_name or "",
+        "grievance_id": "",
+        "assigned_to": "",
         "initial_handler": route_info["initial_handler"],
         "assigned_tier": route_info["assigned_tier"] or "",
         "assigned_queue": route_info["assigned_queue"] or "",

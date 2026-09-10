@@ -212,7 +212,7 @@ function PolicyAssistant() {
     if (!currentSessionId && user) {
       try {
         const sessRes = await apiClient("/api/chat/session", { method: "POST", body: JSON.stringify({}) });
-        if (sessRes.ok) { const ns = await sessRes.json(); currentSessionId = ns.id; setSessionId(currentSessionId); loadAllSessions(); }
+        if (sessRes.ok) { const ns = await sessRes.json(); currentSessionId = ns.id; setSessionId(currentSessionId); }
       } catch (err) { console.error("Failed to create session", err); }
     }
 
