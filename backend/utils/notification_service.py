@@ -131,6 +131,17 @@ def notify_user_reopened(user_id: str, grievance_id: str):
     )
 
 
+def notify_user_status_changed(user_id: str, grievance_id: str, status: str, reason: str = ""):
+    """Notify user of any general status update with the admin's remarks/reason."""
+    short_reason = f": {reason[:120]}..." if len(reason) > 120 else (f": {reason}" if reason else ".")
+    create_notification(
+        user_id=user_id,
+        ticket_id=grievance_id,
+        notification_type="STATUS_UPDATED",
+        message=f"Your grievance GR-{grievance_id[:8]} status has been updated to '{status}'{short_reason}",
+    )
+
+
 # ── Admin Notifications ──────────────────────────────────────────────
 
 def _get_department_admin_ids(department: str, target_tier: str = None) -> list[str]:

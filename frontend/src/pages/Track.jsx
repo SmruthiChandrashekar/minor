@@ -16,7 +16,7 @@ function Track() {
   const [downloadingReport, setDownloadingReport] = useState(false);
 
   const fetchComplaint = async (rawId) => {
-    const cleanedId = (rawId || "").trim();
+    const cleanedId = (rawId || "").trim().replace(/^GR-?/i, "");
     if (!cleanedId) {
       setError("Tracking ID is required");
       return;
@@ -42,23 +42,34 @@ function Track() {
         data = result.data;
         fetchError = result.error;
       } else {
-        const result = await supabase
+        // Try direct ILIKE prefix search first
+        const prefixRes = await supabase
           .from("grievances")
           .select("*")
-          .order("created_at", { ascending: false })
-          .limit(100);
+          .ilike("grievance_id", `${cleanedId}%`)
+          .limit(1);
 
-        if (result.data) {
-          const match = result.data.find((g) =>
-            g.grievance_id.toLowerCase().startsWith(cleanedId.toLowerCase())
-          );
-          if (match) {
-            data = match;
-          } else {
-            fetchError = { message: "Not found" };
-          }
+        if (prefixRes.data && prefixRes.data.length > 0) {
+          data = prefixRes.data[0];
         } else {
-          fetchError = result.error || { message: "Not found" };
+          const result = await supabase
+            .from("grievances")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(100);
+
+          if (result.data) {
+            const match = result.data.find((g) =>
+              g.grievance_id.toLowerCase().startsWith(cleanedId.toLowerCase())
+            );
+            if (match) {
+              data = match;
+            } else {
+              fetchError = { message: "Not found" };
+            }
+          } else {
+            fetchError = result.error || { message: "Not found" };
+          }
         }
       }
 
@@ -98,12 +109,14 @@ function Track() {
   };
 
   useEffect(() => {
-    if (location.state?.trackingId) {
-      const incomingId = location.state.trackingId;
+    const searchParams = new URLSearchParams(location.search);
+    const queryId = searchParams.get("id") || searchParams.get("trackingId");
+    const incomingId = location.state?.trackingId || queryId;
+    if (incomingId) {
       setTrackingId(incomingId);
       fetchComplaint(incomingId);
     }
-  }, [location.state]);
+  }, [location.state, location.search]);
 
   const handleDownloadReport = async () => {
     setDownloadingReport(true);
@@ -468,23 +481,43 @@ function Track() {
                       </p>
                     </div>
                   )}
-                  {/* Resolution Reason Box — shown when resolved or rejected */}
-                  {(trackedData.status === "Resolved" || trackedData.status === "Rejected") && trackedData.resolution_reason && (
+                  {/* Status remarks / resolution reason */}
+                  {trackedData.resolution_reason && (
                     <div className="col-12 mt-2">
                       <span
                         className="text-muted d-block fw-semibold mb-1"
                         style={{ fontSize: "11px", letterSpacing: "1px" }}
                       >
-                        {trackedData.status === "Resolved" ? "RESOLUTION SUMMARY" : "REASON FOR REJECTION"}
+                        {trackedData.status === "Resolved"
+                          ? "RESOLUTION SUMMARY"
+                          : trackedData.status === "Rejected"
+                          ? "REASON FOR REJECTION"
+                          : "LATEST STATUS REMARKS / REASON"}
                       </span>
                       <div
                         className="p-3 rounded-3"
                         style={{
-                          backgroundColor: trackedData.status === "Resolved" ? "#e8f5e9" : "#fce4ec",
-                          borderLeft: `4px solid ${trackedData.status === "Resolved" ? "#2e7d32" : "#c62828"}`,
+                          backgroundColor:
+                            trackedData.status === "Resolved"
+                              ? "#e8f5e9"
+                              : trackedData.status === "Rejected"
+                              ? "#fce4ec"
+                              : "#eff6ff",
+                          borderLeft: `4px solid ${
+                            trackedData.status === "Resolved"
+                              ? "#2e7d32"
+                              : trackedData.status === "Rejected"
+                              ? "#c62828"
+                              : "#2563eb"
+                          }`,
                           fontSize: "14px",
                           lineHeight: "1.6",
-                          color: trackedData.status === "Resolved" ? "#1b5e20" : "#7f1d1d",
+                          color:
+                            trackedData.status === "Resolved"
+                              ? "#1b5e20"
+                              : trackedData.status === "Rejected"
+                              ? "#7f1d1d"
+                              : "#1e3a8a",
                         }}
                       >
                         {trackedData.resolution_reason}

@@ -119,14 +119,16 @@ const AdminDashboard = () => {
 
   // --- STATUS UPDATE ---
   const handleStatusChange = async (grievanceId, newStatus) => {
-    // For Resolved/Rejected: show modal to collect reason first
-    if (newStatus === "Resolved" || newStatus === "Rejected") {
-      setPendingStatusChange({ grievanceId, newStatus });
-      setResolutionReason("");
-      return;
-    }
-    // For other statuses: update directly via API
-    await _submitStatusUpdate(grievanceId, newStatus, null);
+    const ticket = grievances.find((g) => g.grievance_id === grievanceId) || selectedTicket;
+    if (ticket && ticket.status === newStatus) return;
+
+    // Prompt for reason on EVERY status change across all admin levels
+    setPendingStatusChange({
+      grievanceId,
+      newStatus,
+      currentStatus: ticket?.status || "Open",
+    });
+    setResolutionReason("");
   };
 
   const _submitStatusUpdate = async (grievanceId, newStatus, reason) => {
@@ -164,6 +166,65 @@ const AdminDashboard = () => {
     } finally {
       setUpdatingId(null);
       setSubmittingStatus(false);
+    }
+  };
+
+  const getStatusModalConfig = (status) => {
+    switch (status) {
+      case "Resolved":
+        return {
+          title: "✓ Resolve Grievance",
+          gradient: "linear-gradient(135deg, #15803d, #16a34a)",
+          label: "Resolution Summary & Actions Taken",
+          placeholder: "Describe the actions and resolution steps taken for this grievance...",
+          btnText: "Confirm Resolution",
+          description: "Please provide a comprehensive resolution summary. This will be recorded in the audit trail and sent to the complainant.",
+        };
+      case "Rejected":
+        return {
+          title: "✗ Reject Grievance",
+          gradient: "linear-gradient(135deg, #b91c1c, #dc2626)",
+          label: "Reason for Rejection",
+          placeholder: "Explain clearly why this grievance cannot be accepted or is invalid...",
+          btnText: "Confirm Rejection",
+          description: "Please specify the official justification for rejecting this grievance.",
+        };
+      case "Investigating":
+        return {
+          title: "Move to Investigating",
+          gradient: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+          label: "Reason / Investigation Scope",
+          placeholder: "Describe what is being inspected, tested, or investigated...",
+          btnText: "Update to Investigating",
+          description: "Record the reason and operational scope for moving this ticket into active investigation.",
+        };
+      case "HUMAN_HANDLING":
+        return {
+          title: "Assign to Human Handling",
+          gradient: "linear-gradient(135deg, #581c87, #7c3aed)",
+          label: "Reason for Human Review",
+          placeholder: "Detail why manual intervention or departmental review is required...",
+          btnText: "Update to Human Handling",
+          description: "Provide the reason for transferring this grievance to manual human handling.",
+        };
+      case "Open":
+        return {
+          title: "Reopen / Set to Pending",
+          gradient: "linear-gradient(135deg, #c2410c, #ea580c)",
+          label: "Reason for Reopening / Pending State",
+          placeholder: "Explain why this ticket is being reopened or set back to pending...",
+          btnText: "Update Status",
+          description: "Record the rationale for reverting this ticket back to Open / Pending status.",
+        };
+      default:
+        return {
+          title: `Update Status: ${status}`,
+          gradient: "linear-gradient(135deg, #001a4d, #003366)",
+          label: "Reason for Status Change",
+          placeholder: `State the reason for changing status to ${status}...`,
+          btnText: "Confirm Status Change",
+          description: `Please provide the reason for changing the grievance status to ${status}.`,
+        };
     }
   };
 
@@ -802,17 +863,29 @@ ${ragRecommendation.compliance_notes || ""}`;
                       {selectedTicket.description}
                     </div>
 
-                    {/* Resolution reason if closed */}
+                    {/* Resolution reason or latest status remarks */}
                     {selectedTicket.resolution_reason && (
                       <div style={{ marginTop: "16px" }}>
                         <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.8px", marginBottom: "8px" }}>
-                          {selectedTicket.status === "Resolved" ? "RESOLUTION" : "REJECTION REASON"}
+                          {selectedTicket.status === "Resolved"
+                            ? "RESOLUTION SUMMARY"
+                            : selectedTicket.status === "Rejected"
+                            ? "REJECTION REASON"
+                            : "LATEST STATUS NOTE / REMARKS"}
                         </div>
                         <div style={{
                           background: selectedTicket.status === "Resolved"
                             ? (isDark ? "rgba(34, 197, 94, 0.12)" : "#f0fdf4")
-                            : (isDark ? "rgba(239, 68, 68, 0.12)" : "#fff1f2"),
-                          borderLeft: `3px solid ${selectedTicket.status === "Resolved" ? "#22c55e" : "#f43f5e"}`,
+                            : selectedTicket.status === "Rejected"
+                            ? (isDark ? "rgba(239, 68, 68, 0.12)" : "#fff1f2")
+                            : (isDark ? "rgba(59, 130, 246, 0.12)" : "#eff6ff"),
+                          borderLeft: `3px solid ${
+                            selectedTicket.status === "Resolved"
+                              ? "#22c55e"
+                              : selectedTicket.status === "Rejected"
+                              ? "#f43f5e"
+                              : "#3b82f6"
+                          }`,
                           borderRadius: "0 6px 6px 0",
                           padding: "12px 14px",
                           fontSize: "13px",
@@ -887,7 +960,6 @@ ${ragRecommendation.compliance_notes || ""}`;
                           disabled={updatingId === selectedTicket.grievance_id}
                           onChange={(e) => {
                             handleStatusChange(selectedTicket.grievance_id, e.target.value);
-                            setSelectedTicket(prev => ({ ...prev, status: e.target.value }));
                           }}
                           style={{ fontSize: "13px" }}
                         >
@@ -1342,80 +1414,97 @@ ${ragRecommendation.compliance_notes || ""}`;
           </div>
         </div>
       </div>
-      {/* RESOLUTION REASON MODAL */}
-      {pendingStatusChange && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      {/* STATUS CHANGE REASON MODAL (All Admin Levels) */}
+      {pendingStatusChange && (() => {
+        const cfg = getStatusModalConfig(pendingStatusChange.newStatus);
+        return (
+          <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.65)" }}>
+            <div className="modal-dialog modal-dialog-centered">
               <div
-                className="modal-header border-0 px-4 py-3 text-white"
+                className="modal-content border-0 shadow-lg rounded-4 overflow-hidden"
                 style={{
-                  background: pendingStatusChange.newStatus === "Resolved"
-                    ? "linear-gradient(135deg, #2e7d32, #388e3c)"
-                    : "linear-gradient(135deg, #c62828, #e53935)",
+                  backgroundColor: isDark ? "#18181b" : "#ffffff",
+                  color: isDark ? "#f4f4f5" : "#18181b",
+                  border: isDark ? "1px solid #27272a" : "none"
                 }}
               >
-                <h5 className="modal-title fw-bold mb-0">
-                  {pendingStatusChange.newStatus === "Resolved" ? "✓ Resolve Grievance" : "✗ Reject Grievance"}
-                </h5>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setPendingStatusChange(null)}
-                />
-              </div>
-              <div className="modal-body px-4 py-4">
-                <p className="text-muted mb-3" style={{ fontSize: "14px" }}>
-                  Please provide a reason for
-                  {pendingStatusChange.newStatus === "Resolved" ? " resolving" : " rejecting"} this grievance.
-                  This will appear in the employee's report.
-                </p>
-                <label className="form-label fw-semibold" style={{ fontSize: "13px" }}>
-                  {pendingStatusChange.newStatus === "Resolved" ? "Resolution Summary" : "Reason for Rejection"}
-                  <span className="text-danger ms-1">*</span>
-                </label>
-                <textarea
-                  className="form-control"
-                  rows={4}
-                  placeholder={`Describe the ${pendingStatusChange.newStatus === "Resolved" ? "resolution actions taken" : "reason for rejection"}...`}
-                  value={resolutionReason}
-                  onChange={(e) => setResolutionReason(e.target.value)}
-                  style={{ fontSize: "14px", resize: "vertical" }}
-                />
-                {!resolutionReason.trim() && (
-                  <small className="text-danger mt-1 d-block">This field is required.</small>
-                )}
-              </div>
-              <div className="modal-footer border-top-0 px-4 pb-4 pt-0 gap-2">
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary rounded-pill px-4"
-                  onClick={() => setPendingStatusChange(null)}
+                <div
+                  className="modal-header border-0 px-4 py-3 text-white"
+                  style={{ background: cfg.gradient }}
                 >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn rounded-pill px-4 fw-semibold text-white"
-                  disabled={!resolutionReason.trim() || submittingStatus}
-                  onClick={handleResolutionSubmit}
-                  style={{
-                    background: pendingStatusChange.newStatus === "Resolved"
-                      ? "linear-gradient(135deg, #2e7d32, #388e3c)"
-                      : "linear-gradient(135deg, #c62828, #e53935)",
-                  }}
-                >
-                  {submittingStatus ? (
-                    <><span className="spinner-border spinner-border-sm me-2" /> Submitting...</>
-                  ) : (
-                    pendingStatusChange.newStatus === "Resolved" ? "Confirm Resolution" : "Confirm Rejection"
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.8)", letterSpacing: "1px", textTransform: "uppercase" }}>
+                      Status Transition ({pendingStatusChange.currentStatus || "Current"} → {pendingStatusChange.newStatus})
+                    </div>
+                    <h5 className="modal-title fw-bold mb-0">
+                      {cfg.title}
+                    </h5>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setPendingStatusChange(null)}
+                  />
+                </div>
+                <div className="modal-body px-4 py-4">
+                  <p className="mb-3" style={{ fontSize: "13.5px", color: isDark ? "#a1a1aa" : "#64748b" }}>
+                    {cfg.description}
+                  </p>
+                  <label className="form-label fw-semibold" style={{ fontSize: "13px", color: isDark ? "#e4e4e7" : "#334155" }}>
+                    {cfg.label} <span className="text-danger ms-1">*</span>
+                  </label>
+                  <textarea
+                    className="form-control"
+                    rows={4}
+                    placeholder={cfg.placeholder}
+                    value={resolutionReason}
+                    onChange={(e) => setResolutionReason(e.target.value)}
+                    style={{
+                      fontSize: "14px",
+                      resize: "vertical",
+                      backgroundColor: isDark ? "#27272a" : "#ffffff",
+                      color: isDark ? "#f4f4f5" : "#18181b",
+                      borderColor: isDark ? "#3f3f46" : "#cbd5e1"
+                    }}
+                  />
+                  {!resolutionReason.trim() && (
+                    <small className="text-danger mt-1 d-block" style={{ fontSize: "12px" }}>
+                      A reason or justification is mandatory for changing the grievance status at all admin levels.
+                    </small>
                   )}
-                </button>
+                </div>
+                <div className="modal-footer border-top-0 px-4 pb-4 pt-0 gap-2">
+                  <button
+                    type="button"
+                    className="btn rounded-pill px-4"
+                    onClick={() => setPendingStatusChange(null)}
+                    style={{
+                      backgroundColor: isDark ? "#27272a" : "#f1f5f9",
+                      color: isDark ? "#e4e4e7" : "#475569",
+                      border: isDark ? "1px solid #3f3f46" : "1px solid #cbd5e1"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn rounded-pill px-4 fw-semibold text-white shadow-sm"
+                    disabled={!resolutionReason.trim() || submittingStatus}
+                    onClick={handleResolutionSubmit}
+                    style={{ background: cfg.gradient }}
+                  >
+                    {submittingStatus ? (
+                      <><span className="spinner-border spinner-border-sm me-2" /> Submitting...</>
+                    ) : (
+                      cfg.btnText
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MANUAL ESCALATION MODAL */}
       {escalatingTicket && (
