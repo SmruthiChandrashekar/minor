@@ -80,19 +80,23 @@ Your objective is to evaluate whether the user's statement provides enough concr
    Evaluate whether you have the basic operational facts (who, what, where, when) needed to categorize severity and investigate responsibly:
    - SUFFICIENT CONTEXT (context_sufficient = true):
      * The user provided concrete details (e.g. specific timings, project/wing/unit location, names, amounts, or a clear narrative of what occurred).
-     * OR the grievance is an acute, critical incident (such as sexual harassment, threats, physical danger, or bribery) where immediate formal escalation must occur.
+     * OR the grievance describes an acute, specific incident with actionable facts (e.g., "my manager touched me inappropriately at the team offsite", "sales executive demanded 50k cash bribe") where enough detail exists to escalate immediately.
      * OR the user has already answered a follow-up question in the conversation history.
    - INSUFFICIENT CONTEXT (context_sufficient = false):
-     * The user provided only a brief, high-level symptom or vague complaint without essential operational facts (e.g., expressing dissatisfaction or stating an issue in just a few words without location, timing, scope, or specific details).
+     * The user provided only a brief, high-level symptom, abstract phrase, or vague complaint without essential operational facts (e.g., "someone is harassing me", "facing harassment in office", "inappropriate behaviour", "water is leaking", "salary cut", "door broken").
      * Without more details, any severity rating or formal department routing would be a blind guess.
-     * In this case, formulate a friendly, empathetic clarifying question asking for the relevant missing details naturally.
+     * For sensitive matters like harassment or personal misconduct that lack context:
+       - Do NOT sound interrogative, bureaucratic, or demand proof/witnesses.
+       - Formulate a supportive, reassuring, and gentle clarifying question to understand basic context (such as whether it involves a colleague or manager, and whether it is workplace bullying or personal/sexual conduct), while reassuring the user of confidentiality.
+     * For operational or property complaints that lack context:
+       - Formulate a friendly, natural clarifying question asking for the missing details (e.g. location, timing).
 
 Respond with ONLY a JSON object:
 {
   "reason": "1-2 sentences evaluating context sufficiency",
   "intent": "QUERY" or "GRIEVANCE",
   "context_sufficient": true or false,
-  "clarification_question": "If context_sufficient is false, a natural, professional question asking for the missing details. If true, empty string."
+  "clarification_question": "If context_sufficient is false, a natural, professional question asking for missing details. If true, empty string."
 }"""
 
     prompt = f"""Conversation history:
@@ -102,30 +106,38 @@ Current user message: {user_message}
 
 Evaluate intent and context sufficiency. Respond ONLY with JSON."""
 
-    try:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=800,
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        text = response.choices[0].message.content.strip()
-        result = json.loads(text)
-        intent = result.get("intent", "QUERY").strip().upper()
-        context_sufficient = bool(result.get("context_sufficient", True))
-        clarification_question = result.get("clarification_question", "").strip()
-        reason = result.get("reason", "")
-    except Exception as e:
-        logger.error("Context sufficiency check failed: %s", e)
-        is_short = len(user_message.strip().split()) <= 6
-        intent = "GRIEVANCE"
-        context_sufficient = not is_short
-        clarification_question = "Could you please share a few more details so I can assist you accurately?" if not context_sufficient else ""
-        reason = f"Fallback: {e}"
+    import time
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=800,
+                temperature=0.0,
+                response_format={"type": "json_object"},
+            )
+            text = response.choices[0].message.content.strip()
+            result = json.loads(text)
+            intent = result.get("intent", "QUERY").strip().upper()
+            context_sufficient = bool(result.get("context_sufficient", True))
+            clarification_question = result.get("clarification_question", "").strip()
+            reason = result.get("reason", "")
+            break
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                logger.warning("Groq 429 rate limit hit, retrying in 5s (attempt %d)...", attempt + 1)
+                time.sleep(5)
+                continue
+            logger.error("Context sufficiency check failed: %s", e)
+            is_short = len(user_message.strip().split()) <= 6
+            intent = "GRIEVANCE"
+            context_sufficient = not is_short
+            clarification_question = "Could you please share a few more details so I can assist you accurately?" if not context_sufficient else ""
+            reason = f"Fallback: {e}"
+            break
 
     # Enforce: Queries are always context_sufficient = True
     if intent == "QUERY":

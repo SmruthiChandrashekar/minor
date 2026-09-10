@@ -47,6 +47,10 @@ Example:
 - "My manager repeatedly makes inappropriate sexual comments and has touched me without my consent. I want to report this formally."
 PRIORITY RULE:
 If sexual misconduct or POSH is involved, IC takes absolute priority over HR and all other departments regardless of employee seniority or operational disputes.
+STRICT EXCLUSIONS (NEVER IC):
+- IC handles ONLY sexual harassment complaints.
+- IC NEVER handles technical issues, login errors, employee portal issues, LMS (Learning Management System) access, training completion issues, HR processes, or general employee disputes.
+- Even if an employee mentions "mandatory training" or "compliance module", inability to log in, access the LMS, or complete training is an HR System issue (HR), NEVER IC!
 
 ### 2. HR — Human Resources
 Scope:
@@ -56,9 +60,10 @@ Types of complaints:
 - Payroll & Compensation: Incorrect salary, salary not credited, unexplained salary deductions, payroll discrepancies, compensation-related concerns.
 - Leave & Attendance: Leave rejection, incorrect leave balance, attendance discrepancies, weekly-off issues, shift-related concerns.
 - Employment: Probation confirmation, hiring-related complaints, termination concerns, transfer/department change, role/responsibility disputes, appraisal/performance concerns.
-- HR Systems/Processes: LMS issues, employee portal/access issues, HR records discrepancies, employee policy clarification.
-Example:
-- "My leave balance in the LMS is incorrect, and HR has not corrected it despite multiple requests."
+- HR Systems/Processes: LMS issues, inability to access LMS or complete mandatory/compliance training, employee portal/access issues, login failures, HR records discrepancies, employee policy clarification.
+Examples:
+- "I am unable to access the LMS and cannot complete the mandatory training assigned to me." -> HR
+- "My leave balance in the LMS is incorrect, and HR has not corrected it despite multiple requests." -> HR
 RULE:
 HR handles internal employees and employment relations, not homebuyers, residents, contractors' site laborers, or investors.
 
@@ -171,8 +176,9 @@ CRITICAL CROSS-DEPARTMENT BOUNDARY DISTINCTIONS
    * "I am a shareholder and am concerned about how project delays and cost overruns affect company earnings." -> Investors (Shareholder)
 
 6. IC vs HR:
-   - HR = General employment, non-sexual workplace bullying, shouting, performance, or leave issues.
+   - HR = General employment, non-sexual workplace bullying, shouting, performance, leave issues, LMS/portal access, login issues, mandatory training completion.
    - IC = Sexual harassment, sexual comments, unwanted touching, quid pro quo, or sexual intimidation.
+   * "I cannot access the LMS to complete my mandatory training." -> HR (STRICTLY HR, NOT IC)
    * "My manager is constantly shouting at me in meetings." -> HR
    * "My manager makes sexually suggestive remarks regarding my appearance." -> IC (IC takes priority)
 
@@ -180,8 +186,8 @@ CRITICAL CROSS-DEPARTMENT BOUNDARY DISTINCTIONS
 THE 6-QUESTION ROUTING TEST
 ==================================================
 Before selecting the department, run this 6-question test:
-1. Is sexual harassment or POSH involved?
-   -> IC (Takes absolute priority over HR and all others)
+1. Is an actual complaint of sexual harassment or POSH involved?
+   -> IC (STRICTLY for sexual harassment complaints. System access, LMS, login, or mandatory training issues are HR, NOT IC)
 2. Is this an internal employee / workplace issue (not POSH)?
    -> HR
 3. Is a customer asking about something promised, sold, charged, contracted, registered, or handed over?
@@ -222,39 +228,51 @@ def classify_department_node(state: GrievanceState) -> dict:
         content = msg.get("content", "")
         history_text += f"{role.upper()}: {content}\n"
 
-    prompt = f"""Conversation context:
+    prompt = f"""Conversation context (for reference only):
 {history_text}
 
-User's grievance / query: {user_message}
+User's current grievance / query to classify:
+{user_message}
+
+CRITICAL: Classify the department solely for the USER'S CURRENT GRIEVANCE above, NOT previous historical topics. If previous messages were about a different issue (e.g. earlier messages discussed harassment, but current message is about LMS, salary, or noise), route based strictly on the current grievance: HR for LMS/portal/mandatory training, ESG for noise/pollution, CSD for snags.
 
 Classify the department. Keep the reason concise (1-2 sentences). Respond ONLY with JSON: {{"department": "...", "policy_category": "...", "reason": "..."}}"""
 
-    try:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[
-                {"role": "system", "content": DEPARTMENT_ROUTING_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=800,
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        text = response.choices[0].message.content.strip()
-        result = json.loads(text)
-        department = result.get("department", "CRM")
-        reason = result.get("reason", "")
-        policy_category = result.get("policy_category", "No specific policy identified")
-    except json.JSONDecodeError as e:
-        logger.error("Failed to parse department JSON: %s", e)
-        department = "CRM"
-        reason = "Department parse error — defaulting to CRM"
-        policy_category = "No specific policy identified"
-    except Exception as e:
-        logger.error("Department classification LLM call failed: %s", e)
-        department = "CRM"
-        reason = f"Classification error: {str(e)}"
-        policy_category = "No specific policy identified"
+    import time
+    for attempt in range(3):
+        try:
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-120b",
+                messages=[
+                    {"role": "system", "content": DEPARTMENT_ROUTING_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=800,
+                temperature=0.0,
+                response_format={"type": "json_object"},
+            )
+            text = response.choices[0].message.content.strip()
+            result = json.loads(text)
+            department = result.get("department", "CRM")
+            reason = result.get("reason", "")
+            policy_category = result.get("policy_category", "No specific policy identified")
+            break
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse department JSON: %s", e)
+            department = "CRM"
+            reason = "Department parse error — defaulting to CRM"
+            policy_category = "No specific policy identified"
+            break
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                logger.warning("Groq 429 rate limit hit, retrying in 5s (attempt %d)...", attempt + 1)
+                time.sleep(5)
+                continue
+            logger.error("Department classification LLM call failed: %s", e)
+            department = "CRM"
+            reason = f"Classification error: {str(e)}"
+            policy_category = "No specific policy identified"
+            break
 
     # Validate against allowed departments (case-insensitive match)
     if department not in DEPARTMENTS:

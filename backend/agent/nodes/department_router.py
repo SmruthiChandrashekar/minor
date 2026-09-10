@@ -278,7 +278,7 @@ def department_route_node(state: GrievanceState) -> dict:
     ]
 
     if grievance_id:
-        response_parts.append(f"**Tracking ID**: {grievance_id}")
+        response_parts.append(f"**Tracking ID**: {str(grievance_id)[:5]}")
 
     if route_info.get("assigned_queue"):
         response_parts.append(f"**Assigned Queue**: {route_info['assigned_queue']}")

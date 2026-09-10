@@ -1187,6 +1187,12 @@ select.form-select {
   border: 1px solid rgba(220, 53, 69, 0.2);
 }
 
+.pa-routing-badge.medium {
+  background: rgba(217, 119, 6, 0.1);
+  color: #d97706;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+
 .pa-routing-badge.low {
   background: rgba(25, 135, 84, 0.08);
   color: #198754;

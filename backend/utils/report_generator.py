@@ -269,7 +269,7 @@ def generate_employee_report(grievance: dict) -> bytes:
     story.append(Paragraph("Complaint Summary", styles["section_heading"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=GREY_BORDER, spaceAfter=6))
     story.append(_two_col_row(
-        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:8].upper()}",
+        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:5].upper()}",
         "Date Filed",   _fmt_date(grievance.get("created_at")),
         styles
     ))
@@ -377,7 +377,7 @@ def generate_admin_report(grievance: dict) -> bytes:
     story.append(Paragraph("Complaint Details", styles["section_heading"]))
     story.append(HRFlowable(width="100%", thickness=0.5, color=GREY_BORDER, spaceAfter=6))
     story.append(_two_col_row(
-        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:8].upper()}",
+        "Tracking ID",  f"#{(grievance.get('grievance_id') or '')[:5].upper()}",
         "Date Filed",   _fmt_date(grievance.get("created_at")),
         styles
     ))

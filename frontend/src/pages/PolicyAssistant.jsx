@@ -44,6 +44,7 @@ function PolicyAssistant() {
   const timerRef = useRef(null);
   const shouldSendRef = useRef(true);
   const clearErrorRef = useRef(null);
+  const isSendingRef = useRef(false);
 
   const isSpeechSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
   const fmtTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -198,7 +199,14 @@ function PolicyAssistant() {
 
   // ── Send message (RAG) ─────────────────────────────────────────────────
   const handleSendMessage = async (text) => {
-    if (!text.trim()) return;
+    const trimmed = (text || '').trim();
+    if (!trimmed || isSendingRef.current || isTyping) return;
+
+    // Immediately acquire lock and update UI synchronously to prevent duplicate dispatches
+    isSendingRef.current = true;
+    setInputValue('');
+    setIsTyping(true);
+
     let currentSessionId = sessionId;
 
     if (!currentSessionId && user) {
@@ -208,22 +216,20 @@ function PolicyAssistant() {
       } catch (err) { console.error("Failed to create session", err); }
     }
 
-    const newUserMsg = { id: Date.now(), text, isBot: false };
+    const newUserMsg = { id: Date.now(), text: trimmed, isBot: false };
     setMessages(prev => [...prev, newUserMsg]);
-    setInputValue('');
-    setIsTyping(true);
 
     if (currentSessionId) {
       apiClient("/api/chat/message", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: currentSessionId, sender: "user", message: text })
+        body: JSON.stringify({ session_id: currentSessionId, sender: "user", message: trimmed })
       }).then(() => loadAllSessions());
     }
 
     try {
       const res = await apiClient("/api/agents/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, lang: langCode, session_id: currentSessionId || undefined }),
+        body: JSON.stringify({ message: trimmed, lang: langCode, session_id: currentSessionId || undefined }),
       });
       if (!res.ok) throw new Error("Backend error");
       const data = await res.json();
@@ -247,7 +253,7 @@ function PolicyAssistant() {
         source_type: data.source_type || 'GENERAL_KNOWLEDGE',
         policy_name: data.policy_name || '',
         intent: data.intent || 'QUERY',
-        original_query: text
+        original_query: trimmed
       };
       setMessages(prev => [...prev, botMsg]);
       if (currentSessionId) {
@@ -277,10 +283,20 @@ function PolicyAssistant() {
       }
     } catch {
       setMessages(prev => [...prev, { id: Date.now() + 1, text: "Sorry, I'm having trouble connecting to the policy engine. Please try again in a moment.", isBot: true }]);
-    } finally { setIsTyping(false); }
+    } finally {
+      setIsTyping(false);
+      isSendingRef.current = false;
+    }
   };
 
-  const handleKeyPress = (e) => { if (e.key === 'Enter') handleSendMessage(inputValue); };
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isTyping && !isSendingRef.current) {
+        handleSendMessage(inputValue);
+      }
+    }
+  };
 
   // ── Determine lodge route ──────────────────────────────────────────────
   const getLodgeRoute = () => {
@@ -524,10 +540,10 @@ function PolicyAssistant() {
                   <>
                     <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />
                     {msg.routed && msg.department && (
-                      <div className="pa-routing-badge high">
+                      <div className={`pa-routing-badge ${(msg.severity || 'high').toLowerCase() === 'medium' ? 'medium' : 'high'}`}>
                         <span className="pa-routing-dot"></span>
-                        <span>High Severity → Routed to <strong>{msg.department}</strong></span>
-                        {msg.grievance_id && <span className="pa-routing-id">ID: {String(msg.grievance_id).slice(0, 8)}</span>}
+                        <span>{((msg.severity || 'High').charAt(0).toUpperCase() + (msg.severity || 'high').slice(1).toLowerCase())} Severity → Routed to <strong>{msg.department}</strong></span>
+                        {msg.grievance_id && <span className="pa-routing-id">ID: {String(msg.grievance_id).slice(0, 5)}</span>}
                       </div>
                     )}
                     {msg.severity === 'low' && !msg.isGreeting && (
@@ -744,7 +760,7 @@ function PolicyAssistant() {
                 placeholder={isTranscribing ? "Transcribing audio..." : (t('chatbotPlaceholder') || "Type your question about policies...")}
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyDown}
                 disabled={isTyping || isTranscribing}
               />
               <button

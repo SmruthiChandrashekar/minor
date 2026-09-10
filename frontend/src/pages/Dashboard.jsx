@@ -257,7 +257,7 @@ function Dashboard() {
                   <tbody>
                     {(translating ? grievances : translatedGrievances).map((g) => (
                       <tr key={g.grievance_id}>
-                        <td className="fw-bold" style={{ color: "var(--text-color)" }}>#{g.grievance_id.substring(0, 8)}</td>
+                        <td className="fw-bold" style={{ color: "var(--text-color)" }}>#{g.grievance_id.substring(0, 5)}</td>
                         <td style={{ color: "var(--text-color)" }}>{g.category}</td>
                         <td>
                           <span 

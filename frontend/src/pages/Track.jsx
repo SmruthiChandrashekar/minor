@@ -345,7 +345,7 @@ function Track() {
                 </div>
                 <h3 className="fw-bold mb-1" style={{ color: "#001a4d" }}>{t("complaintStatus")}</h3>
                 <p className="text-muted mb-0">
-                  {t("trackingDetailsFor")} <strong>#{trackedData.id.substring(0, 8)}</strong>
+                  {t("trackingDetailsFor")} <strong>#{trackedData.id.substring(0, 5)}</strong>
                 </p>
               </div>
 
@@ -394,7 +394,7 @@ function Track() {
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
                       {t("trackingId").toUpperCase()}
                     </span>
-                    <span className="fw-bold text-dark">#{trackedData.id.substring(0, 8)}</span>
+                    <span className="fw-bold text-dark">#{trackedData.id.substring(0, 5)}</span>
                   </div>
                   <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
