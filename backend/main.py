@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 
 # Ensure project root is in path for 'agents', 'rag', and 'backend' modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -614,7 +615,9 @@ async def chat_with_agent(request: ChatRequest):
                 ).order("created_at", desc=False).limit(20).execute()
                 for msg in (hist_result.data or []):
                     role = "assistant" if msg["sender"] == "assistant" else "user"
-                    conversation_history.append({"role": role, "content": msg["message"]})
+                    raw_msg = msg["message"]
+                    clean_msg = raw_msg.split("<!--META:")[0].rstrip() if "<!--META:" in raw_msg else raw_msg
+                    conversation_history.append({"role": role, "content": clean_msg})
             except Exception as hist_err:
                 logging.warning("Failed to load chat history: %s", hist_err)
 
@@ -633,8 +636,12 @@ async def chat_with_agent(request: ChatRequest):
 
         print(f"Total Agent Response Time: {round(time.time() - start_time, 3)}s")
 
+        intent_val = agent_result.get("intent", "QUERY").upper()
         severity_val = agent_result.get("severity", "").lower()
         chatbot_resolved_val = agent_result.get("chatbot_resolved", True)
+        can_escalate_val = agent_result.get("can_escalate", False)
+        source_type_val = agent_result.get("source_type", "GENERAL_KNOWLEDGE")
+        policy_name_val = agent_result.get("policy_name", "")
 
         # Determine if a grievance form should be triggered or redirected to
         trigger_form = False
@@ -652,6 +659,11 @@ async def chat_with_agent(request: ChatRequest):
         return {
             "response": final_response,
             "sources": agent_result.get("sources", []),
+            "intent": intent_val,
+            "source_type": source_type_val,
+            "policy_name": policy_name_val,
+            "context_sufficient": agent_result.get("context_sufficient", True),
+            "can_escalate": can_escalate_val,
             "severity": agent_result.get("severity", ""),
             "severity_reason": agent_result.get("severity_reason", ""),
             "department": agent_result.get("department", ""),
@@ -1461,7 +1473,24 @@ async def get_all_chat_sessions(user: dict = Depends(get_current_user)):
 async def get_chat_session_messages(session_id: str, user: dict = Depends(get_current_user)):
     try:
         result = supabase.table("chat_messages").select("*").eq("session_id", session_id).order("created_at", desc=False).execute()
-        return result.data
+        cleaned = []
+        for r in (result.data or []):
+            msg_text = r.get("message", "")
+            meta = {}
+            if "<!--META:" in msg_text:
+                parts = msg_text.rsplit("<!--META:", 1)
+                msg_text = parts[0].rstrip()
+                if len(parts) > 1 and "-->" in parts[1]:
+                    meta_raw = parts[1].split("-->")[0].strip()
+                    try:
+                        meta = json.loads(meta_raw)
+                    except Exception:
+                        pass
+            r_copy = dict(r)
+            r_copy["message"] = msg_text
+            r_copy["metadata"] = meta
+            cleaned.append(r_copy)
+        return cleaned
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1483,15 +1512,21 @@ class ChatMessageRequest(BaseModel):
     session_id: str
     sender: str
     message: str
+    metadata: Optional[dict] = None
 
 @app.post("/api/chat/message")
 async def add_chat_message(req: ChatMessageRequest, user: dict = Depends(get_current_user)):
     try:
+        raw_message = req.message
+        if req.metadata:
+            meta_json = json.dumps(req.metadata)
+            raw_message = f"{raw_message}\n<!--META:{meta_json}-->"
+
         # Save message
         result = supabase.table("chat_messages").insert({
             "session_id": req.session_id,
             "sender": req.sender,
-            "message": req.message
+            "message": raw_message
         }).execute()
         
         # Auto-generate title if this is the first user message
@@ -1502,7 +1537,10 @@ async def add_chat_message(req: ChatMessageRequest, user: dict = Depends(get_cur
                 new_title = req.message[:40] + ("..." if len(req.message) > 40 else "")
                 supabase.table("chat_sessions").update({"title": new_title}).eq("id", req.session_id).execute()
                 
-        return result.data[0]
+        row = dict(result.data[0]) if result.data else {}
+        row["message"] = req.message
+        row["metadata"] = req.metadata or {}
+        return row
     except Exception as e:
         with open("debug_error.log", "a") as f:
             f.write(f"add_chat_message error: {str(e)}\n")

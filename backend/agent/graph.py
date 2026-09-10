@@ -16,12 +16,15 @@ import logging
 from langgraph.graph import StateGraph, END
 
 from backend.agent.state import GrievanceState
+from backend.agent.nodes.check_context import check_context_node
+from backend.agent.nodes.ask_clarification import ask_clarification_node
 from backend.agent.nodes.classify_severity import classify_severity_node
 from backend.agent.nodes.classify_department import classify_department_node
 from backend.agent.nodes.retrieve import retrieve_node
 from backend.agent.nodes.generate_response import generate_response_node
 from backend.agent.nodes.department_router import department_route_node
 from backend.agent.edges.routing import (
+    route_after_context_check,
     route_after_severity,
     route_to_department,
 )
@@ -31,21 +34,26 @@ logger = logging.getLogger(__name__)
 
 def build_graph() -> StateGraph:
     """
-    Construct the LangGraph StateGraph with the severity classification
-    and department routing workflow.
+    Construct the LangGraph StateGraph with the context evaluation,
+    severity classification, and department routing workflow.
 
     Graph topology:
         START
           ↓
-        classify_severity
-          ↓ (conditional)
-          ├── LOW    → rag_retrieve → generate_response → END
-          ├── MEDIUM → classify_department → dept_{X} → END  (L1, 48h SLA)
-          └── HIGH   → classify_department → dept_{X} → END  (L2, 24h SLA)
+        check_context
+          ├── [Insufficient Context] → ask_clarification → END
+          └── [Sufficient Context]
+                ↓
+              classify_severity
+                ├── LOW    → rag_retrieve → generate_response → END
+                ├── MEDIUM → classify_department → dept_{X} → END  (L1, 48h SLA)
+                └── HIGH   → classify_department → dept_{X} → END  (L2, 24h SLA)
     """
     graph = StateGraph(GrievanceState)
 
     # ── Add Nodes ─────────────────────────────────────────────────────────
+    graph.add_node("check_context", check_context_node)
+    graph.add_node("ask_clarification", ask_clarification_node)
     graph.add_node("classify_severity", classify_severity_node)
     graph.add_node("classify_department", classify_department_node)
     graph.add_node("rag_retrieve", retrieve_node)
@@ -60,11 +68,21 @@ def build_graph() -> StateGraph:
     graph.add_node("dept_investors", department_route_node)
 
     # ── Entry Point ───────────────────────────────────────────────────────
-    graph.set_entry_point("classify_severity")
+    graph.set_entry_point("check_context")
 
     # ── Conditional Edges ─────────────────────────────────────────────────
 
-    # After classify_severity → route by severity (3-way)
+    # Step 1: After check_context → ask clarification or proceed to triage
+    graph.add_conditional_edges(
+        "check_context",
+        route_after_context_check,
+        {
+            "ask_clarification": "ask_clarification",
+            "classify_severity": "classify_severity",
+        },
+    )
+
+    # Step 2: After classify_severity → route by severity
     graph.add_conditional_edges(
         "classify_severity",
         route_after_severity,
@@ -92,6 +110,7 @@ def build_graph() -> StateGraph:
     )
 
     # Terminal nodes → END
+    graph.add_edge("ask_clarification", END)
     graph.add_edge("generate_response", END)
     graph.add_edge("dept_hr", END)
     graph.add_edge("dept_ic", END)
@@ -181,6 +200,12 @@ def run_agent(
         return {
             "response": result.get("response", "I'm sorry, I couldn't process your request."),
             "sources": result.get("sources", []),
+            "intent": result.get("intent", "QUERY"),
+            "context_sufficient": result.get("context_sufficient", True),
+            "clarification_question": result.get("clarification_question", ""),
+            "source_type": result.get("source_type", "GENERAL_KNOWLEDGE"),
+            "policy_name": result.get("policy_name", ""),
+            "can_escalate": result.get("can_escalate", False),
             "severity": result.get("severity", ""),
             "severity_reason": result.get("severity_reason", ""),
             "department": result.get("department", ""),

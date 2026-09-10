@@ -66,7 +66,7 @@ Rewrite if needed. Respond ONLY with JSON."""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=200,
+            max_tokens=500,
             temperature=0.0,
             response_format={"type": "json_object"},
         )

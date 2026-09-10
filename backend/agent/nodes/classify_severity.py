@@ -44,51 +44,37 @@ def classify_severity_node(state: GrievanceState) -> dict:
         content = msg.get("content", "")
         history_text += f"{role.upper()}: {content}\n"
 
-    system_prompt = """You are a severity classifier for a corporate grievance and query management system.
+    system_prompt = """You are an intelligent triage evaluator for an enterprise grievance and query management system.
 
-Your task is to classify the user's message into exactly one severity level:
+Your task is two-fold:
+1. CLASSIFY INTENT:
+   - "QUERY": The user is asking for information, company policy details, how-to procedures, explanations (e.g., payslip breakdown, general questions, portal help), or general workplace advice.
+   - "GRIEVANCE": The user is reporting an actual personal complaint, dissatisfaction, injustice, physical snag, dispute, misconduct, or financial discrepancy.
 
-- LOW: General questions, policy inquiries, information requests, greetings, routine service requests,
-  portal access, or queries that can be answered from policy/knowledge base.
-  Examples: "What is the leave policy?", "How do I apply for reimbursement?", "Hello",
-  "Kindly share the AGM video conference link", "How do I update my bank mandate?", "Can I report anonymously?"
-
-- MEDIUM: Moderate complaints or unresolved grievances requiring departmental investigation or L1 attention,
-  repeated follow-ups, delayed handovers, unrectified physical snags, salary/leave balance discrepancies,
-  or non-urgent customer/investor disputes.
-  Examples: "Repeated delay in resolving customer snag for 3 weeks", "Unresolved leave balance discrepancy in LMS",
-  "Delayed dividend credited or share transmission pending with RTA", "Registration delayed due to pending Khata approval",
-  "Moderate construction dust or noise complaints during daytime"
-
-- HIGH: Critical matters requiring immediate departmental intervention or senior escalation:
-  1. Sexual harassment or POSH complaints (IC)
-  2. Bribery, corruption, extortion, or kickback demands (e.g., sales rep demanding cash for flat handover)
-  3. Life-safety risks, falls from height, workers without PPE, or structural collapse risks
-  4. Major environmental damage, community flooding, toxic chemical discharge, or unauthorized tree felling
-  5. Systemic financial fraud, accounting misrepresentation, or insider trading allegations
-  6. Threats of legal action, statutory notices (RERA, SEBI, NGT, Labor Dept), or systemic customer harm
-  Examples: "The sales executive asked for an under-the-table payment of 50k to fast-track registration",
-  "My manager makes sexually suggestive remarks and makes me uncomfortable",
-  "Workers at the 14th floor are working without safety harnesses and safety nets",
-  "Construction debris has blocked the municipal canal causing severe flooding in residential areas",
-  "Senior executives traded shares right before quarterly earnings disclosure"
+2. CLASSIFY SEVERITY (Apply practical common sense and proportionality — evaluate real-world impact):
+   - For all "QUERY" messages, severity is always "LOW".
+   - For "GRIEVANCE" messages, evaluate the actual scale and impact considering the conversation history:
+     * "LOW": Minor, routine, isolated, or nominal issues where conversational explanation, reassurance, or guidance is the appropriate first step, with an option to escalate if unsatisfied.
+     * "MEDIUM": Substantial, tangible grievances with verified loss, prolonged delays, unrectified physical snags, or clear policy/curfew breaches requiring human departmental investigation.
+     * "HIGH": Critical risks: life-safety hazards, sexual harassment/POSH, extortion/bribery, systemic fraud, or acute structural dangers.
 
 IMPORTANT:
-- Sexual harassment/POSH complaints are ALWAYS HIGH.
-- Bribery, extortion, corruption, or kickback demands are ALWAYS HIGH.
-- Life-safety risks, hazardous environmental violations, or fraud allegations are ALWAYS HIGH.
-- Routine queries or informational requests are LOW.
-- Unresolved grievances, persistent delays, or snags needing departmental intervention are MEDIUM.
+- Use common sense: minor or everyday complaints belong in LOW so the conversational assistant can help first.
+- Bribery, sexual harassment, life-safety hazards, and fraud are ALWAYS HIGH.
 
-Respond with ONLY a JSON object:
-{"severity": "LOW" or "MEDIUM" or "HIGH", "reason": "Brief explanation"}"""
+Respond with ONLY a JSON object (evaluate reasoning first):
+{
+  "reason": "1-2 sentences giving common-sense assessment of intent and impact",
+  "intent": "QUERY" or "GRIEVANCE",
+  "severity": "LOW" or "MEDIUM" or "HIGH"
+}"""
 
     prompt = f"""Conversation history:
 {history_text}
 
 Current user message: {user_message}
 
-Classify the severity. Respond ONLY with JSON: {{"severity": "...", "reason": "..."}}"""
+Triage the user message. Respond ONLY with JSON: {{"reason": "...", "intent": "...", "severity": "..."}}"""
 
     try:
         response = client.chat.completions.create(
@@ -97,45 +83,55 @@ Classify the severity. Respond ONLY with JSON: {{"severity": "...", "reason": ".
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=200,
+            max_tokens=600,
             temperature=0.0,
             response_format={"type": "json_object"},
         )
         text = response.choices[0].message.content.strip()
         result = json.loads(text)
+        intent = result.get("intent", "QUERY").strip().upper()
         severity = result.get("severity", "LOW").strip().upper()
         reason = result.get("reason", "")
     except json.JSONDecodeError as e:
         logger.error("Failed to parse severity JSON: %s", e)
+        intent = "QUERY"
         severity = "LOW"
-        reason = "Classification parse error — defaulting to LOW"
+        reason = "Classification parse error — defaulting to QUERY / LOW"
     except Exception as e:
         logger.error("Severity classification LLM call failed: %s", e)
+        intent = "QUERY"
         severity = "LOW"
         reason = f"Classification error: {str(e)}"
 
-    # Validate
+    # Validate intent
+    if intent not in ("QUERY", "GRIEVANCE"):
+        intent = "QUERY" if severity == "LOW" else "GRIEVANCE"
+
+    # Validate severity
     if severity not in ("LOW", "MEDIUM", "HIGH"):
-        logger.warning("Invalid severity '%s' — defaulting to LOW", severity)
-        # Handle legacy values
         if severity == "CRITICAL":
             severity = "HIGH"
             reason = f"Critical severity mapped to HIGH"
         else:
             severity = "LOW"
-            reason = f"Invalid severity value — defaulted to LOW"
+
+    # Queries are always LOW
+    if intent == "QUERY":
+        severity = "LOW"
 
     logger.info(
-        "═══ SEVERITY CLASSIFICATION ═══\n"
+        "═══ TRIAGE CLASSIFICATION ═══\n"
         "  Query: %s\n"
-        "  Severity: %s\n"
+        "  Intent: %s | Severity: %s\n"
         "  Reason: %s",
         user_message[:100],
+        intent,
         severity,
         reason,
     )
 
     return {
+        "intent": intent,
         "severity": severity,
         "severity_reason": reason,
     }

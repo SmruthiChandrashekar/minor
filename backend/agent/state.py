@@ -79,10 +79,15 @@ class GrievanceState(TypedDict, total=False):
     assigned_queue: str
     sla_hours: int
     chatbot_resolved: bool
+    can_escalate: bool
+    context_sufficient: bool
+    clarification_question: str
 
-    # RAG / Policy
+    # RAG / Policy / Knowledge
     policy_context: list[dict[str, Any]]
     policy_answer: str
+    source_type: str  # "POLICY" or "GENERAL_KNOWLEDGE"
+    policy_name: str
 
     # Workflow
     session_id: str

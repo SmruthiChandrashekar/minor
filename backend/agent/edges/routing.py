@@ -14,20 +14,31 @@ Workflow:
 from backend.agent.state import GrievanceState
 
 
+def route_after_context_check(state: GrievanceState) -> str:
+    """
+    Decide whether we have sufficient context to proceed with triage
+    or need to ask a clarifying question first.
+    """
+    if not state.get("context_sufficient", True):
+        return "ask_clarification"
+    return "classify_severity"
+
+
 def route_after_severity(state: GrievanceState) -> str:
     """
-    After severity classification, decide the next node.
+    After triage classification, decide the next node.
 
-    LOW    → rag_retrieve (chatbot/RAG path)
-    MEDIUM → classify_department (human L1 path)
-    HIGH   → classify_department (human L2 path)
+    - All queries (intent == "QUERY") -> rag_retrieve (chatbot path: Policy RAG or General Knowledge)
+    - Low-severity grievances (intent == "GRIEVANCE" and severity == "LOW") -> rag_retrieve (chatbot path with escalation option)
+    - Medium or High grievances -> classify_department (human L1/L2 path)
     """
+    intent = state.get("intent", "QUERY").strip().upper()
     severity = state.get("severity", "LOW").strip().upper()
 
-    if severity in ("MEDIUM", "HIGH"):
+    if intent == "GRIEVANCE" and severity in ("MEDIUM", "HIGH"):
         return "classify_department"
     else:
-        # LOW (or any fallback) → chatbot/RAG
+        # All queries or low-severity grievances go to chatbot/RAG
         return "rag_retrieve"
 
 

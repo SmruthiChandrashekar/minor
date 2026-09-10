@@ -37,6 +37,21 @@ const Chatbot = () => {
       default: return "/lodge-selection";
     }
   };
+
+  const stripEmojis = (str) => str ? str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, '').replace(/\s+/g, ' ').trim() : '';
+
+  const getQueryDescription = (msgItem) => {
+    if (msgItem?.original_query) return stripEmojis(msgItem.original_query);
+    const idx = messages.findIndex(m => m.id === msgItem?.id);
+    if (idx > 0) {
+      for (let i = idx - 1; i >= 0; i--) {
+        if (!messages[i].isBot && messages[i].text) {
+          return stripEmojis(messages[i].text);
+        }
+      }
+    }
+    return '';
+  };
   
   // Chat History States
   const [sessionId, setSessionId] = useState(null);
@@ -249,11 +264,27 @@ const Chatbot = () => {
         const msgs = await res.json();
         if (msgs.length > 0) {
           // Convert backend format to frontend format
-          const formatted = msgs.map(m => ({
-            id: m.id,
-            text: m.message,
-            isBot: m.sender === 'assistant'
-          }));
+          const formatted = msgs.map(m => {
+            const meta = m.metadata || {};
+            return {
+              id: m.id,
+              text: m.message,
+              isBot: m.sender === 'assistant',
+              severity: meta.severity || '',
+              department: meta.department || '',
+              routed: meta.routed || false,
+              grievance_id: meta.grievance_id || '',
+              assigned_to: meta.assigned_to || '',
+              trigger_form: meta.trigger_form || false,
+              form_reason: meta.form_reason || '',
+              chatbot_resolved: meta.chatbot_resolved !== false,
+              can_escalate: meta.can_escalate || false,
+              source_type: meta.source_type || 'GENERAL_KNOWLEDGE',
+              policy_name: meta.policy_name || '',
+              intent: meta.intent || '',
+              original_query: meta.original_query || ''
+            };
+          });
           setMessages(formatted);
         } else {
           setMessages([{ id: 1, text: null, isBot: true, isGreeting: true }]);
@@ -321,7 +352,7 @@ const Chatbot = () => {
       const res = await apiClient("/api/agents/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, lang: langCode }),
+        body: JSON.stringify({ message: text, lang: langCode, session_id: currentSessionId || undefined }),
       });
 
       if (!res.ok) throw new Error("Backend error");
@@ -337,7 +368,7 @@ const Chatbot = () => {
         responseText += `\n\n${t("sources") || "Sources"}: ${sourceList}`;
       }
 
-      setMessages(prev => [...prev, {
+      const botMsg = {
         id: Date.now() + 1,
         text: responseText,
         isBot: true,
@@ -348,15 +379,39 @@ const Chatbot = () => {
         trigger_form: data.trigger_form || false,
         form_reason: data.form_reason || '',
         chatbot_resolved: data.chatbot_resolved !== false,
+        can_escalate: data.can_escalate || false,
+        source_type: data.source_type || 'GENERAL_KNOWLEDGE',
+        policy_name: data.policy_name || '',
+        intent: data.intent || 'QUERY',
         original_query: text
-      }]);
+      };
 
-      // Save bot message to backend
+      setMessages(prev => [...prev, botMsg]);
+
+      // Save bot message to backend with metadata so options persist after refresh/reopen
       if (currentSessionId) {
         apiClient("/api/chat/message", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: currentSessionId, sender: "assistant", message: responseText })
+          body: JSON.stringify({
+            session_id: currentSessionId,
+            sender: "assistant",
+            message: responseText,
+            metadata: {
+              severity: botMsg.severity,
+              department: botMsg.department,
+              routed: botMsg.routed,
+              grievance_id: botMsg.grievance_id,
+              trigger_form: botMsg.trigger_form,
+              form_reason: botMsg.form_reason,
+              chatbot_resolved: botMsg.chatbot_resolved,
+              can_escalate: botMsg.can_escalate,
+              source_type: botMsg.source_type,
+              policy_name: botMsg.policy_name,
+              intent: botMsg.intent,
+              original_query: botMsg.original_query
+            }
+          })
         });
       }
 
@@ -759,11 +814,10 @@ const Chatbot = () => {
                               fontSize: '13px'
                             }}
                             onClick={() => {
-                              const stripEmojis = (str) => str ? str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, '').replace(/\s+/g, ' ').trim() : '';
                               setIsOpen(false);
                               navigate(getLodgeRoute(), {
                                 state: {
-                                  description: stripEmojis(msg.original_query || ""),
+                                  description: getQueryDescription(msg),
                                   department: msg.department || ''
                                 }
                               });
@@ -775,8 +829,46 @@ const Chatbot = () => {
                         </div>
                       )}
 
+                      {/* SATISFACTION / ESCALATION CARD FOR LOW SEVERITY GRIEVANCES */}
+                      {msg.can_escalate && (
+                        <div 
+                          className="mt-3 p-3 rounded-3 border text-start shadow-sm"
+                          style={{
+                            backgroundColor: '#ffffff',
+                            borderColor: '#fed7aa',
+                            borderLeft: '4px solid #f97316'
+                          }}
+                        >
+                          <div className="d-flex align-items-center gap-1 mb-1">
+                            <span className="badge rounded-pill px-2 py-1" style={{ fontSize: '10.5px', fontWeight: '700', backgroundColor: '#ffedd5', color: '#c2410c' }}>
+                              Resolution Guidance
+                            </span>
+                          </div>
+                          <p className="small mb-3 text-muted" style={{ fontSize: '12px' }}>
+                            Did this address your concern? If this explanation does not resolve the issue, you may lodge an official grievance ticket for formal department handling.
+                          </p>
+                          <button
+                            type="button"
+                            className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
+                            style={{ padding: '6px 14px', fontSize: '12px' }}
+                            onClick={() => {
+                              setIsOpen(false);
+                              navigate(getLodgeRoute(), {
+                                state: {
+                                  description: getQueryDescription(msg),
+                                  department: msg.department || ''
+                                }
+                              });
+                            }}
+                          >
+                            <span>Not satisfied? Lodge Formal Grievance</span>
+                            <span>→</span>
+                          </button>
+                        </div>
+                      )}
+
                       {/* REDIRECT TO FORM FOR UNRESOLVED LOW COMPLAINTS */}
-                      {msg.trigger_form && (msg.form_reason === 'unresolved_low_query' || (!msg.chatbot_resolved && msg.severity === 'low')) && (
+                      {!msg.can_escalate && msg.trigger_form && (msg.form_reason === 'unresolved_low_query' || (!msg.chatbot_resolved && msg.severity === 'low')) && (
                         <div 
                           className="mt-3 p-3 rounded-3 border text-start shadow-sm"
                           style={{
@@ -798,11 +890,10 @@ const Chatbot = () => {
                             className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
                             style={{ padding: '6px 14px', fontSize: '12.5px' }}
                             onClick={() => {
-                              const stripEmojis = (str) => str ? str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, '').replace(/\s+/g, ' ').trim() : '';
                               setIsOpen(false);
                               navigate(getLodgeRoute(), {
                                 state: {
-                                  description: stripEmojis(msg.original_query || ""),
+                                  description: getQueryDescription(msg),
                                   department: msg.department || ''
                                 }
                               });
