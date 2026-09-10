@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../services/api';
 import { useAuth } from '../context/AuthProvider';
 
@@ -8,11 +9,37 @@ import { useAuth } from '../context/AuthProvider';
  */
 const NotificationDropdown = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+
+  const getTicketId = (notif) => {
+    if (notif.ticket_id) return notif.ticket_id;
+    if (!notif.message) return null;
+    const uuidMatch = notif.message.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    if (uuidMatch) return uuidMatch[0];
+    const grMatch = notif.message.match(/GR-([0-9a-fA-F]{6,12})/i);
+    if (grMatch) return grMatch[1];
+    return null;
+  };
+
+  const handleNotificationClick = async (notif) => {
+    if (!notif.is_read) {
+      handleMarkRead(notif.notification_id);
+    }
+    setIsOpen(false);
+    const ticketId = getTicketId(notif);
+    if (ticketId) {
+      navigate(`/track?id=${encodeURIComponent(ticketId)}`, {
+        state: { trackingId: ticketId }
+      });
+    } else {
+      navigate('/track');
+    }
+  };
 
   const fetchUnreadCount = async () => {
     if (!user) return;
@@ -154,6 +181,13 @@ const NotificationDropdown = () => {
           <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="1 4 1 10 7 10" />
             <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        );
+      case 'STATUS_UPDATED':
+        return (
+          <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
           </svg>
         );
       default:
@@ -342,11 +376,11 @@ const NotificationDropdown = () => {
             notifications.map((notif) => (
               <div
                 key={notif.notification_id}
-                onClick={() => !notif.is_read && handleMarkRead(notif.notification_id)}
+                onClick={() => handleNotificationClick(notif)}
                 style={{
                   padding: '12px 16px',
                   borderBottom: '1px solid var(--table-border, #f1f5f9)',
-                  cursor: notif.is_read ? 'default' : 'pointer',
+                  cursor: 'pointer',
                   backgroundColor: notif.is_read ? 'transparent' : 'var(--table-row-hover, rgba(255, 255, 255, 0.04))',
                   transition: 'background-color 0.2s',
                   display: 'flex',
@@ -354,7 +388,7 @@ const NotificationDropdown = () => {
                   alignItems: 'flex-start',
                 }}
                 onMouseEnter={(e) => {
-                  if (!notif.is_read) e.currentTarget.style.backgroundColor = 'var(--table-row-hover, rgba(255, 255, 255, 0.08))';
+                  e.currentTarget.style.backgroundColor = 'var(--table-row-hover, rgba(255, 255, 255, 0.08))';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = notif.is_read ? 'transparent' : 'var(--table-row-hover, rgba(255, 255, 255, 0.04))';
@@ -376,12 +410,24 @@ const NotificationDropdown = () => {
                   }}>
                     {notif.message}
                   </p>
-                  <span style={{
-                    fontSize: '11px',
-                    color: '#94a3b8',
-                  }}>
-                    {formatTime(notif.created_at)}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+                    <span style={{
+                      fontSize: '11px',
+                      color: '#94a3b8',
+                    }}>
+                      {formatTime(notif.created_at)}
+                    </span>
+                    <span style={{
+                      fontSize: '11px',
+                      color: '#3b82f6',
+                      fontWeight: '600',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '3px'
+                    }}>
+                      Track Case →
+                    </span>
+                  </div>
                 </div>
 
                 {/* Unread dot */}

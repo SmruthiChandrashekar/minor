@@ -45,6 +45,8 @@ from backend.utils.notification_service import (
     notify_user_tier_assigned,
     notify_user_chatbot_handoff,
     notify_user_resolved,
+    notify_user_reopened,
+    notify_user_status_changed,
     notify_admins_grievance_received,
     notify_admins_tier_assigned,
     notify_admins_chatbot_handoff,
@@ -881,19 +883,19 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
         if request.status not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
 
-        # Require resolution_reason when closing a ticket
-        if request.status in ("Resolved", "Rejected") and not request.resolution_reason:
-            raise HTTPException(status_code=400, detail="A resolution reason is required when resolving or rejecting a grievance.")
+        # Require a reason for every status change at all admin levels
+        reason_text = (request.resolution_reason or request.notes or "").strip()
+        if not reason_text:
+            raise HTTPException(status_code=400, detail="A reason or justification is required for every status change.")
 
         # Update status, reason, and timestamp
         from datetime import datetime
         now_iso = datetime.now().isoformat()
         update_payload = {
             "status": request.status,
-            "updated_at": now_iso
+            "updated_at": now_iso,
+            "resolution_reason": reason_text
         }
-        if request.resolution_reason:
-            update_payload["resolution_reason"] = request.resolution_reason
 
         # Append action log to escalation_history so subsequent tiers (L2, L3, HEAD) can see what prior handlers did
         try:
@@ -901,12 +903,11 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
             history = list((curr_res.data or {}).get("escalation_history") or [])
             user_tier = user.get("admin_tier") or user.get("role") or "Admin"
             user_email = user.get("email") or "Admin"
-            notes = request.resolution_reason or request.notes or ""
             history.append({
                 "tier": user_tier,
                 "handler": user_email,
                 "action": f"Status updated to {request.status}",
-                "notes": notes,
+                "notes": reason_text,
                 "timestamp": now_iso
             })
             update_payload["escalation_history"] = history
@@ -926,20 +927,26 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
                     notifier.send_email,
                     contact_email,
                     "Puravankara GRM - Status Update",
-                    f"Dear {updated_grievance.get('submitter_name') or 'User'},\n\nThe status of your grievance ({request.grievance_id}) has been updated to: {request.status}.\n\nThank you,\nPuravankara GRM Team"
+                    f"Dear {updated_grievance.get('submitter_name') or 'User'},\n\nThe status of your grievance ({request.grievance_id}) has been updated to: {request.status}.\nRemarks / Reason: {reason_text}\n\nThank you,\nPuravankara GRM Team"
                 )
             )
 
-        # In-app notifications + employee report generation
-        if request.status in ("Resolved", "Rejected"):
-            grievance_user_id = updated_grievance.get("user_id")
-            department = updated_grievance.get("department")
-            if grievance_user_id:
+        # In-app notifications
+        grievance_user_id = updated_grievance.get("user_id")
+        department = updated_grievance.get("department")
+        if grievance_user_id:
+            if request.status == "Resolved":
                 notify_user_resolved(grievance_user_id, request.grievance_id)
-            if department and request.status == "Resolved":
-                notify_admins_resolved(department, request.grievance_id)
+            elif request.status == "Open":
+                notify_user_reopened(grievance_user_id, request.grievance_id)
+            else:
+                notify_user_status_changed(grievance_user_id, request.grievance_id, request.status, reason_text)
 
-            # Generate employee PDF report in background
+        if department and request.status == "Resolved":
+            notify_admins_resolved(department, request.grievance_id)
+
+        # Generate employee PDF report in background
+        if request.status in ("Resolved", "Rejected"):
             asyncio.create_task(asyncio.to_thread(
                 _generate_and_store_employee_report,
                 request.grievance_id
