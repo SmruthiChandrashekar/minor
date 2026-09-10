@@ -97,21 +97,6 @@ function LodgeContract() {
           return;
         }
 
-        // ── STEP 2c: Medium severity → DB insert AND open chatbot ────────────
-        if (classified.severity === "Medium") {
-          const submitRes = await apiClient("/submit-complaint", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          if (!submitRes.ok) throw new Error("Backend submit failed");
-          const data = await submitRes.json();
-          setSubmittedId(data.grievance_id || data.id);
-          // Also open chatbot for guidance
-          setQueryRedirect({ type: "medium", text: cleanDescription });
-          sendToChat(cleanDescription);
-          return;
-        }
 
         // ── STEP 3: Intent = Complaint → submit to backend (with category/severity)
         const submitRes = await apiClient("/submit-complaint", {

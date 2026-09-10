@@ -108,7 +108,7 @@ const AdminDashboard = () => {
 
   const departmentGrievances = admin
     ? translatedGrievances.filter(
-        (g) => isSuperAdmin || g.department === admin.department || g.category === admin.department
+        (g) => isSuperAdmin || g.department === admin.department
       )
     : [];
 
