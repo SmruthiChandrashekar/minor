@@ -7,6 +7,27 @@ import { supabase } from "../services/supabaseClient";
 import { translateList } from "../services/translationService";
 import { apiClient } from "../services/api";
 import AdminAnalytics from "../components/AdminAnalytics";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const DEPT_COLORS = [
+  "#001a4d", "#0c7cd5", "#f59e0b", "#2e7d32",
+  "#c62828", "#6a0dad", "#00838f", "#e65100", "#4527a0", "#558b2f"
+];
+
+const DeptPieTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8,
+        padding: "8px 14px", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", fontSize: 13
+      }}>
+        <div style={{ fontWeight: 600, color: "#001a4d" }}>{payload[0].name}</div>
+        <div style={{ color: "#64748b" }}>{payload[0].value} grievance{payload[0].value !== 1 ? "s" : ""}</div>
+      </div>
+    );
+  }
+  return null;
+};
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -18,6 +39,11 @@ const AdminDashboard = () => {
   const [grievances, setGrievances] = useState([]);
   const [translatedGrievances, setTranslatedGrievances] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // --- DEPT PIE CHART (super admin only) ---
+  const [deptDist, setDeptDist] = useState([]);
+  const [deptDistLoading, setDeptDistLoading] = useState(false);
+  const [selectedDept, setSelectedDept] = useState(null);
   const [translating, setTranslating] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [viewingAttachments, setViewingAttachments] = useState(null);
@@ -71,9 +97,22 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchDeptDist = async () => {
+    try {
+      setDeptDistLoading(true);
+      const res = await apiClient("/api/admin/dept-category-distribution");
+      if (res.ok) setDeptDist(await res.json());
+    } catch (err) {
+      console.error("Dept dist error:", err);
+    } finally {
+      setDeptDistLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!admin) { navigate("/admin"); return; }
     fetchGrievances();
+    if (isSuperAdmin) fetchDeptDist();
 
     const channel = supabase
       .channel("grievances-realtime")
@@ -624,6 +663,125 @@ ${ragRecommendation.compliance_notes || ""}`;
 
       {/* ADVANCED ANALYTICS & FILTERS */}
       <AdminAnalytics adminDepartment={isSuperAdmin ? "" : (admin?.department || "")} />
+
+      {/* DEPARTMENT-WISE GRIEVANCE PIE CHART — super admin only */}
+      {isSuperAdmin && (() => {
+        // Build dept → { category: count } map
+        const deptMap = {};
+        deptDist.forEach(({ department, category, count }) => {
+          if (!deptMap[department]) deptMap[department] = {};
+          deptMap[department][category] = (deptMap[department][category] || 0) + count;
+        });
+        const deptTotals = Object.entries(deptMap).map(([name, cats], i) => ({
+          name, value: Object.values(cats).reduce((a, b) => a + b, 0), index: i
+        }));
+        const totalAll = deptTotals.reduce((a, b) => a + b.value, 0);
+        const activeDept = selectedDept && deptMap[selectedDept]
+          ? Object.entries(deptMap[selectedDept]).map(([name, value]) => ({ name, value }))
+          : null;
+
+        return (
+          <div className="card shadow-sm border-0 mb-4 p-4" style={{ borderRadius: 14 }}>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h6 className="fw-bold mb-0" style={{ color: "var(--heading-color)" }}>
+                <i className="bi bi-pie-chart-fill me-2" style={{ color: isDark ? "#e4e4e7" : "#0c7cd5" }} />
+                Grievance Distribution by Department
+              </h6>
+              {selectedDept && (
+                <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedDept(null)}>
+                  ← All Departments
+                </button>
+              )}
+            </div>
+
+            {deptDistLoading ? (
+              <div className="text-center py-4">
+                <div className="spinner-border spinner-border-sm text-primary" />
+              </div>
+            ) : deptTotals.length === 0 ? (
+              <div className="text-muted text-center py-3">No data available.</div>
+            ) : (
+              <div className="row g-4 align-items-center">
+                {/* Pie */}
+                <div className="col-md-5">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <PieChart>
+                      <Pie
+                        data={activeDept || deptTotals}
+                        cx="50%" cy="48%"
+                        innerRadius={65} outerRadius={105}
+                        paddingAngle={4}
+                        dataKey="value"
+                        onClick={(entry) => { if (!activeDept) setSelectedDept(entry.name); }}
+                        style={{ cursor: activeDept ? "default" : "pointer" }}
+                      >
+                        {(activeDept || deptTotals).map((_, i) => (
+                          <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<DeptPieTooltip />} />
+                      <Legend iconType="circle" iconSize={10}
+                        wrapperStyle={{ fontSize: 12, color: isDark ? "#a1a1aa" : "#64748b" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {!activeDept && (
+                    <div className="text-center" style={{ fontSize: 11, color: "#94a3b8", marginTop: -8 }}>
+                      Click a slice to drill into its categories
+                    </div>
+                  )}
+                </div>
+
+                {/* Table */}
+                <div className="col-md-7">
+                  <div className="table-responsive">
+                    <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
+                      <thead className="table-light">
+                        <tr>
+                          <th className="px-3 py-2">{activeDept ? "Category" : "Department"}</th>
+                          <th className="py-2 text-center">Count</th>
+                          <th className="py-2">Share</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(activeDept || deptTotals)
+                          .sort((a, b) => b.value - a.value)
+                          .map((row, i) => {
+                            const pct = Math.round((row.value / (activeDept ? deptMap[selectedDept] && Object.values(deptMap[selectedDept]).reduce((a, b) => a + b, 0) : totalAll)) * 100);
+                            return (
+                              <tr key={row.name}
+                                style={{ cursor: activeDept ? "default" : "pointer" }}
+                                onClick={() => { if (!activeDept) setSelectedDept(row.name); }}
+                              >
+                                <td className="px-3 fw-semibold">
+                                  <span style={{
+                                    width: 10, height: 10, borderRadius: "50%",
+                                    backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length],
+                                    display: "inline-block", marginRight: 8
+                                  }} />
+                                  {row.name}
+                                </td>
+                                <td className="text-center fw-bold">{row.value}</td>
+                                <td>
+                                  <div className="d-flex align-items-center gap-2">
+                                    <div className="progress flex-grow-1" style={{ height: 6, borderRadius: 4 }}>
+                                      <div className="progress-bar" role="progressbar"
+                                        style={{ width: `${pct}%`, backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length] }} />
+                                    </div>
+                                    <span style={{ fontSize: 11, minWidth: 28, color: "#64748b" }}>{pct}%</span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* TIER QUEUE SELECTOR / SCOPE INDICATOR */}
       {isTierLocked ? (

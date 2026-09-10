@@ -532,15 +532,18 @@ async def get_audit_logs(user: dict = Depends(require_super_admin)):
 @app.get("/api/admin/dept-category-distribution")
 async def get_dept_category_distribution(user: dict = Depends(require_super_admin)):
     """Returns grievance counts grouped by department and category for the Super Admin pie chart."""
+    VALID_DEPTS = {"ESG", "IC", "HR", "CSD", "CRM", "Investors"}
     try:
         result = supabase.table("grievances").select("department, category").execute()
         data = result.data or []
 
-        # Aggregate: { department: { category: count } }
+        # Aggregate: { department: { category: count } } — only valid depts
         dept_map: dict = {}
         for row in data:
-            dept = row.get("department") or "Unknown"
+            dept = row.get("department") or ""
             cat = row.get("category") or "Other"
+            if dept not in VALID_DEPTS:
+                continue  # skip old/invalid department values
             if dept not in dept_map:
                 dept_map[dept] = {}
             dept_map[dept][cat] = dept_map[dept].get(cat, 0) + 1
@@ -554,6 +557,7 @@ async def get_dept_category_distribution(user: dict = Depends(require_super_admi
         return flat
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/", response_model=HealthResponse)
 async def root():

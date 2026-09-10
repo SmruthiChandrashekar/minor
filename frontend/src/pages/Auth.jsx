@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { resetApiClientState } from "../services/api";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import { useLanguage } from "../context/LanguageContext";
@@ -118,6 +119,9 @@ const Auth = () => {
       if (authError || !authData?.user) {
         throw authError || new Error("Invalid credentials");
       }
+
+      // Clear any stale refresh-failed flag from a previous expired session
+      resetApiClientState();
 
       const { data: userData, error: userError } = await supabase
         .from("users")
