@@ -23,10 +23,10 @@ def classify_severity_node(state: GrievanceState) -> dict:
     Returns partial state update with 'severity' and 'severity_reason'.
     Defaults to 'LOW' on failure (safe fallback — user gets a RAG response).
     """
-    from groq import Groq
-    import os
+    from backend.agent.llm import get_llm, extract_response_text
+    import re
 
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client, model_name = get_llm()
     user_message = state.get("user_message", "")
     messages = state.get("messages", [])
 
@@ -44,29 +44,31 @@ def classify_severity_node(state: GrievanceState) -> dict:
         content = msg.get("content", "")
         history_text += f"{role.upper()}: {content}\n"
 
-    system_prompt = """You are an intelligent triage evaluator for an enterprise grievance and query management system.
+    system_prompt = """You are a triage classifier for a corporate grievance and query management system.
 
-Your task is two-fold:
-1. CLASSIFY INTENT:
-   - "QUERY": The user is asking for information, company policy details, how-to procedures, explanations (e.g., payslip breakdown, general questions, portal help), or general workplace advice.
-   - "GRIEVANCE": The user is reporting an actual personal complaint, dissatisfaction, injustice, physical snag, dispute, misconduct, or financial discrepancy.
+Your task is to classify the user's message into BOTH an INTENT and a SEVERITY LEVEL:
 
-2. CLASSIFY SEVERITY (Apply practical common sense and proportionality — evaluate real-world impact):
-   - For all "QUERY" messages, severity is always "LOW".
-   - For "GRIEVANCE" messages, evaluate the actual scale and impact considering the conversation history:
-     * "LOW": Minor, routine, isolated, or nominal issues where conversational explanation, reassurance, or guidance is the appropriate first step, with an option to escalate if unsatisfied.
-     * "MEDIUM": Substantial, tangible grievances with verified loss, prolonged delays, unrectified physical snags, or clear policy/curfew breaches requiring human departmental investigation.
-     * "HIGH": Critical risks: life-safety hazards, sexual harassment/POSH, extortion/bribery, systemic fraud, or acute structural dangers.
+INTENT:
+- QUERY: Informational questions, policy inquiries, how-to requests, clarifications, portal/LMS guidance, requests for links/forms/documents, or general FAQs. Queries can be answered directly from knowledge base/policy documents.
+- GRIEVANCE: Complaints, reports of misconduct, payroll/salary disputes, harassment, safety violations, delayed handovers, unaddressed snags, or issues requiring investigation, escalation, or departmental action.
 
-IMPORTANT:
-- Use common sense: minor or everyday complaints belong in LOW so the conversational assistant can help first.
-- Bribery, sexual harassment, life-safety hazards, and fraud are ALWAYS HIGH.
+SEVERITY:
+- LOW: Routine questions, policy lookups, attendance rules, leave policy queries, FAQs, minor portal issues, or general inquiries.
+- MEDIUM: Unresolved discrepancies, delayed processing, unaddressed snags, repeated follow-ups, leave balance errors in LMS, or non-urgent disputes requiring L1 investigation.
+- HIGH: Serious violations, physical/workplace safety hazards, sexual harassment (POSH), fraud, bribery, whistleblower disclosures, severe verbal abuse, illegal activities, or urgent executive attention.
 
-Respond with ONLY a JSON object (evaluate reasoning first):
+IMPORTANT RULES:
+1. All general informational / policy questions MUST have intent="QUERY" and severity="LOW".
+2. Sexual harassment or POSH complaints are ALWAYS intent="GRIEVANCE" and severity="HIGH".
+3. Physical safety hazards or site accidents are ALWAYS intent="GRIEVANCE" and severity="HIGH".
+4. Bribery or corruption reports are ALWAYS intent="GRIEVANCE" and severity="HIGH".
+5. Unresolved complaints with repeat delays are intent="GRIEVANCE" and severity="MEDIUM".
+
+Respond ONLY with a JSON object:
 {
-  "reason": "1-2 sentences giving common-sense assessment of intent and impact",
-  "intent": "QUERY" or "GRIEVANCE",
-  "severity": "LOW" or "MEDIUM" or "HIGH"
+    "reason": "<one sentence explanation>",
+    "intent": "QUERY" | "GRIEVANCE",
+    "severity": "LOW" | "MEDIUM" | "HIGH"
 }"""
 
     prompt = f"""Conversation history:
@@ -77,17 +79,29 @@ Current user message: {user_message}
 Triage the user message. Respond ONLY with JSON: {{"reason": "...", "intent": "...", "severity": "..."}}"""
 
     try:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[
+        kwargs = {
+            "model": model_name,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=600,
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        text = response.choices[0].message.content.strip()
+            "max_tokens": 600,
+            "temperature": 0.0,
+        }
+        try:
+            response = client.chat.completions.create(**kwargs, response_format={"type": "json_object"})
+        except Exception:
+            response = client.chat.completions.create(**kwargs)
+
+        text = extract_response_text(response.choices[0].message).strip()
+        if "```" in text:
+            m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+            if m:
+                text = m.group(1)
+            else:
+                m2 = re.search(r"(\{.*?\})", text, re.DOTALL)
+                if m2:
+                    text = m2.group(1)
         result = json.loads(text)
         intent = result.get("intent", "QUERY").strip().upper()
         severity = result.get("severity", "LOW").strip().upper()

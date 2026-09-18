@@ -19,20 +19,22 @@ from backend.agent.state import GrievanceState
 logger = logging.getLogger(__name__)
 
 
-def _call_llm_with_auto_summary(client, messages: list[dict], max_tokens: int = 1000) -> str:
+def _call_llm_with_auto_summary(client, model_name: str, messages: list, max_tokens: int = 1000) -> str:
     """
-    Generate response using Groq LLM with truncation protection.
+    Call LLM with auto-summarization if token limit is reached.
     If the model hits max_tokens (finish_reason == 'length') and cuts off,
     it automatically summarizes and completes the answer cleanly.
     """
+    from backend.agent.llm import extract_response_text
+
     llm_response = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
+        model=model_name,
         messages=messages,
         max_tokens=max_tokens,
         temperature=0.2,
     )
     choice = llm_response.choices[0]
-    content = choice.message.content.strip()
+    content = extract_response_text(choice.message).strip()
 
     # If the response reached the token limit mid-sentence, summarize cleanly
     if choice.finish_reason == "length":
@@ -46,12 +48,12 @@ def _call_llm_with_auto_summary(client, messages: list[dict], max_tokens: int = 
                 {"role": "user", "content": content}
             ]
             sum_res = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
+                model=model_name,
                 messages=summary_messages,
                 max_tokens=500,
                 temperature=0.2,
             )
-            content = sum_res.choices[0].message.content.strip()
+            content = extract_response_text(sum_res.choices[0].message).strip()
         except Exception as sum_err:
             logger.error("Auto-summarization fallback failed: %s", sum_err)
 
@@ -71,10 +73,9 @@ def generate_response_node(state: GrievanceState) -> dict:
 
     Returns partial state update with 'response' and 'chatbot_resolved'.
     """
-    from groq import Groq
-    import os
+    from backend.agent.llm import get_llm
 
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client, model_name = get_llm()
     user_message = state.get("user_message", "")
     messages = state.get("messages", [])
     policy_answer = state.get("policy_answer", "")
@@ -140,6 +141,7 @@ YOUR TASK:
         try:
             response = _call_llm_with_auto_summary(
                 client,
+                model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
@@ -219,6 +221,7 @@ This specific topic does not have a formal Puravankara policy handbook clause, b
         try:
             response = _call_llm_with_auto_summary(
                 client,
+                model_name,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},

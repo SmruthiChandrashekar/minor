@@ -14,7 +14,7 @@ from backend.agent.state import GrievanceState
 logger = logging.getLogger(__name__)
 
 
-def _rewrite_query(client, user_message: str, messages: list[dict]) -> str:
+def _rewrite_query(client, model_name: str, user_message: str, messages: list[dict]) -> str:
     """
     Use LLM to rewrite a follow-up query into a standalone query.
 
@@ -60,17 +60,31 @@ Latest user message: {user_message}
 Rewrite if needed. Respond ONLY with JSON."""
 
     try:
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
-            messages=[
+        kwargs = {
+            "model": model_name,
+            "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            max_tokens=500,
-            temperature=0.0,
-            response_format={"type": "json_object"},
-        )
-        text = response.choices[0].message.content.strip()
+            "max_tokens": 500,
+            "temperature": 0.0,
+        }
+        try:
+            response = client.chat.completions.create(**kwargs, response_format={"type": "json_object"})
+        except Exception:
+            response = client.chat.completions.create(**kwargs)
+
+        from backend.agent.llm import extract_response_text
+        import re
+        text = extract_response_text(response.choices[0].message).strip()
+        if "```" in text:
+            m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+            if m:
+                text = m.group(1)
+            else:
+                m2 = re.search(r"(\{.*?\})", text, re.DOTALL)
+                if m2:
+                    text = m2.group(1)
         result = json.loads(text)
         rewritten = result.get("rewritten", user_message)
         was_rewritten = result.get("was_rewritten", False)
@@ -114,8 +128,9 @@ def retrieve_node(state: GrievanceState) -> dict:
     messages = state.get("messages", [])
 
     # Step 1: Rewrite query for conversational context
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-    retrieval_query = _rewrite_query(client, user_message, messages)
+    from backend.agent.llm import get_llm
+    client, model_name = get_llm()
+    retrieval_query = _rewrite_query(client, model_name, user_message, messages)
 
     # Step 2: Run RAG retrieval
     try:

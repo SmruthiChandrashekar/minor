@@ -214,10 +214,10 @@ def classify_department_node(state: GrievanceState) -> dict:
     Returns partial state update with 'department', 'department_reason', and 'policy_category'.
     Defaults to 'CRM' on failure (general catch-all).
     """
-    from groq import Groq
-    import os
+    from backend.agent.llm import get_llm, extract_response_text
+    import re
 
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client, model_name = get_llm()
     user_message = state.get("user_message", "")
     messages = state.get("messages", [])
 
@@ -241,17 +241,29 @@ Classify the department. Keep the reason concise (1-2 sentences). Respond ONLY w
     import time
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
+            kwargs = {
+                "model": model_name,
+                "messages": [
                     {"role": "system", "content": DEPARTMENT_ROUTING_SYSTEM_PROMPT},
                     {"role": "user", "content": prompt},
                 ],
-                max_tokens=800,
-                temperature=0.0,
-                response_format={"type": "json_object"},
-            )
-            text = response.choices[0].message.content.strip()
+                "max_tokens": 800,
+                "temperature": 0.0,
+            }
+            try:
+                response = client.chat.completions.create(**kwargs, response_format={"type": "json_object"})
+            except Exception:
+                response = client.chat.completions.create(**kwargs)
+
+            text = extract_response_text(response.choices[0].message).strip()
+            if "```" in text:
+                m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+                if m:
+                    text = m.group(1)
+                else:
+                    m2 = re.search(r"(\{.*?\})", text, re.DOTALL)
+                    if m2:
+                        text = m2.group(1)
             result = json.loads(text)
             department = result.get("department", "CRM")
             reason = result.get("reason", "")
