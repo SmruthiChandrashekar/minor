@@ -1,0 +1,301 @@
+{
+  "benchmark_version": "1.0",
+  "model_target": "ollama/qwen2.5:3b",
+  "description": "Ground-truth evaluation benchmark for Puravankara Grievance & Query Classification (Severity, Intent, Department)",
+  "test_cases": [
+    {
+      "id": 1,
+      "text": "What is the company's earned leave policy?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 2,
+      "text": "How many casual leaves am I entitled to per year?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 3,
+      "text": "What is the purpose of the POSH policy?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 4,
+      "text": "What is the dress code policy for employees?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 5,
+      "text": "How do I apply for maternity leave?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 6,
+      "text": "What are the working hours at Puravankara?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 7,
+      "text": "Can you explain the whistleblower protection policy?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 8,
+      "text": "My salary has not been credited this month and I have followed up with HR three times without any response.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR"
+    },
+    {
+      "id": 9,
+      "text": "My leave balance in the LMS portal is showing incorrect numbers. I have raised tickets with IT and HR but the count remains wrong.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR"
+    },
+    {
+      "id": 10,
+      "text": "My manager is consistently giving me lower performance ratings despite my target achievements being above 100%.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR"
+    },
+    {
+      "id": 11,
+      "text": "I am unable to access the LMS to complete my mandatory compliance training module due to repeated account lockout.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR"
+    },
+    {
+      "id": 12,
+      "text": "I haven't been paid my overtime compensation for the last two months despite multiple manager approvals on record.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR"
+    },
+    {
+      "id": 13,
+      "text": "My manager has been making sexually suggestive comments about my appearance and repeatedly asking me out after work.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC"
+    },
+    {
+      "id": 14,
+      "text": "A senior colleague has been sending me unwanted sexual messages on WhatsApp and making advances during late shifts.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC"
+    },
+    {
+      "id": 15,
+      "text": "There has been a quid pro quo situation where my manager implied career promotion benefits in exchange for personal favors.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC"
+    },
+    {
+      "id": 16,
+      "text": "I am being sexually harassed at work events by a vendor representative who makes inappropriate physical contact.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC"
+    },
+    {
+      "id": 17,
+      "text": "The salesperson promised my apartment would be in a gated community with Italian marble flooring, but cheap vitrified tiles were delivered.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM"
+    },
+    {
+      "id": 18,
+      "text": "My possession date was promised for December 2024 but has been delayed indefinitely with no compensation or explanation.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM"
+    },
+    {
+      "id": 19,
+      "text": "The sales executive demanded an unofficial payment of 2 lakhs as a kickback to ensure apartment allotment on preferred floor.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM"
+    },
+    {
+      "id": 20,
+      "text": "There is a major discrepancy between the area mentioned in my sale agreement and the actual carpet area measured by the surveyor.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM"
+    },
+    {
+      "id": 21,
+      "text": "I was charged unexpected infrastructure charges that were never mentioned or disclosed during the booking agreement signing.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM"
+    },
+    {
+      "id": 22,
+      "text": "There is severe water seepage in my bedroom wall. I reported it two weeks ago but nobody attended to fix it.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 23,
+      "text": "The elevator in our building has been broken for a week and there are elderly residents trapped on upper floors.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 24,
+      "text": "I reported multiple snag items during pre-possession inspection but none have been resolved prior to key handover.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 25,
+      "text": "There is a major plumbing leak in my bathroom and the water is damaging the flooring and seeping into the apartment below.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 26,
+      "text": "The electrical circuit in my flat keeps tripping and there is a burning smell coming from the main distribution panel.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 27,
+      "text": "The construction site is generating massive dust clouds that are affecting the neighborhood air quality and resident health.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG"
+    },
+    {
+      "id": 28,
+      "text": "Construction laborers on the 14th floor are working without safety harnesses or safety helmets in clear violation of labor regulations.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG"
+    },
+    {
+      "id": 29,
+      "text": "The project's Sewage Treatment Plant (STP) is malfunctioning and discharging untreated sewage into the adjoining public drain.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG"
+    },
+    {
+      "id": 30,
+      "text": "The project construction has blocked the natural rainwater drainage channel, causing severe waterlogging in surrounding residential plots.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG"
+    },
+    {
+      "id": 31,
+      "text": "Heavy construction vehicles are damaging the public access road and blocking regular community traffic throughout the day.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG"
+    },
+    {
+      "id": 32,
+      "text": "I am a shareholder and have not received the dividend declared for the last financial year despite sending registered mail.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors"
+    },
+    {
+      "id": 33,
+      "text": "As an institutional investor, I have serious concerns about the accuracy and transparency of the quarterly financial statement disclosures.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors"
+    },
+    {
+      "id": 34,
+      "text": "I need to transfer physical shares to demat form and have been trying to contact the Registrar for weeks with zero response.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors"
+    },
+    {
+      "id": 35,
+      "text": "Unannounced project delays and cost overruns are severely affecting the company's financial valuation and shareholder returns.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors"
+    },
+    {
+      "id": 36,
+      "text": "My manager constantly shouts at me and humiliates me in front of the team during daily operational review meetings.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR"
+    },
+    {
+      "id": 37,
+      "text": "I discovered that senior management is involved in systematic bribery of municipal officials to obtain irregular building sanction approvals.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM"
+    },
+    {
+      "id": 38,
+      "text": "There is complete water supply interruption in my flat for the past 3 days and the facility management desk refuses to answer calls.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 39,
+      "text": "The compound boundary wall provided around the residential tower is damaged, unstable, and in danger of collapsing.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD"
+    },
+    {
+      "id": 40,
+      "text": "I want to know the detailed procedure and timeline for the annual performance appraisal cycle.",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 41,
+      "text": "How can I report an unsafe working condition or safety violation observed at an active construction site?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    },
+    {
+      "id": 42,
+      "text": "What is the code of business conduct and ethics for corporate employees at Puravankara?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null
+    }
+  ]
+}

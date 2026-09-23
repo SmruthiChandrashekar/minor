@@ -1708,3 +1708,28 @@ async def upload_avatar(
             raise e
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ── EVALUATION METRICS ENDPOINT ───────────────────────────────────────────
+
+@app.get("/api/admin/evaluation-metrics")
+async def get_evaluation_metrics(user: dict = Depends(require_super_admin)):
+    """
+    Serve the latest comprehensive evaluation metrics report.
+    Reads the pre-generated results/full_metrics_report.json file.
+    To regenerate, run: python backend/tests/run_all_metrics.py
+    """
+    try:
+        report_path = os.path.join(BASE_DIR, "results", "full_metrics_report.json")
+        if not os.path.exists(report_path):
+            raise HTTPException(
+                status_code=404,
+                detail="No evaluation report found. Run 'python backend/tests/run_all_metrics.py' to generate one."
+            )
+        with open(report_path, "r", encoding="utf-8") as f:
+            report = json.load(f)
+        return report
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+
