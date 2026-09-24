@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 
 
 def check_context_node(state: GrievanceState) -> dict:
-    from groq import Groq
+    from backend.agent.llm import get_llm
     import os
 
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client, model_name = get_llm()
     user_message = state.get("user_message", "")
     messages = state.get("messages", [])
 
@@ -35,30 +35,35 @@ def check_context_node(state: GrievanceState) -> dict:
             "clarification_question": "",
         }
 
-    # Check if the assistant just asked a clarifying question in the immediately preceding turn.
-    # If so, the user is now replying to it, so we proceed directly to triage/resolution
-    # to avoid ever trapping the user in an infinite questioning loop.
-    last_assistant_msg = ""
-    for msg in reversed(messages):
-        if msg.get("role") == "assistant":
-            last_assistant_msg = msg.get("content", "")
-            break
-        elif msg.get("role") == "user":
-            continue
 
-    prior_was_clarification = (
-        bool(last_assistant_msg)
-        and ("?" in last_assistant_msg)
-        and any(q in last_assistant_msg.lower() for q in ["could you", "please provide", "please share", "can you", "what", "when", "where", "which"])
-        and not any(r in last_assistant_msg.lower() for r in ["registered", "classified as", "ticket", "grievance has been"])
-    )
-    if prior_was_clarification:
-        logger.info("User is responding to a prior clarifying question — proceeding to triage.")
+    # ── Follow-up Turn Validation ─────────────────────────────────────────────
+    # Count clarification turns already asked so we never trap the user in
+    # an infinite loop.  After 2 clarifications we always proceed to triage.
+    # For fewer turns we fall through to the normal LLM evaluation below —
+    # the LLM will see the full conversation history including the vague reply
+    # and will correctly decide whether context is now sufficient.
+    clarification_count = 0
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content", "")
+        if role == "assistant" and "?" in content and not any(
+            r in content.lower() for r in ["classified as", "ticket", "grievance has been", "tracking id"]
+        ):
+            clarification_count += 1
+
+    if clarification_count >= 2:
+        logger.info(
+            "Clarification cap reached (%d turns) — proceeding to triage to avoid loop.",
+            clarification_count,
+        )
         return {
             "intent": "GRIEVANCE",
             "context_sufficient": True,
             "clarification_question": "",
         }
+
+    # Fall through: let the LLM evaluate the full conversation including the
+    # user's follow-up reply.  No hardcoded keyword matching needed.
 
     # Build conversation context (last 6 messages)
     history_text = ""
@@ -106,20 +111,37 @@ Current user message: {user_message}
 
 Evaluate intent and context sufficiency. Respond ONLY with JSON."""
 
-    import time
+    import time, re
+    from backend.agent.llm import extract_response_text
+    num_ctx = getattr(client, "_ollama_num_ctx", None)
+
     for attempt in range(3):
         try:
-            response = client.chat.completions.create(
-                model="openai/gpt-oss-120b",
-                messages=[
+            kwargs = {
+                "model": model_name,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
                 ],
-                max_tokens=800,
-                temperature=0.0,
-                response_format={"type": "json_object"},
-            )
-            text = response.choices[0].message.content.strip()
+                "max_tokens": 400,
+                "temperature": 0.0,
+            }
+            if num_ctx:
+                kwargs["extra_body"] = {"options": {"num_ctx": num_ctx}}
+            try:
+                response = client.chat.completions.create(**kwargs, response_format={"type": "json_object"})
+            except Exception:
+                response = client.chat.completions.create(**kwargs)
+
+            text = extract_response_text(response.choices[0].message).strip()
+            if "```" in text:
+                m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+                if m:
+                    text = m.group(1)
+                else:
+                    m2 = re.search(r"(\{.*?\})", text, re.DOTALL)
+                    if m2:
+                        text = m2.group(1)
             result = json.loads(text)
             intent = result.get("intent", "QUERY").strip().upper()
             context_sufficient = bool(result.get("context_sufficient", True))

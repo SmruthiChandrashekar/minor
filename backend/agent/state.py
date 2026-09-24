@@ -61,6 +61,7 @@ class GrievanceState(TypedDict, total=False):
     # Conversation
     messages: list[dict[str, str]]
     user_message: str
+    condensed_message: str
 
     # Severity Classification
     severity: str

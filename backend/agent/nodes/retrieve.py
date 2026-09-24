@@ -127,10 +127,10 @@ def retrieve_node(state: GrievanceState) -> dict:
     user_message = state.get("user_message", "")
     messages = state.get("messages", [])
 
-    # Step 1: Rewrite query for conversational context
-    from backend.agent.llm import get_llm
-    client, model_name = get_llm()
-    retrieval_query = _rewrite_query(client, model_name, user_message, messages)
+    # Use condensed statement from entry node, fallback to user_message
+    retrieval_query = (state.get("condensed_message") or state.get("user_message", "")).strip()
+    if not retrieval_query:
+        retrieval_query = user_message
 
     # Step 2: Run RAG retrieval
     try:

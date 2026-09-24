@@ -13,206 +13,222 @@ from backend.config.categories import DEPARTMENTS
 logger = logging.getLogger(__name__)
 
 
-DEPARTMENT_ROUTING_SYSTEM_PROMPT = """You are the Chief Grievance Classification and Routing Agent for Puravankara Enterprise.
+# Fixed policy_category values per department — the LLM must pick from this enum.
+POLICY_CATEGORIES: dict[str, list[str]] = {
+    "IC":        ["POSH Policy"],
+    "HR":        ["Employee HR Policy", "Payroll & Compensation", "Leave & Attendance", "HR Systems"],
+    "CRM":       ["Sales & Commitments", "Booking & Allotment", "Agreement & Contractual",
+                  "Registration & Documentation", "Commercial & Financial", "Possession & Handover"],
+    "CSD":       ["Building Snag & Maintenance", "Electrical", "Plumbing", "Property Service"],
+    "ESG":       ["Environmental & Community", "Worker Safety", "Waste Management", "Water & Drainage"],
+    "Investors": ["Investor Relations", "Dividend", "Shareholder Services"],
+}
 
-Your task is to analyze the user's grievance, complaint, or query and accurately determine the single responsible department and relevant policy category.
+_POLICY_ENUM_TEXT = "\n".join(
+    f"  {dept}: {', '.join(cats)}" for dept, cats in POLICY_CATEGORIES.items()
+)
 
-Available Departments:
-1. IC (Internal Committee - POSH)
-2. HR (Human Resources)
-3. CRM (Customer Relationship Management)
-4. CSD (Customer Service Department)
-5. ESG (Environmental, Social & Governance)
-6. Investors (Investor Relations)
+DEPARTMENT_ROUTING_SYSTEM_PROMPT = f"""You are a classification model for Puravankara grievance routing.
+Your ONLY task: read the current user message and output the correct department and policy_category.
+Do NOT answer the user. Do NOT ask questions. Do NOT use previous conversation.
 
-==================================================
-DEPARTMENT SCOPES & COMPLAINT UNIVERSE
-==================================================
+DEPARTMENTS & DEFINITIONS:
+  IC        — Sexual harassment, unwanted sexual contact, sexual comments, sexual advances, POSH complaints or retaliation.
+  HR        — Corporate employee matters: salary, payroll, leave, attendance, appraisal, manager disputes, LMS, HR portal.
+  CRM       — Customer transaction issues: sales promises, booking, agreement, charges, pricing, registration, possession commitments, cancellation, refunds.
+  CSD       — Physical property defects and service: seepage, cracks, plumbing, electrical faults, snags, elevators, maintenance, repairs.
+  ESG       — Environmental, worker, public or community impact: pollution, dust, waste, drainage, worker safety, welfare, site hazards.
+  Investors — Shareholder/investor matters: shares, dividends, demat, AGM/EGM, financial disclosures, SEBI complaints.
 
-### 1. IC — Internal Committee (POSH)
-Scope:
-Handles all sexual-harassment-related workplace complaints under the POSH Act, 2013.
-Types of complaints:
-- Sexual harassment by a manager, colleague, senior, vendor, contractor, etc.
-- Unwelcome physical contact or touching without consent
-- Sexually inappropriate comments, jokes, or suggestive communication
-- Sexual messages, calls, or unwanted romantic/sexual advances
-- Gender-based inappropriate remarks or sexist behaviour
-- Sexual intimidation, coercion, or quid pro quo harassment
-- Hostile work environment based on gender/sex
-- Sexual harassment during work events, offsites, official travel, or work-related interactions
-- Retaliation after reporting sexual harassment
-- Repeated inappropriate behaviour after the complainant asked the person to stop
-Example:
-- "My manager repeatedly makes inappropriate sexual comments and has touched me without my consent. I want to report this formally."
-PRIORITY RULE:
-If sexual misconduct or POSH is involved, IC takes absolute priority over HR and all other departments regardless of employee seniority or operational disputes.
-STRICT EXCLUSIONS (NEVER IC):
-- IC handles ONLY sexual harassment complaints.
-- IC NEVER handles technical issues, login errors, employee portal issues, LMS (Learning Management System) access, training completion issues, HR processes, or general employee disputes.
-- Even if an employee mentions "mandatory training" or "compliance module", inability to log in, access the LMS, or complete training is an HR System issue (HR), NEVER IC!
+CRITICAL BOUNDARY RULES:
+  1. IC beats HR always — if sexual misconduct is present, IC wins regardless of other issues.
+  2. ESG beats HR on site workers — laborer wages + site safety → ESG. Corporate salary → HR.
+  3. CRM = what was promised/sold/contracted. CSD = what was physically delivered and needs repair.
+  4. ESG = community/worker/environmental impact. CSD = individual property problem.
+  5. CRM beats Investors — homebuyer delayed possession → CRM. Shareholder concerns → Investors.
 
-### 2. HR — Human Resources
-Scope:
-Handles employee and internal workplace grievances that are NOT POSH.
-Types of complaints:
-- Employee Relations: Manager conflicts, reporting-manager disputes, workplace bullying, non-sexual harassment, unfair treatment by managers, workplace conflicts, employee grievances.
-- Payroll & Compensation: Incorrect salary, salary not credited, unexplained salary deductions, payroll discrepancies, compensation-related concerns.
-- Leave & Attendance: Leave rejection, incorrect leave balance, attendance discrepancies, weekly-off issues, shift-related concerns.
-- Employment: Probation confirmation, hiring-related complaints, termination concerns, transfer/department change, role/responsibility disputes, appraisal/performance concerns.
-- HR Systems/Processes: LMS issues, inability to access LMS or complete mandatory/compliance training, employee portal/access issues, login failures, HR records discrepancies, employee policy clarification.
-Examples:
-- "I am unable to access the LMS and cannot complete the mandatory training assigned to me." -> HR
-- "My leave balance in the LMS is incorrect, and HR has not corrected it despite multiple requests." -> HR
-RULE:
-HR handles internal employees and employment relations, not homebuyers, residents, contractors' site laborers, or investors.
+CONTRASTIVE EXAMPLES:
+  "My corporate salary has not been credited" → HR | Payroll & Compensation
+  "Construction laborers are working without safety harnesses" → ESG | Worker Safety
+  "The workers have unsafe conditions, poor sanitation and inadequate welfare" → ESG | Worker Safety
+  "My manager constantly shouts at me" → HR | Employee HR Policy
+  "My manager makes sexually suggestive comments" → IC | POSH Policy
+  "The salesperson promised a swimming pool but it was never delivered" → CRM | Sales & Commitments
+  "The swimming pool equipment is broken and needs repair" → CSD | Property Service
+  "Construction dust is affecting nearby residents" → ESG | Environmental & Community
+  "There is water seepage in my bedroom" → CSD | Building Snag & Maintenance
+  "Project sewage plant releasing foul odor to community" → ESG | Water & Drainage
+  "My apartment possession has been delayed" → CRM | Possession & Handover
+  "I am a shareholder and haven't received my dividend" → Investors | Dividend
+  "Cannot access LMS for mandatory training" → HR | HR Systems
+  "I cannot log into the employee portal" → HR | HR Systems
 
-### 3. CRM — Customer Relationship Management
-Scope:
-Handles the customer's sales, commercial, contractual, registration, and possession relationship with Puravankara (what was sold, promised, agreed, charged, or committed).
-Types of complaints:
-- Sales & Commitments: False/misleading sales commitments, sales commitment mismatch, promised possession date not met, changes to possession commitments, amenities promised during sales but not delivered (e.g. Italian theme, clubhouse, sports facilities), promised quality not delivered, project marketed with inaccurate characteristics.
-- Booking & Allotment: Booking disputes, plot/flat allotment issues, inventory issues, plot entrance changes, commercial plot access/entrance issues.
-- Agreement & Contractual: Buyer agreement disputes, contract terms, sale-agreement discrepancies, commitments not reflected in agreements, area differences between booking/agreement/registration, Khata area vs agreement area discrepancies.
-- Registration & Documentation: Registration delays, Khata delays, e-Khata delays, registration documentation, ownership documentation, boundary/demarcation concerns, undivided share of land (UDS) concerns, legal issues affecting registration.
-- Commercial & Financial: Infrastructure charges, clubhouse land-transfer charges, unexpected/unapproved charges, pricing disputes, revised pricing, refund requests, cancellation, transfer requests, rental/EMI compensation requests.
-- Possession & Handover: Delayed possession, handover delays, RERA-related customer concerns, OC-related possession delays, handover commitments, long-pending handover cases.
-- Sales-Executive Conduct: Misrepresentation by sales team, unofficial payment demands, bribery/kickbacks demanded from a buyer, improper customer commitments.
-- Land-Project & Customer Commitments (e.g. Oakshire, Tivoli): Nala-related commitments, gated-community representation, infrastructure charges, area revision, amenities, compound walls, feeder boxes, plot demarcation.
-Example:
-- "The salesperson told me that the project would be a gated community, but the project is now being handed over without the promised arrangement."
-RULE:
-If the issue concerns what was sold, promised, contractually committed, charged, registered, or handed over, classify as CRM. Bribery/kickback demands from a homebuyer belong under CRM.
+POLICY_CATEGORY ALLOWED VALUES:
+{_POLICY_ENUM_TEXT}
 
-### 4. CSD — Customer Service Department
-Scope:
-Handles physical property, service, maintenance, and defect-related customer complaints (what was delivered and needs to be inspected, repaired, serviced, or rectified).
-Types of complaints:
-- Construction Defects: Water seepage, dampness, structural cracks, damaged flooring, door/window defects, wall defects, painting defects, waterproofing issues, physical quality defects.
-- Electrical: Electrical faults, power-related internal defects, switch/socket problems, tripping circuit breakers, lighting faults, electrical safety defects.
-- Plumbing: Water leakage, pipe bursts/blockages, water-pressure problems, plumbing defects, bathroom/kitchen plumbing issues.
-- Snags: Unresolved snag items from pre-possession inspection, delayed snag rectification, incomplete defect closure, repeatedly reopened snags.
-- Post-Possession Maintenance: In-apartment maintenance, common-area maintenance, elevator/generator faults, facility-related defects, parking maintenance issues, landscaping/maintenance service issues.
-- Utilities & Services: Property-level water supply interruption, electricity interruption, in-apartment sewage/drainage blockages.
-- Helpdesk: Complaint not attended, delayed technician visit, SLA breach, repeated follow-ups without resolution, complaint incorrectly closed.
-Example:
-- "There is water seepage in my bedroom wall. I reported it two weeks ago, but nobody has inspected or repaired it."
-RULE:
-Physical building defects, in-flat snags, maintenance faults, and post-possession repair requests belong to CSD.
+OUTPUT FORMAT — respond ONLY with valid JSON, nothing else:
+{{"department": "<one of IC|HR|CRM|CSD|ESG|Investors>", "policy_category": "<value from allowed list above>"}}"""
 
-### 5. ESG — Environmental, Social & Governance
-Scope:
-Handles grievances concerning the environment, ecology, workers' occupational health & safety, surrounding communities, public hazard, and responsible corporate governance.
-Types of complaints:
-- Pollution & Environment: Construction dust, air pollution, dense dust clouds affecting nearby residents/schools, excessive construction noise, noise outside permitted hours (e.g. late night/early morning), wastewater discharge, improper waste disposal, construction & demolition waste dumping, environmental pollution, environmental non-compliance.
-- Water & Drainage: Stormwater runoff, urban flooding caused by project activity/grading, municipal drainage blockage, nala blockage or alteration, waterlogging, groundwater depletion, excessive/unauthorized groundwater extraction, water-resource impacts.
-- Trees & Ecology: Unauthorized tree felling, damage to retained trees/vegetation, water-body/lake impacts, ecological damage, failure to implement compensatory plantation.
-- Community Impact: Construction traffic congestion, road damage from heavy vehicles, road obstruction, restricted community access, unsafe construction vehicle movement, public safety hazards, impact on neighboring villages/schools/businesses, boundary/access disputes affecting adjacent landowners.
-- Worker & Public Safety: Site laborers working without PPE (helmets, harnesses), unsafe working conditions, lack of perimeter catch nets, inadequate worker welfare facilities, unsafe construction practices, public safety hazards, emergency access blockage.
-- Wastewater & STP: Sewage treatment plant (STP) malfunction, sewage odor, untreated effluent discharge into open drains/lakes, treated-water quality concerns.
-- Solid Waste: Site littering, improper waste segregation, unauthorized waste disposal, dumping construction debris in public areas.
-- Governance & ESG Responsibility: Environmental compliance non-compliance with approved conditions, concerns about ESG performance, CSR-related concerns.
-Example:
-- "The construction site is dumping construction waste near the neighbouring village, and the waste is entering the local drainage channel."
-RULE:
-Select ESG when the grievance concerns community impact, environmental regulations, worker health/safety, public hazard, pollution, or corporate governance.
 
-### 6. Investors — Investor Relations
-Scope:
-Handles complaints and communications where the person is acting as a shareholder or investor (equity, dividends, financial disclosures, investor relations).
-Types of complaints:
-- Shareholder Matters: Shareholding queries, share transfer, share transmission, demat/remat requests, duplicate share certificates, AGM/EGM voting procedures, Registrar and Share Transfer Agent (RTA) grievances.
-- Dividend: Dividend not received, dividend discrepancies, TDS/Form 16A on dividends, unclaimed dividends.
-- Financial Reporting: Financial reporting discrepancies, questions about reported financial information, concerns regarding financial disclosures, quarterly earnings statements.
-- Annual Reports & Disclosures: Annual report delivery requests, corporate disclosures, SEBI (LODR) compliance disclosures.
-- Investor Grievance Redressal: Unresolved investor requests, SEBI SCORES portal complaints, financial/investor complaints.
-- Project & Investment Concerns: Project delays evaluated from an investor/returns perspective, cost overruns affecting valuation, regulatory risks, failure to meet commitments affecting investment performance.
-Example:
-- "I am a shareholder and have not received the dividend declared for the financial year. Please check my dividend status."
-RULE:
-Classify as Investors when the person is acting in their capacity as a shareholder or equity investor.
+def check_deterministic_department_guardrails(user_message: str) -> tuple[str, str, str] | None:
+    """
+    Deterministic pre-LLM guardrail for critical safety, POSH, and investor triggers.
+    Inspects ONLY the current user_message — no history, no context bleed.
+    Returns (department, policy_category, reason) or None.
+    """
+    t = user_message.lower()
 
-==================================================
-CRITICAL CROSS-DEPARTMENT BOUNDARY DISTINCTIONS
-==================================================
+    # 1. IC (POSH) — sexual misconduct takes absolute priority
+    posh_indicators = [
+        "sexual harassment", "posh", "touched me without", "inappropriate touching",
+        "quid pro quo", "unwanted sexual advance", "sexually inappropriate"
+    ]
+    if any(k in t for k in posh_indicators):
+        return ("IC", "POSH Policy", "Guardrail: Sexual misconduct / POSH complaint.")
 
-1. CRM vs CSD (The Most Important Distinction):
-   - CRM = What was promised, sold, agreed, charged, or committed.
-   - CSD = What was delivered and needs to be inspected, repaired, or serviced.
-   * "The salesperson promised me an Italian-themed project / gated community, but it wasn't delivered." -> CRM
-   * "The compound wall provided around the property is damaged and needs repair." -> CSD
-   * "The developer promised me a specific amenity (e.g. gym, pool)." -> CRM
-   * "The delivered amenity has a defect, broken equipment, and needs repair." -> CSD
-   * "Possession date was promised for December but postponed." -> CRM
-   * "After possession, I reported bedroom wall seepage but it hasn't been fixed." -> CSD
+    # 2. ESG — worker safety / site hazard / emergency
+    esg_safety_indicators = [
+        "unsafe working condition", "emergency response", "worker welfare", "welfare facilit",
+        "site sanitation", "scaffolding collapse", "safety harness", "helmets at site",
+        "fall hazard", "toxic gas", "site accident", "dense dust", "excessive dust",
+        "dust control", "unauthorized groundwater", "stp odor", "dumping construction waste"
+    ]
+    if any(k in t for k in esg_safety_indicators):
+        return ("ESG", "Worker Safety", "Guardrail: Site safety, worker welfare, or environmental hazard.")
 
-2. CSD vs ESG:
-   - CSD = Individual property/service problem affecting the resident's flat or amenities.
-   - ESG = Environmental, worker, public, or community impact.
-   * "Sewage or drainage pipe is leaking inside my apartment." -> CSD
-   * "The project's STP is malfunctioning and releasing foul odor affecting surrounding residents." -> ESG
-   * "There is no water supply in my flat." -> CSD
-   * "The project is excessively extracting groundwater through unauthorized borewells, drying up community wells." -> ESG
-   * "My apartment has a cracked window." -> CSD
-   * "The project has blocked a natural drainage channel / nala, causing flooding in the neighbouring village." -> ESG
+    # 3. Investors — shareholder / equity / SEBI
+    investor_indicators = [
+        "shareholder", "unclaimed dividend", "dividend not received", "demat", "remat",
+        "sebi scores", "agm voting", "annual report delivery"
+    ]
+    if any(k in t for k in investor_indicators):
+        return ("Investors", "Investor Relations", "Guardrail: Shareholder / investor inquiry.")
 
-3. CRM vs ESG:
-   - CRM = Impact on the individual customer's transaction, commercial contract, or property deed.
-   - ESG = Broader environmental, ecological, or community impact.
-   * "Project was marketed as a gated community with open greens, but sale deed omits this." -> CRM
-   * "Construction waste is being dumped into surrounding public drains and fields." -> ESG
-   * "Nala commitment not reflected in customer cost sheet." -> CRM
-   * "Nala is physically altered/blocked by site construction, causing regional waterlogging." -> ESG
-
-4. ESG vs HR (Worker-Related Complaints):
-   - HR = Employee employment relationship (payroll, salary, leave, internal staff disputes).
-   - ESG = Site workers' health/safety, hazardous labor conditions, lack of PPE, or project-level social standards.
-   * "My salary hasn't been paid / attendance deducted." -> HR
-   * "Construction laborers on the 14th floor are working without safety harnesses or helmets." -> ESG
-
-5. Investors vs CRM:
-   - The same project delay can be raised by two different personas:
-   * "I bought an apartment and my possession is delayed." -> CRM (Homebuyer)
-   * "I am a shareholder and am concerned about how project delays and cost overruns affect company earnings." -> Investors (Shareholder)
-
-6. IC vs HR:
-   - HR = General employment, non-sexual workplace bullying, shouting, performance, leave issues, LMS/portal access, login issues, mandatory training completion.
-   - IC = Sexual harassment, sexual comments, unwanted touching, quid pro quo, or sexual intimidation.
-   * "I cannot access the LMS to complete my mandatory training." -> HR (STRICTLY HR, NOT IC)
-   * "My manager is constantly shouting at me in meetings." -> HR
-   * "My manager makes sexually suggestive remarks regarding my appearance." -> IC (IC takes priority)
-
-==================================================
-THE 6-QUESTION ROUTING TEST
-==================================================
-Before selecting the department, run this 6-question test:
-1. Is an actual complaint of sexual harassment or POSH involved?
-   -> IC (STRICTLY for sexual harassment complaints. System access, LMS, login, or mandatory training issues are HR, NOT IC)
-2. Is this an internal employee / workplace issue (not POSH)?
-   -> HR
-3. Is a customer asking about something promised, sold, charged, contracted, registered, or handed over?
-   -> CRM
-4. Does a customer need something physically repaired, maintained, inspected, or rectified?
-   -> CSD
-5. Is the issue impacting the environment, ecology, worker safety, public hazard, or surrounding community?
-   -> ESG
-6. Is this a shareholder / investor matter concerning equity, dividends, or financial disclosures?
-   -> Investors
-
-Respond with ONLY a JSON object:
-{
-  "department": "IC" | "HR" | "CRM" | "CSD" | "ESG" | "Investors",
-  "policy_category": "Name of specific policy or category (e.g. POSH Policy, RERA & Possession, Building Snag & Maintenance, Environmental & Community, Employee HR Policy, Investor Relations)",
-  "reason": "1-2 sentences explaining why this department was selected based on the 6-question test and boundary rules"
-}"""
+    return None
 
 
 def classify_department_node(state: GrievanceState) -> dict:
     """
     Classify which department should handle a grievance query.
 
+    INPUT:  Current user message only — no conversation history.
+    OUTPUT: {"department": ..., "policy_category": ...}
+
+    Deterministic guardrails run pre-LLM on the current message only.
+    """
+    from backend.agent.llm import get_llm, extract_response_text
+    import re, time
+
+    client, model_name = get_llm()
+    # Use condensed statement from multi-turn rewriter if available, fallback to user_message
+    user_message = (state.get("condensed_message") or state.get("user_message", "")).strip()
+
+    if not user_message:
+        return {"department": "UNKNOWN", "department_reason": "Empty message"}
+
+    # ── Deterministic guardrail (current message ONLY) ────────────────────────
+    guardrail_result = check_deterministic_department_guardrails(user_message)
+    if guardrail_result:
+        department, policy_category, reason = guardrail_result
+        logger.info(
+            "=== DEPARTMENT CLASSIFICATION (guardrail) ===\n"
+            "  Query: %s\n  Department: %s\n  Policy: %s\n  Reason: %s",
+            user_message[:100], department, policy_category, reason,
+        )
+        return {"department": department, "policy_category": policy_category, "department_reason": reason}
+
+    # ── LLM Classification — current message only, no history ─────────────────
+    prompt = f"""Classify this message. Respond ONLY with JSON.
+
+USER MESSAGE:
+{user_message}"""
+
+    # Pass num_ctx for Ollama via extra_body if the attribute is present
+    num_ctx = getattr(client, "_ollama_num_ctx", None)
+
+    for attempt in range(3):
+        try:
+            kwargs = {
+                "model": model_name,
+                "messages": [
+                    {"role": "system", "content": DEPARTMENT_ROUTING_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                "max_tokens": 150,
+                "temperature": 0.0,
+            }
+            if num_ctx:
+                kwargs["extra_body"] = {"options": {"num_ctx": num_ctx}}
+
+            try:
+                response = client.chat.completions.create(**kwargs, response_format={"type": "json_object"})
+            except Exception:
+                response = client.chat.completions.create(**kwargs)
+
+            text = extract_response_text(response.choices[0].message).strip()
+            if "```" in text:
+                m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+                text = m.group(1) if m else re.search(r"(\{.*?\})", text, re.DOTALL).group(1)
+
+            result = json.loads(text)
+            department = result.get("department", "UNKNOWN").strip()
+            policy_category = result.get("policy_category", "").strip()
+            break
+
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse department JSON (attempt %d): %s", attempt + 1, e)
+            department = "UNKNOWN"
+            policy_category = ""
+            break
+        except Exception as e:
+            if "429" in str(e) and attempt < 2:
+                logger.warning("Rate limit hit, retrying in 5s (attempt %d)...", attempt + 1)
+                time.sleep(5)
+                continue
+            logger.error("Department classification LLM call failed: %s", e)
+            department = "UNKNOWN"
+            policy_category = ""
+            break
+
+    # ── Validate department against allowed list ───────────────────────────────
+    if department not in DEPARTMENTS:
+        dept_lower = department.lower()
+        matched = next((d for d in DEPARTMENTS if d.lower() == dept_lower), None)
+        if matched:
+            department = matched
+        else:
+            logger.warning("Invalid department '%s' returned — marking UNKNOWN", department)
+            department = "UNKNOWN"
+
+    # ── Validate policy_category against enum for this department ─────────────
+    allowed_cats = POLICY_CATEGORIES.get(department, [])
+    if allowed_cats and policy_category not in allowed_cats:
+        # Pick the first allowed category as a safe fallback
+        policy_category = allowed_cats[0]
+        logger.warning(
+            "Invalid policy_category for %s — defaulted to '%s'", department, policy_category
+        )
+
+    logger.info(
+        "=== DEPARTMENT CLASSIFICATION ===\n"
+        "  Query: %s\n  Department: %s\n  Policy: %s",
+        user_message[:100], department, policy_category,
+    )
+
+    return {
+        "department": department,
+        "policy_category": policy_category,
+        "department_reason": f"Classified as {department} / {policy_category}",
+    }
+
+    """
+    Classify which department should handle a grievance query.
+
     Returns partial state update with 'department', 'department_reason', and 'policy_category'.
     Defaults to 'CRM' on failure (general catch-all).
+
+    Deterministic guardrails are checked first (pre-LLM) for critical safety/POSH/investor
+    triggers so small local models can never misroute life-safety issues.
     """
     from backend.agent.llm import get_llm, extract_response_text
     import re
@@ -220,6 +236,23 @@ def classify_department_node(state: GrievanceState) -> dict:
     client, model_name = get_llm()
     user_message = state.get("user_message", "")
     messages = state.get("messages", [])
+
+    # ── Deterministic guardrail (pre-LLM) ─────────────────────────────────────
+    # Combine current message + last user turn for broader keyword matching.
+    guard_text = user_message
+    for msg in reversed(messages):
+        if msg.get("role") == "user":
+            guard_text = msg.get("content", "") + " " + guard_text
+            break
+    guardrail_result = check_deterministic_department_guardrails(guard_text)
+    if guardrail_result:
+        department, policy_category, reason = guardrail_result
+        logger.info(
+            "=== DEPARTMENT CLASSIFICATION (guardrail) ===\n"
+            "  Query: %s\n  Department: %s\n  Policy: %s\n  Reason: %s",
+            user_message[:100], department, policy_category, reason,
+        )
+        return {"department": department, "department_reason": reason}
 
     # Build conversation context (last 4 messages)
     history_text = ""

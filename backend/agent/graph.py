@@ -16,6 +16,7 @@ import logging
 from langgraph.graph import StateGraph, END
 
 from backend.agent.state import GrievanceState
+from backend.agent.nodes.condense_query import condense_query_node
 from backend.agent.nodes.check_context import check_context_node
 from backend.agent.nodes.ask_clarification import ask_clarification_node
 from backend.agent.nodes.classify_severity import classify_severity_node
@@ -40,6 +41,8 @@ def build_graph() -> StateGraph:
     Graph topology:
         START
           ↓
+        condense_query (rewrites multi-turn follow-up into standalone statement)
+          ↓
         check_context
           ├── [Insufficient Context] → ask_clarification → END
           └── [Sufficient Context]
@@ -52,6 +55,7 @@ def build_graph() -> StateGraph:
     graph = StateGraph(GrievanceState)
 
     # ── Add Nodes ─────────────────────────────────────────────────────────
+    graph.add_node("condense_query", condense_query_node)
     graph.add_node("check_context", check_context_node)
     graph.add_node("ask_clarification", ask_clarification_node)
     graph.add_node("classify_severity", classify_severity_node)
@@ -68,7 +72,8 @@ def build_graph() -> StateGraph:
     graph.add_node("dept_investors", department_route_node)
 
     # ── Entry Point ───────────────────────────────────────────────────────
-    graph.set_entry_point("check_context")
+    graph.set_entry_point("condense_query")
+    graph.add_edge("condense_query", "check_context")
 
     # ── Conditional Edges ─────────────────────────────────────────────────
 
@@ -164,6 +169,7 @@ def run_agent(
     # Build initial state
     state: GrievanceState = {
         "user_message": user_message,
+        "condensed_message": "",
         "session_id": session_id,
         "messages": messages or [],
         "policy_context": [],
@@ -201,6 +207,7 @@ def run_agent(
             "response": result.get("response", "I'm sorry, I couldn't process your request."),
             "sources": result.get("sources", []),
             "intent": result.get("intent", "QUERY"),
+            "condensed_message": result.get("condensed_message", user_message),
             "context_sufficient": result.get("context_sufficient", True),
             "clarification_question": result.get("clarification_question", ""),
             "source_type": result.get("source_type", "GENERAL_KNOWLEDGE"),
@@ -226,6 +233,7 @@ def run_agent(
         return {
             "response": "I apologize, but I encountered an issue processing your request. Please try again.",
             "sources": [],
+            "condensed_message": user_message,
             "severity": "",
             "severity_reason": "",
             "department": "",

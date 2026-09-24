@@ -121,6 +121,7 @@ function PolicyAssistant() {
               source_type: meta.source_type || 'GENERAL_KNOWLEDGE',
               policy_name: meta.policy_name || '',
               intent: meta.intent || '',
+              condensed_message: meta.condensed_message || '',
               original_query: meta.original_query || ''
             };
           }));
@@ -253,6 +254,7 @@ function PolicyAssistant() {
         source_type: data.source_type || 'GENERAL_KNOWLEDGE',
         policy_name: data.policy_name || '',
         intent: data.intent || 'QUERY',
+        condensed_message: data.condensed_message || '',
         original_query: trimmed
       };
       setMessages(prev => [...prev, botMsg]);
@@ -276,6 +278,7 @@ function PolicyAssistant() {
               source_type: botMsg.source_type,
               policy_name: botMsg.policy_name,
               intent: botMsg.intent,
+              condensed_message: botMsg.condensed_message,
               original_query: botMsg.original_query
             }
           })
@@ -311,17 +314,59 @@ function PolicyAssistant() {
 
   const stripEmojis = (str) => str ? str.replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}]/gu, '').replace(/\s+/g, ' ').trim() : '';
 
+  const isMetaPhrase = (text) => {
+    if (!text) return true;
+    const lower = text.trim().toLowerCase();
+    const metaPatterns = [
+      /^i\s+want\s+to\s+file(\s+a)?\s+grievance/i,
+      /^file(\s+a)?\s+grievance/i,
+      /^lodge(\s+a)?\s+grievance/i,
+      /^register(\s+a)?\s+complaint/i,
+      /^raise(\s+a)?\s+ticket/i,
+      /^open(\s+the)?\s+form/i,
+      /^submit(\s+a)?\s+complaint/i,
+      /^help\s*$/i,
+      /^grievance\s*$/i,
+      /^complaint\s*$/i,
+      /^yes\s*$/i,
+      /^no\s*$/i,
+      /^ok\s*$/i,
+      /^okay\s*$/i
+    ];
+    return metaPatterns.some(p => p.test(lower));
+  };
+
   const getQueryDescription = (msgItem) => {
-    if (msgItem?.original_query) return stripEmojis(msgItem.original_query);
     const idx = messages.findIndex(m => m.id === msgItem?.id);
-    if (idx > 0) {
-      for (let i = idx - 1; i >= 0; i--) {
-        if (!messages[i].isBot && messages[i].text) {
-          return stripEmojis(messages[i].text);
+    const limit = idx > 0 ? idx : messages.length;
+
+    // Collect all substantive user messages prior to this bot response
+    const userTexts = [];
+    for (let i = 0; i < limit; i++) {
+      if (!messages[i].isBot && messages[i].text) {
+        const cleaned = stripEmojis(messages[i].text);
+        if (cleaned && !isMetaPhrase(cleaned)) {
+          userTexts.push(cleaned);
         }
       }
     }
-    return '';
+
+    // Check for synthesized summary from agent
+    const summary = msgItem?.condensed_message ? stripEmojis(msgItem.condensed_message) : '';
+
+    if (summary && !isMetaPhrase(summary)) {
+      if (userTexts.length > 1) {
+        return `${summary}\n\nKey Details Provided in Chat:\n${userTexts.map(t => `• ${t}`).join('\n')}`;
+      }
+      return summary;
+    }
+
+    // If no condensed summary, combine all substantive user messages
+    if (userTexts.length > 0) {
+      return userTexts.join('\n');
+    }
+
+    return stripEmojis(msgItem?.original_query || '');
   };
 
   // ── Render ─────────────────────────────────────────────────────────────

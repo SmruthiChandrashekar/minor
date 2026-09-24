@@ -32,7 +32,11 @@ def get_llm():
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         model = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
         # Generous timeout for local CPU/GPU inference
+        # num_ctx is passed per-request via extra_body since OpenAI client
+        # doesn't expose Ollama-specific options at the client level.
         client = OpenAI(base_url=base_url, api_key="ollama", timeout=120.0)
+        # Attach num_ctx as a default so callers get it automatically.
+        client._ollama_num_ctx = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
         return client, model
     else:
         groq_api_key = os.getenv("GROQ_API_KEY")

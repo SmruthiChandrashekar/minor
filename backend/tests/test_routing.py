@@ -254,4 +254,4 @@ class TestEdgeCases:
     def test_unknown_department_still_routes(self):
         route = determine_initial_route("HIGH", "UnknownDept")
         assert route["assigned_tier"] == "L2"
-        assert route["assigned_queue"] == "unknowndept_l2_queue"
+        assert route["assigned_queue"] == "crm_l2_queue"

@@ -711,6 +711,7 @@ async def chat_with_agent(request: ChatRequest):
             "chatbot_resolved": chatbot_resolved_val,
             "trigger_form": trigger_form,
             "form_reason": form_reason,
+            "condensed_message": agent_result.get("condensed_message", message_en),
             "original_query": request.message,
         }
     except Exception as e:

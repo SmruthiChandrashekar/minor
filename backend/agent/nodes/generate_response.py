@@ -13,10 +13,39 @@ Also determines whether the chatbot successfully resolved the query
 (sets chatbot_resolved flag for downstream LOW → L1 handoff logic).
 """
 
+import re
 import logging
 from backend.agent.state import GrievanceState
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_response(text: str) -> str:
+    """
+    Remove any hallucinated/dummy phone numbers or placeholder contact details
+    from LLM-generated text before sending to the user.
+    """
+    if not text:
+        return text
+
+    # Dummy sequences & unverified phone number patterns (e.g. 9876543210, 1234567890, 1800-xxx)
+    # Match sequences of 10 digits starting with Indian mobile prefixes (6-9) or standard 1800 toll-free patterns
+    dummy_patterns = [
+        r'\b9876543210\b',
+        r'\b1234567890\b',
+        r'\b0123456789\b',
+        r'\b(?:\+?91[- ]?)?[6-9]\d{9}\b',
+        r'\b1800[-\s]?\d{3}[-\s]?\d{4}\b',
+    ]
+    for pat in dummy_patterns:
+        text = re.sub(pat, "the Puravankara Resident App / Helpdesk", text)
+
+    # Clean up any awkward phrasing resulting from regex substitutions like "at the Puravankara Resident App"
+    text = re.sub(r'\bat the Puravankara Resident App / Helpdesk\b', 'via the Puravankara Resident App or Facility Management desk', text)
+    text = re.sub(r'\bat the resident app\b', 'via the resident app', text, flags=re.IGNORECASE)
+
+    return text
+
 
 
 def _call_llm_with_auto_summary(client, model_name: str, messages: list, max_tokens: int = 1000) -> str:
@@ -193,10 +222,14 @@ The user is reporting a concern/grievance:
 YOUR TASK:
 1. Acknowledge the user's issue with genuine empathy and professional reassurance.
 2. Provide a practical, constructive explanation drawing upon standard corporate, operational, and site practices:
-   - Explain standard operating norms, schedules, inspection procedures, or common administrative factors relevant to the issue.
-   - Offer concrete steps the user can immediately take or verify to help resolve or understand the situation.
-   - Reassure them that if the issue persists or exceeds standard norms, they can use the resolution guidance button below to lodge a formal ticket for departmental investigation.
-3. Be reassuring, polite, and professional.
+   - Address the specific concern raised by the user directly. Do NOT invent unrelated topics (e.g., do NOT assume noise complaints, quiet hours, or maintenance work unless the user explicitly mentioned noise or repairs).
+   - If a resident raises a concern regarding other residents' background or profession (e.g. doctors or healthcare workers living in the community), clarify courteously that residential complexes welcome diverse residents and professionals in accordance with standard community living guidelines and equal housing principles.
+   - Explain standard operating norms or common administrative factors relevant to the issue.
+   - Offer concrete steps the user can take or verify.
+   - Reassure them that if they have legitimate community issues or if the concern persists, they can use the resolution guidance button below to lodge a formal ticket for CRM/management review.
+3. CRITICAL GROUNDING & CONTACT RESTRICTIONS:
+   - ABSOLUTELY NEVER invent, hallucinate, or output placeholder phone numbers (e.g., '9876543210', '1800-xxx'), dummy emails, or fictional personnel names.
+   - For assistance, refer the user strictly to the official "Puravankara Resident App" or "on-site Facility Management desk" without quoting fabricated contact numbers.
 4. CONCISENESS & COMPLETION: Keep your answer crisp and concise (under 250 words). Avoid overly wide tables; prefer bullet points. Always conclude all sentences completely."""
         else:
             # Query not in official policy: Answer thoroughly using General Knowledge (GK)
@@ -214,7 +247,8 @@ This specific topic does not have a formal Puravankara policy handbook clause, b
 1. Provide a direct, helpful, and informative answer based on standard workplace practices, industry standards, or general knowledge.
 2. If the topic involves company-specific variables (like payroll records, specific team assignments, or internal logins), provide the standard explanation and suggest the appropriate channel (e.g. HR helpdesk, IT service desk, or employee portal).
 3. Do NOT claim "policy documents are missing" or ask the user to submit a formal grievance for simple questions. Answer constructively.
-4. CONCISENESS & COMPLETION: Keep your answer concise and crisp. Summarize key points and ensure every sentence is fully completed."""
+4. CRITICAL - NO FABRICATED CONTACT DETAILS: Absolutely never invent or output placeholder phone numbers (e.g., '9876543210', '1800-xxx'), dummy emails, or fictional personnel names. Refer users to the official portal or designated department desk.
+5. CONCISENESS & COMPLETION: Keep your answer concise and crisp. Summarize key points and ensure every sentence is fully completed."""
 
         prompt = f"User: {user_message}"
 
@@ -231,6 +265,9 @@ This specific topic does not have a formal Puravankara policy handbook clause, b
         except Exception as e:
             logger.error("General response generation failed: %s", e)
             response = "I'm here to assist you. While this specific detail is not outlined in our standard policies, you can verify this through your employee self-service portal or with your department coordinator."
+
+    # Post-process sanitization to strip any hallucinated phone numbers or placeholder contacts
+    response = _sanitize_response(response)
 
     logger.info(
         "Generated conversational response (intent=%s, source_type=%s, can_escalate=%s)",
