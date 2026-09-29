@@ -71,48 +71,19 @@ function LodgeContract() {
     };
     
     try {
-      // ── STEP 1: Classify intent via backend ──────────────────────────────
-      const classifyRes = await apiClient("/api/agents/classify", {
+      // ── Submit complaint directly to backend ──────────────────────────────
+      // /submit-complaint handles AI classification, routing, and DB storage server-side
+      const submitRes = await apiClient("/submit-complaint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanDescription }),
+        body: JSON.stringify(payload)
       });
-
-      if (classifyRes.ok) {
-        const classified = await classifyRes.json();
-
-        // ── STEP 2a: Intent = Query → chatbot, NO DB insert ─────────────────
-        if (classified.intent === "Query") {
-          setIsSubmitting(false);
-          setQueryRedirect({ type: "query", text: cleanDescription });
-          sendToChat(cleanDescription);
-          return;
-        }
-
-        // ── STEP 2b: Low or Policy severity → chatbot only, NO DB insert ───────────────
-        if (classified.severity === "Low" || classified.severity === "Policy") {
-          setIsSubmitting(false);
-          setQueryRedirect({ type: "low", text: cleanDescription });
-          sendToChat(cleanDescription);
-          return;
-        }
-
-
-        // ── STEP 3: Intent = Complaint → submit to backend (with category/severity)
-        const submitRes = await apiClient("/submit-complaint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
       
-        if (!submitRes.ok) throw new Error("Backend not ready or returned error");
-        
-        const data = await submitRes.json();
-        setSubmittedId(data.grievance_id || data.id);
-        return;
-      }
+      if (!submitRes.ok) throw new Error("Backend not ready or returned error");
       
-      throw new Error("Classify endpoint unreachable");
+      const data = await submitRes.json();
+      setSubmittedId(data.grievance_id || data.id);
+      return;
       
     } catch (err) {
       console.warn("Backend not ready. Falling back to direct Supabase insert.", err);

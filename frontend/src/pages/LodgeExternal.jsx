@@ -70,48 +70,19 @@ function LodgeExternal() {
     };
 
     try {
-      // ── STEP 1: Classify intent ───────────────────────────────────────────
-      const classifyRes = await apiClient("/api/agents/classify", {
+      // ── Submit complaint directly to backend ──────────────────────────────
+      // /submit-complaint handles AI classification, routing, and DB storage server-side
+      const submitRes = await apiClient("/submit-complaint", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: cleanDescription }),
+        body: JSON.stringify(payload),
       });
 
-      if (classifyRes.ok) {
-        const classified = await classifyRes.json();
+      if (!submitRes.ok) throw new Error("Backend submit failed");
 
-        // ── STEP 2a: Query → chatbot, NO DB insert ──────────────────────────
-        if (classified.intent === "Query") {
-          setIsSubmitting(false);
-          setQueryRedirect({ type: "query", text: cleanDescription });
-          sendToChat(cleanDescription);
-          return;
-        }
-
-        // ── STEP 2b: Low severity → chatbot, NO DB insert ────────────────────
-        if (classified.severity === "Low" || classified.severity === "Policy") {
-          setIsSubmitting(false);
-          setQueryRedirect({ type: "low", text: cleanDescription });
-          sendToChat(cleanDescription);
-          return;
-        }
-
-
-        // ── STEP 3: High/Critical → DB insert only ───────────────────────────
-        const submitRes = await apiClient("/submit-complaint", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!submitRes.ok) throw new Error("Backend submit failed");
-
-        const data = await submitRes.json();
-        setSubmittedId(data.grievance_id || data.id);
-        return;
-      }
-
-      throw new Error("Classify endpoint unreachable");
+      const data = await submitRes.json();
+      setSubmittedId(data.grievance_id || data.id);
+      return;
 
     } catch (err) {
       console.warn("Falling back to direct Supabase insert:", err.message);
