@@ -174,17 +174,18 @@ const Auth = () => {
     <div>
       {/* HERO BANNER */}
       <div
+        className="hero-banner text-white"
         style={{
-          background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
+          background: "linear-gradient(135deg, var(--navy) 0%, #003366 100%)",
           padding: "48px 0 0",
-          color: "#fff",
+          color: "#ffffff",
         }}
       >
-        <div className="container text-center pb-5">
-          <h1 className="fw-bold mb-2" style={{ fontSize: "2rem" }}>
+        <div className="container text-center pb-5 text-white">
+          <h1 className="fw-bold mb-2 text-white" style={{ fontSize: "2.2rem", color: "#ffffff" }}>
             {mode === "login" ? t("welcomeBack") : t("createYourAccount")}
           </h1>
-          <p className="opacity-75 mb-0" style={{ fontSize: "1rem" }}>
+          <p className="opacity-90 mb-0 text-white" style={{ fontSize: "1.05rem", color: "#c4d2ec" }}>
             {mode === "login" ? t("signInDesc") : t("createAccountDesc")}
           </p>
         </div>
@@ -196,7 +197,7 @@ const Auth = () => {
           style={{ display: "block", marginBottom: "-2px" }}
         >
           <path
-            fill="var(--bg-color)"
+            fill="var(--bg)"
             d="M0,30 C360,60 1080,0 1440,30 L1440,60 L0,60 Z"
           />
         </svg>

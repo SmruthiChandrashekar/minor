@@ -40,7 +40,7 @@ def get_llm():
         return client, model
     else:
         groq_api_key = os.getenv("GROQ_API_KEY")
-        model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+        model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
         client = Groq(api_key=groq_api_key, timeout=30.0)
         return client, model
 

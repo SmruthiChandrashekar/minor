@@ -58,6 +58,9 @@ function LodgeInternal() {
       description: cleanDescription,
       lang: langCode,
       attachments: formData.attachments,
+      source: location.state?.source || null,
+      prefilled_severity: location.state?.severity || null,
+      prefilled_department: location.state?.department || null,
       metadata: {
         user_id: formData.isAnonymous ? null : (user?.id || null),
         name: formData.employeeName,
@@ -65,7 +68,11 @@ function LodgeInternal() {
         email: formData.emailAddress,
         location: formData.department,
         date: formData.incidentDate,
-        department: "Internal HR",
+        department: location.state?.department || "Internal HR",
+        source: location.state?.source || null,
+        severity: location.state?.severity || null,
+        prefilled_severity: location.state?.severity || null,
+        prefilled_department: location.state?.department || null,
         is_anonymous: formData.isAnonymous
       },
     };

@@ -132,23 +132,88 @@ function PolicyAssistant() {
     } catch (err) { console.error("Failed to load messages", err); }
   };
 
+  const [menuOpenSessionId, setMenuOpenSessionId] = useState(null);
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [pinnedSessionIds, setPinnedSessionIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('purva_pinned_sessions');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.pa-session-menu-container')) {
+        setMenuOpenSessionId(null);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  const togglePinSession = (e, id) => {
+    e.stopPropagation();
+    setPinnedSessionIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [id, ...prev];
+      try { localStorage.setItem('purva_pinned_sessions', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
+    setMenuOpenSessionId(null);
+  };
+
+  const startRename = (e, s) => {
+    e.stopPropagation();
+    setEditingSessionId(s.id);
+    setEditingTitle(s.title || "New Conversation");
+    setMenuOpenSessionId(null);
+  };
+
+  const handleSaveRename = async (e, id) => {
+    if (e) e.stopPropagation();
+    const cleanTitle = (editingTitle || '').trim();
+    if (!cleanTitle) {
+      setEditingSessionId(null);
+      return;
+    }
+    try {
+      await apiClient(`/api/chat/session/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title: cleanTitle })
+      });
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, title: cleanTitle } : s));
+    } catch (err) {
+      console.error("Failed to rename session", err);
+    } finally {
+      setEditingSessionId(null);
+    }
+  };
+
+  const handleCancelRename = (e) => {
+    if (e) e.stopPropagation();
+    setEditingSessionId(null);
+  };
+
   const handleNewConversation = () => {
     setSessionId(null);
     setMessages([{ id: 1, text: null, isBot: true, isGreeting: true }]);
   };
 
   const switchSession = (id) => {
+    if (editingSessionId) return;
     setSessionId(id);
     loadSessionMessages(id);
   };
 
   const deleteSession = async (e, id) => {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     if (!window.confirm(t('confirmDeleteChat') || "Are you sure you want to delete this chat?")) return;
     try {
       const res = await apiClient(`/api/chat/session/${id}`, { method: "DELETE" });
       if (res.ok) {
         if (id === sessionId) handleNewConversation();
+        setPinnedSessionIds(prev => prev.filter(x => x !== id));
         loadAllSessions();
       }
     } catch (err) { console.error("Failed to delete session", err); }
@@ -376,11 +441,11 @@ function PolicyAssistant() {
       {/* ── LEFT SIDEBAR: Chat History ─────────────────────────────────── */}
       <aside className={`pa-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="pa-sidebar-header">
-          <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
+          <h6 className="mb-0 fw-bold d-flex align-items-center gap-2 text-white">
             <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5v-2z"/></svg>
             History
           </h6>
-          <button className="pa-sidebar-close" onClick={() => setSidebarOpen(false)}>
+          <button className="pa-sidebar-close text-white" onClick={() => setSidebarOpen(false)}>
             <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/></svg>
           </button>
         </div>
@@ -401,26 +466,96 @@ function PolicyAssistant() {
               <p>No past conversations</p>
             </div>
           ) : (
-            sessions.map(s => (
-              <div
-                key={s.id}
-                className={`pa-session-item ${s.id === sessionId ? 'active' : ''} d-flex justify-content-between align-items-center`}
-                onClick={() => switchSession(s.id)}
-              >
-                <div>
-                  <div className="pa-session-title">{s.title || "New Conversation"}</div>
-                  <div className="pa-session-date">{new Date(s.updated_at).toLocaleDateString()}</div>
-                </div>
-                <button
-                  className="btn btn-sm btn-link text-danger p-0 delete-chat-btn"
-                  style={{ opacity: 0.7 }}
-                  title="Delete chat"
-                  onClick={(e) => deleteSession(e, s.id)}
-                >
-                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
-                </button>
-              </div>
-            ))
+            [...sessions]
+              .sort((a, b) => {
+                const aPinned = pinnedSessionIds.includes(a.id);
+                const bPinned = pinnedSessionIds.includes(b.id);
+                if (aPinned && !bPinned) return -1;
+                if (!aPinned && bPinned) return 1;
+                return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+              })
+              .map(s => {
+                const isPinned = pinnedSessionIds.includes(s.id);
+                const isEditing = editingSessionId === s.id;
+                const isMenuOpen = menuOpenSessionId === s.id;
+
+                return (
+                  <div
+                    key={s.id}
+                    className={`pa-session-item ${s.id === sessionId ? 'active' : ''} ${isPinned ? 'pinned' : ''}`}
+                    onClick={() => switchSession(s.id)}
+                  >
+                    <div className="pa-session-content">
+                      {isEditing ? (
+                        <div className="pa-rename-box" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="text"
+                            className="pa-rename-input"
+                            value={editingTitle}
+                            autoFocus
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveRename(e, s.id);
+                              if (e.key === 'Escape') handleCancelRename(e);
+                            }}
+                          />
+                          <div className="d-flex gap-1 mt-1">
+                            <button className="pa-rename-save-btn" onClick={(e) => handleSaveRename(e, s.id)}>Save</button>
+                            <button className="pa-rename-cancel-btn" onClick={(e) => handleCancelRename(e)}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="pa-session-title d-flex align-items-center gap-1">
+                            {isPinned && (
+                              <svg width="12" height="12" fill="#60a5fa" viewBox="0 0 16 16" className="flex-shrink-0" title="Pinned">
+                                <path d="M4.146.146A.5.5 0 0 1 4.5 0h7a.5.5 0 0 1 .5.5c0 .68-.342 1.174-.646 1.479-.283.284-.53.53-.53.967v2.094l1.324 1.324a.5.5 0 0 1 .146.354v1.5a.5.5 0 0 1-.5.5h-4.5v4.5a.5.5 0 0 1-1 0V9H2.5a.5.5 0 0 1-.5-.5v-1.5a.5.5 0 0 1 .146-.354L3.47 5.04V2.946c0-.437-.247-.683-.53-.967C2.636 1.674 2.294 1.18 2.294.5a.5.5 0 0 1 .5-.5h1.352z"/>
+                              </svg>
+                            )}
+                            <span className="text-truncate">{s.title || "New Conversation"}</span>
+                          </div>
+                          <div className="pa-session-date">{new Date(s.updated_at).toLocaleDateString()}</div>
+                        </div>
+                      )}
+                    </div>
+
+                    {!isEditing && (
+                      <div className="pa-session-menu-container" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className={`pa-three-dots-btn ${isMenuOpen ? 'active' : ''}`}
+                          title="Options"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuOpenSessionId(isMenuOpen ? null : s.id);
+                          }}
+                        >
+                          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                          </svg>
+                        </button>
+
+                        {isMenuOpen && (
+                          <div className="pa-session-dropdown">
+                            <button className="pa-dropdown-item" onClick={(e) => startRename(e, s)}>
+                              <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              <span>Rename</span>
+                            </button>
+                            <button className="pa-dropdown-item" onClick={(e) => togglePinSession(e, s.id)}>
+                              <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 2l3 7h6l-5 4 2 8-6-4-6 4 2-8-5-4h6z"/></svg>
+                              <span>{isPinned ? 'Unpin' : 'Pin to Top'}</span>
+                            </button>
+                            <div className="pa-dropdown-divider"></div>
+                            <button className="pa-dropdown-item text-danger" onClick={(e) => { setMenuOpenSessionId(null); deleteSession(e, s.id); }}>
+                              <svg width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg>
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
           )}
         </div>
       </aside>
@@ -437,58 +572,16 @@ function PolicyAssistant() {
               </button>
             )}
             <div className="purva-avatar-topbar">
-              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="purva-avatar-svg">
-                {/* Glowing ring */}
-                <circle cx="32" cy="32" r="30" stroke="url(#purvaGlow)" strokeWidth="2" fill="none" opacity="0.7"/>
-                {/* Background circle */}
-                <circle cx="32" cy="32" r="28" fill="url(#purvaGradBg)"/>
-                {/* Neck */}
-                <rect x="26" y="40" width="12" height="8" rx="4" fill="#f4c2a1"/>
-                {/* Body / shoulders */}
-                <ellipse cx="32" cy="56" rx="18" ry="12" fill="url(#purvaShirt)"/>
-                {/* Head */}
-                <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
-                {/* Hair */}
-                <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
-                <path d="M19 27 Q17 36 20 40 Q19 32 21 28Z" fill="#5c3d2e"/>
-                <path d="M45 27 Q47 36 44 40 Q45 32 43 28Z" fill="#5c3d2e"/>
-                {/* Eyes */}
-                <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                {/* Eye shine */}
-                <circle cx="28" cy="27" r="0.7" fill="#fff"/>
-                <circle cx="38" cy="27" r="0.7" fill="#fff"/>
-                {/* Smile */}
-                <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-                {/* Cheeks */}
-                <ellipse cx="22" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
-                <ellipse cx="42" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
-                <defs>
-                  <radialGradient id="purvaGradBg" cx="50%" cy="35%" r="50%">
-                    <stop offset="0%" stopColor="#1e1e30"/>
-                    <stop offset="100%" stopColor="#12121e"/>
-                  </radialGradient>
-                  <linearGradient id="purvaShirt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1"/>
-                    <stop offset="100%" stopColor="#4f46e5"/>
-                  </linearGradient>
-                  <linearGradient id="purvaGlow" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#a78bfa"/>
-                    <stop offset="50%" stopColor="#f472b6"/>
-                    <stop offset="100%" stopColor="#a78bfa"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+              <img src="/purva-logo.svg" alt="Purva" className="purva-avatar-svg" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "contain" }} />
             </div>
             <div>
-              <h5 className="mb-0 fw-bold pa-topbar-title">Purva</h5>
-              <small className="pa-topbar-subtitle">Your AI Grievance Companion</small>
+              <h5 className="mb-0 fw-bold pa-topbar-title text-white">Purva</h5>
+              <small className="pa-topbar-subtitle text-white-50">Your AI Grievance Companion</small>
             </div>
           </div>
           <div className="d-flex align-items-center gap-2">
             <span className="pa-status-dot"></span>
-            <small className="pa-topbar-status">Online</small>
-
+            <small className="pa-topbar-status text-white">Online</small>
           </div>
         </div>
 
@@ -498,38 +591,7 @@ function PolicyAssistant() {
           {messages.length <= 1 && (
             <div className="pa-welcome">
               <div className="purva-welcome-avatar">
-                <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="purva-welcome-svg">
-                  <circle cx="50" cy="50" r="47" stroke="url(#purvaWelcomeGlow)" strokeWidth="2.5" fill="none"/>
-                  <circle cx="50" cy="50" r="44" fill="url(#purvaWelcomeBg)"/>
-                  <rect x="39" y="62" width="22" height="14" rx="7" fill="#f4c2a1"/>
-                  <ellipse cx="50" cy="86" rx="28" ry="18" fill="url(#purvaWelcomeShirt)"/>
-                  <circle cx="50" cy="44" r="22" fill="#f4c2a1"/>
-                  <path d="M28 42 Q28 22 50 20 Q72 22 72 42 Q70 28 50 27 Q30 28 28 42Z" fill="#5c3d2e"/>
-                  <path d="M28 43 Q25 56 30 63 Q28 52 31 46Z" fill="#5c3d2e"/>
-                  <path d="M72 43 Q75 56 70 63 Q72 52 69 46Z" fill="#5c3d2e"/>
-                  <ellipse cx="42" cy="44" rx="3.5" ry="4" fill="#3d2b1f"/>
-                  <ellipse cx="58" cy="44" rx="3.5" ry="4" fill="#3d2b1f"/>
-                  <circle cx="44" cy="42" r="1.2" fill="#fff"/>
-                  <circle cx="60" cy="42" r="1.2" fill="#fff"/>
-                  <path d="M42 52 Q50 58 58 52" stroke="#c87941" strokeWidth="2" fill="none" strokeLinecap="round"/>
-                  <ellipse cx="35" cy="48" rx="5" ry="3.5" fill="#f9a8a8" opacity="0.45"/>
-                  <ellipse cx="65" cy="48" rx="5" ry="3.5" fill="#f9a8a8" opacity="0.45"/>
-                  <defs>
-                    <radialGradient id="purvaWelcomeBg" cx="50%" cy="35%" r="55%">
-                      <stop offset="0%" stopColor="#2d2d4a"/>
-                      <stop offset="100%" stopColor="#18181c"/>
-                    </radialGradient>
-                    <linearGradient id="purvaWelcomeShirt" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#8b5cf6"/>
-                      <stop offset="100%" stopColor="#6d28d9"/>
-                    </linearGradient>
-                    <linearGradient id="purvaWelcomeGlow" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#a78bfa"/>
-                      <stop offset="50%" stopColor="#f472b6"/>
-                      <stop offset="100%" stopColor="#a78bfa"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <img src="/purva-logo.svg" alt="Purva" className="purva-welcome-svg" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "contain" }} />
               </div>
               <h4 className="fw-bold mb-2">Hi, I'm <span style={{ background: 'linear-gradient(135deg, #a78bfa, #f472b6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Purva</span></h4>
               <p className="text-muted mb-4">Your AI companion for company policies, grievance procedures, POSH compliance, and filing complaints — I'm here to help!</p>
@@ -552,30 +614,7 @@ function PolicyAssistant() {
             <div key={msg.id} className={`pa-msg-row ${msg.isBot ? 'bot' : 'user'}`}>
               {msg.isBot && (
                 <div className="pa-msg-avatar purva-msg-avatar">
-                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                    <circle cx="32" cy="32" r="30" fill="url(#pMsgBg)" />
-                    <rect x="26" y="40" width="12" height="7" rx="3.5" fill="#f4c2a1"/>
-                    <ellipse cx="32" cy="54" rx="16" ry="10" fill="url(#pMsgShirt)"/>
-                    <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
-                    <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
-                    <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                    <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                    <circle cx="28" cy="27" r="0.7" fill="#fff"/>
-                    <circle cx="38" cy="27" r="0.7" fill="#fff"/>
-                    <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-                    <ellipse cx="22" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
-                    <ellipse cx="42" cy="31" rx="3" ry="2" fill="#f9a8a8" opacity="0.5"/>
-                    <defs>
-                      <radialGradient id="pMsgBg" cx="50%" cy="35%" r="55%">
-                        <stop offset="0%" stopColor="#2d2d4a"/>
-                        <stop offset="100%" stopColor="#18181c"/>
-                      </radialGradient>
-                      <linearGradient id="pMsgShirt" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#8b5cf6"/>
-                        <stop offset="100%" stopColor="#6d28d9"/>
-                      </linearGradient>
-                    </defs>
-                  </svg>
+                  <img src="/purva-logo.svg" alt="Purva" style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "contain" }} />
                 </div>
               )}
               <div className={`pa-msg-bubble ${msg.isBot ? 'bot' : 'user'}`}>
@@ -646,7 +685,9 @@ function PolicyAssistant() {
                             navigate(getLodgeRoute(), {
                               state: {
                                 description: getQueryDescription(msg),
-                                department: msg.department || ''
+                                department: msg.department || '',
+                                source: 'CHATBOT_ESCALATION',
+                                severity: msg.severity || 'MEDIUM'
                               }
                             });
                           }}
@@ -683,7 +724,9 @@ function PolicyAssistant() {
                             navigate(getLodgeRoute(), {
                               state: {
                                 description: getQueryDescription(msg),
-                                department: msg.department || ''
+                                department: msg.department || '',
+                                source: 'CHATBOT_ESCALATION',
+                                severity: 'LOW'
                               }
                             });
                           }}
@@ -720,7 +763,9 @@ function PolicyAssistant() {
                             navigate(getLodgeRoute(), {
                               state: {
                                 description: getQueryDescription(msg),
-                                department: msg.department || ''
+                                department: msg.department || '',
+                                source: 'CHATBOT_ESCALATION',
+                                severity: 'LOW'
                               }
                             });
                           }}
@@ -742,28 +787,7 @@ function PolicyAssistant() {
           {isTyping && (
             <div className="pa-msg-row bot">
               <div className="pa-msg-avatar purva-msg-avatar">
-                <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                  <circle cx="32" cy="32" r="30" fill="url(#pTypBg)" />
-                  <rect x="26" y="40" width="12" height="7" rx="3.5" fill="#f4c2a1"/>
-                  <ellipse cx="32" cy="54" rx="16" ry="10" fill="url(#pTypShirt)"/>
-                  <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
-                  <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
-                  <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                  <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                  <circle cx="28" cy="27" r="0.7" fill="#fff"/>
-                  <circle cx="38" cy="27" r="0.7" fill="#fff"/>
-                  <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-                  <defs>
-                    <radialGradient id="pTypBg" cx="50%" cy="35%" r="55%">
-                      <stop offset="0%" stopColor="#2d2d4a"/>
-                      <stop offset="100%" stopColor="#18181c"/>
-                    </radialGradient>
-                    <linearGradient id="pTypShirt" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#8b5cf6"/>
-                      <stop offset="100%" stopColor="#6d28d9"/>
-                    </linearGradient>
-                  </defs>
-                </svg>
+                <img src="/purva-logo.svg" alt="Purva" style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "contain" }} />
               </div>
               <div className="pa-msg-bubble bot pa-typing">
                 <span className="pa-dot"></span>

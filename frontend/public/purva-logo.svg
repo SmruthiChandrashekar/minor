@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.5" stop-color="#9fb6e8"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <radialGradient id="bg" cx="50%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#161822"/>
+      <stop offset="1" stop-color="#000000"/>
+    </radialGradient>
+    <linearGradient id="hoodie" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a4a9a"/>
+      <stop offset="1" stop-color="#0b1f4d"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fbd0b0"/>
+      <stop offset="1" stop-color="#f2b28d"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3550a8"/>
+      <stop offset="1" stop-color="#162660"/>
+    </linearGradient>
+    <linearGradient id="gear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c7d4f0"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+    <clipPath id="clip"><circle cx="256" cy="256" r="198"/></clipPath>
+  </defs>
+
+  <!-- glow + ring -->
+  <circle cx="256" cy="256" r="214" fill="none" stroke="#9fb6e8" stroke-width="16" opacity=".3" filter="url(#glow)"/>
+  <circle cx="256" cy="256" r="214" fill="none" stroke="url(#ring)" stroke-width="14"/>
+
+  <g clip-path="url(#clip)">
+    <circle cx="256" cy="256" r="200" fill="url(#bg)"/>
+
+    <!-- character (scaled up) -->
+    <g transform="translate(256 394) scale(1.35) translate(-256 -394)">
+    <!-- hair back -->
+    <g transform="translate(256 330) scale(.78) translate(-256 -330)">
+      <path d="M166 250 C156 160 226 118 256 118 C286 118 356 160 346 250 C346 298 342 326 328 342 L184 342 C170 326 166 298 166 250 Z" fill="url(#hair)"/>
+    </g>
+
+    <!-- neck -->
+    <rect x="234" y="310" width="44" height="76" rx="20" fill="#eba883"/>
+
+    <!-- shirt -->
+    <path d="M204 352 Q256 396 308 352 L256 430 Z" fill="#ffffff" stroke="#000000" stroke-width="1.5" stroke-linejoin="round"/>
+
+    <!-- tie -->
+    <path d="M247 394 L265 394 L274 470 L256 486 L238 470 Z" fill="#2f57c7" stroke="#000000" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M250 420 L268 434 M248 440 L270 454" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".35"/>
+    <rect x="245" y="382" width="22" height="18" rx="5" fill="#3d68dd" stroke="#000000" stroke-width="1.5"/>
+
+    <!-- collar -->
+    <path d="M206 350 L252 392 L220 412 Z" fill="#ffffff" stroke="#000000" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M306 350 L260 392 L292 412 Z" fill="#ffffff" stroke="#000000" stroke-width="1.5" stroke-linejoin="round"/>
+
+    <!-- blazer -->
+    <path d="M70 512 L70 470 C80 408 152 368 206 356 L256 430 L306 356 C360 368 432 408 442 470 L442 512 Z" fill="url(#hoodie)" stroke="#000000" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M206 356 L246 410 M306 356 L266 410 M256 430 L256 512" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
+
+    <!-- head group (scaled down) -->
+    <g transform="translate(256 330) scale(.78) translate(-256 -330)">
+      <!-- ears -->
+      <circle cx="180" cy="246" r="14" fill="#f2b28d"/>
+      <circle cx="332" cy="246" r="14" fill="#f2b28d"/>
+
+      <!-- head -->
+      <ellipse cx="256" cy="240" rx="80" ry="88" fill="url(#skin)"/>
+
+      <!-- bangs -->
+      <path d="M176 236 C170 160 224 134 258 134 C302 134 342 160 336 236 C324 200 294 176 262 174 C230 182 198 198 176 236 Z" fill="url(#hair)"/>
+
+      <!-- face -->
+      <ellipse cx="204" cy="276" rx="16" ry="10" fill="#ff9fb0" opacity=".45"/>
+      <ellipse cx="308" cy="276" rx="16" ry="10" fill="#ff9fb0" opacity=".45"/>
+      <circle cx="226" cy="246" r="13" fill="#0a1433"/>
+      <circle cx="286" cy="246" r="13" fill="#0a1433"/>
+      <circle cx="230" cy="241" r="4.5" fill="#fff"/>
+      <circle cx="290" cy="241" r="4.5" fill="#fff"/>
+      <path d="M236 280 Q256 300 276 280" fill="none" stroke="#b5533a" stroke-width="6" stroke-linecap="round"/>
+
+      <!-- headset -->
+      <path d="M170 244 C160 118 352 118 342 244" fill="none" stroke="url(#gear)" stroke-width="9" stroke-linecap="round"/>
+      <rect x="156" y="224" width="30" height="58" rx="13" fill="url(#gear)" stroke="#0b1f4d" stroke-width="4"/>
+      <rect x="326" y="224" width="30" height="58" rx="13" fill="url(#gear)" stroke="#0b1f4d" stroke-width="4"/>
+      <path d="M340 278 Q338 318 298 314" fill="none" stroke="url(#gear)" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="292" cy="314" r="9" fill="#6f93e8" stroke="#0b1f4d" stroke-width="3"/>
+    </g>
+    </g>
+  </g>
+
+  <!-- chat dots badge -->
+  <g transform="translate(392 392)">
+    <circle r="48" fill="#0b1f4d"/>
+    <circle r="48" fill="none" stroke="#ffffff" stroke-width="6"/>
+    <circle cx="-18" cy="0" r="7" fill="#ffffff"/>
+    <circle cx="0" cy="0" r="7" fill="#ffffff"/>
+    <circle cx="18" cy="0" r="7" fill="#ffffff"/>
+  </g>
+</svg>

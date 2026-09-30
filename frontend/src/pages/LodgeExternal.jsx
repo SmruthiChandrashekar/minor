@@ -57,6 +57,9 @@ function LodgeExternal() {
     const payload = {
       description: cleanDescription,
       attachments: formData.attachments,
+      source: location.state?.source || null,
+      prefilled_severity: location.state?.severity || null,
+      prefilled_department: location.state?.department || null,
       metadata: {
         user_id: formData.isAnonymous ? null : (user?.id || null),
         name: formData.orgName,
@@ -64,7 +67,11 @@ function LodgeExternal() {
         email: formData.emailAddress,
         location: formData.cityLocation,
         date: formData.incidentDate,
-        department: "External Relations",
+        department: location.state?.department || "External Relations",
+        source: location.state?.source || null,
+        severity: location.state?.severity || null,
+        prefilled_severity: location.state?.severity || null,
+        prefilled_department: location.state?.department || null,
         is_anonymous: formData.isAnonymous
       },
     };

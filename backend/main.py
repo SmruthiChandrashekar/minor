@@ -208,12 +208,19 @@ class ComplaintMetadata(BaseModel):
     date: str | None = None
     department: str | None = None
     is_anonymous: bool = False
+    source: Optional[str] = None
+    severity: Optional[str] = None
+    prefilled_severity: Optional[str] = None
+    prefilled_department: Optional[str] = None
 
 class SubmitComplaintRequest(BaseModel):
     description: str
     lang: str = "en"   # ISO 639-1 code: en | hi | kn
     metadata: ComplaintMetadata | None = None
     attachments: list[str] = []
+    source: Optional[str] = None
+    prefilled_severity: Optional[str] = None
+    prefilled_department: Optional[str] = None
 
 class UpdateStatusRequest(BaseModel):
     grievance_id: str
@@ -757,12 +764,27 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         description_en = translate_to_english(description_original)
         clean_desc_en = clean_complaint_description(description_en)
 
-        # 🔹 STEP 2 & 3: CLASSIFY CATEGORY & SEVERITY VIA LLM AGENT
-        sev_res = classify_severity_node({"user_message": clean_desc_en})
-        dept_res = classify_department_node({"user_message": clean_desc_en})
+        # 🔹 STEP 2 & 3: CLASSIFY CATEGORY & SEVERITY
+        # Check if pre-classified from chatbot escalation
+        is_chatbot_escalated = (
+            request.source == "CHATBOT_ESCALATION"
+            or (meta and getattr(meta, "source", None) == "CHATBOT_ESCALATION")
+        )
 
-        category = dept_res.get("department", "CRM")
-        severity = sev_res.get("severity", "MEDIUM").capitalize()
+        if is_chatbot_escalated:
+            raw_sev = request.prefilled_severity or (meta and getattr(meta, "prefilled_severity", None)) or (meta and getattr(meta, "severity", None)) or "LOW"
+            severity = raw_sev.capitalize()
+            category = request.prefilled_department or (meta and getattr(meta, "prefilled_department", None)) or (meta and getattr(meta, "department", None)) or "CRM"
+            # Normalize internal labels
+            if category in ["Internal HR", "Operations", "External Relations", ""]:
+                category = "CRM" if not request.prefilled_department else request.prefilled_department
+            logging.info("Skipping double-classification for CHATBOT_ESCALATION (severity=%s, category=%s)", severity, category)
+        else:
+            # Full LLM Agent classification for direct submissions
+            sev_res = classify_severity_node({"user_message": clean_desc_en})
+            dept_res = classify_department_node({"user_message": clean_desc_en})
+            category = dept_res.get("department", "CRM")
+            severity = sev_res.get("severity", "MEDIUM").capitalize()
 
         # 🔹 STEP 3.5: ESCALATION AGENT (non-blocking)
         # Runs email/SMS notifications in the background

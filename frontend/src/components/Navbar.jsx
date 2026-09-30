@@ -56,28 +56,7 @@ function Navbar() {
               boxShadow: location.pathname === '/assistant' ? '0 0 8px rgba(167, 139, 250, 0.5)' : 'none',
               transition: 'all 0.2s',
             }}>
-              <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%' }}>
-                <circle cx="32" cy="32" r="32" fill="url(#navBg)"/>
-                <rect x="26" y="40" width="12" height="8" rx="4" fill="#f4c2a1"/>
-                <ellipse cx="32" cy="56" rx="18" ry="12" fill="url(#navShirt)"/>
-                <circle cx="32" cy="28" r="13" fill="#f4c2a1"/>
-                <path d="M19 26 Q19 14 32 13 Q45 14 45 26 Q44 18 32 17 Q20 18 19 26Z" fill="#5c3d2e"/>
-                <path d="M19 27 Q17 36 20 40 Q19 32 21 28Z" fill="#5c3d2e"/>
-                <path d="M45 27 Q47 36 44 40 Q45 32 43 28Z" fill="#5c3d2e"/>
-                <ellipse cx="27" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                <ellipse cx="37" cy="28" rx="2" ry="2.5" fill="#3d2b1f"/>
-                <path d="M27 33 Q32 37 37 33" stroke="#c87941" strokeWidth="1.2" fill="none" strokeLinecap="round"/>
-                <defs>
-                  <radialGradient id="navBg" cx="50%" cy="35%" r="55%">
-                    <stop offset="0%" stopColor="#2d2d4a"/>
-                    <stop offset="100%" stopColor="#18181c"/>
-                  </radialGradient>
-                  <linearGradient id="navShirt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6"/>
-                    <stop offset="100%" stopColor="#6d28d9"/>
-                  </linearGradient>
-                </defs>
-              </svg>
+              <img src="/purva-logo.svg" alt="Purva" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
             </span>
             <span>Purva</span>
             <span style={{ 

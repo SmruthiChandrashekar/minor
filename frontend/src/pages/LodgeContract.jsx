@@ -58,6 +58,9 @@ function LodgeContract() {
     const payload = {
        description: cleanDescription,
        attachments: formData.attachments,
+       source: location.state?.source || null,
+       prefilled_severity: location.state?.severity || null,
+       prefilled_department: location.state?.department || null,
        metadata: {
            user_id: formData.isAnonymous ? null : (user?.id || null),
            name: formData.workerName,
@@ -65,7 +68,11 @@ function LodgeContract() {
            email: formData.emailAddress || null,
            location: formData.workSiteLocation,
            date: formData.incidentDate,
-           department: "Operations",
+           department: location.state?.department || "Operations",
+           source: location.state?.source || null,
+           severity: location.state?.severity || null,
+           prefilled_severity: location.state?.severity || null,
+           prefilled_department: location.state?.department || null,
            is_anonymous: formData.isAnonymous
        }
     };

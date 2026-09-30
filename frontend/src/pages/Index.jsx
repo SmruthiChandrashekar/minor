@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
@@ -7,6 +8,10 @@ function Index() {
   const { t } = useLanguage();
   const { user, adminUser } = useAuth();
   const navigate = useNavigate();
+
+  const [refInput, setRefInput] = useState("");
+  const [activeStep, setActiveStep] = useState(1);
+  const [refStatus, setRefStatus] = useState(null);
 
   const handleProtectedAction = async (path) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -26,199 +31,344 @@ function Index() {
     }
   };
 
+  const handleCheckRef = (e) => {
+    if (e) e.preventDefault();
+    const val = refInput.trim();
+    if (!val) return;
+    navigate(`/track?ref=${encodeURIComponent(val)}`);
+  };
+
+  const handleSampleDemo = (e) => {
+    e.preventDefault();
+    const sampleRef = "GRM-2026-0412";
+    setRefInput(sampleRef);
+    setActiveStep(2);
+    setRefStatus({
+      type: "info",
+      title: sampleRef,
+      msg: "Under investigation. The reviewer has contacted the site operations team."
+    });
+  };
+
+  const journeyNotes = [
+    { title: "Received", desc: "Your complaint is logged and you get a unique tracking ID.", step: 0 },
+    { title: "Routed", desc: "AI routes it directly to the designated department head.", step: 1 },
+    { title: "Investigating", desc: "The designated officer investigates and updates progress.", step: 2 },
+    { title: "Resolved", desc: "You confirm satisfaction or escalate for further review.", step: 3 }
+  ];
+
+  const stakeholders = [
+    {
+      title: "Internal Employees",
+      desc: "Workplace policies, HR matters, payroll, POSH compliance, facilities, and internal administrative support.",
+      icon: "bi-person-badge",
+      color: "var(--navy-2)",
+      path: "/lodge-internal"
+    },
+    {
+      title: "Contract Workforce",
+      desc: "On-site safety, contractor payments, worker welfare, site amenities, and working condition issues.",
+      icon: "bi-hammer",
+      color: "var(--ok)",
+      path: "/lodge-contract"
+    },
+    {
+      title: "External Stakeholders",
+      desc: "Vendors, suppliers, partners, property buyers, residents, and civic/community concerns.",
+      icon: "bi-globe2",
+      color: "var(--accent)",
+      path: "/lodge-external"
+    }
+  ];
+
   return (
-    <div>
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)" }}>
 
-      {/* HERO SECTION */}
-      <div style={{
-        background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
-        padding: "80px 0",
-        color: "#fff"
+      {/* ================= HERO SECTION ================= */}
+      <section className="hero text-white" style={{
+        padding: "var(--s8) 0 var(--s7)",
+        color: "#ffffff",
+        background: "radial-gradient(800px 380px at 90% -10%, #1a4d9c, transparent 70%), linear-gradient(160deg, var(--navy), #00305f)",
+        borderBottom: "1px solid var(--line)"
       }}>
-        <div className="container text-center">
-          <h1 className="fw-bold mb-3 display-4 animate__animated animate__fadeInDown">
-            {t("heroTitle")}
-          </h1>
-          <p className="lead mb-4 opacity-75 animate__animated animate__fadeInUp animate__delay-1s">
-            {t("heroSubtitle")}
-          </p>
-          <div className="d-flex justify-content-center gap-3 animate__animated animate__fadeInUp animate__delay-1s">
-            <button
-              onClick={() => handleProtectedAction("/lodge-selection")}
-              className="btn btn-danger btn-lg px-5 py-3 fw-bold shadow-lg"
-              style={{ borderRadius: "10px" }}
-            >
-              {t("lodgeComplaintBtn")}
-            </button>
-            <button
-              onClick={handleTrack}
-              className="btn btn-outline-light btn-lg px-5 py-3 fw-bold shadow-lg"
-              style={{ borderRadius: "10px" }}
-            >
-              {t("trackStatusBtn")}
-            </button>
-          </div>
-        </div>
-      </div>
+        <div className="container text-white">
+          <div className="row align-items-center g-5">
 
+            {/* HERO LEFT CONTENT */}
+            <div className="col-lg-7">
+              <span className="badge mb-3 px-3 py-2 text-white" style={{ backgroundColor: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)", fontSize: "13px" }}>
+                🛡️ Puravankara GRM — Dedicated Portal for All Stakeholders
+              </span>
+              <h1 className="text-white" style={{
+                fontSize: "var(--fs-h1)",
+                fontWeight: "800",
+                lineHeight: "1.02",
+                letterSpacing: "-0.035em",
+                color: "#ffffff",
+                marginBottom: "var(--s4)"
+              }}>
+                Report it once.<br />Watch it move.
+              </h1>
+              <p className="text-white" style={{
+                fontSize: "var(--fs-lg)",
+                color: "#c4d2ec",
+                maxWidth: "42ch",
+                lineHeight: "1.6",
+                marginBottom: "var(--s5)"
+              }}>
+                A transparent, AI-routed grievance redressal system built for <strong>employees, contract workforce, vendors, partners, homebuyers, and the public</strong>.
+              </p>
+              
+              <div className="d-flex flex-wrap gap-3 mb-4">
+                <button
+                  onClick={() => handleProtectedAction("/lodge-selection")}
+                  className="btn btn-accent btn-lg px-4 py-3 fw-bold d-inline-flex align-items-center gap-2"
+                  style={{ borderRadius: "var(--r-pill)", boxShadow: "var(--sh-2)" }}
+                >
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  Lodge a complaint
+                </button>
 
-      {/* ABOUT US SECTION */}
-      <section style={{
-        backgroundColor: "var(--bg-color)",
-        padding: "60px 20px"
-      }}>
-        <div style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "40px",
-          alignItems: "center"
-        }}>
-          {/* LEFT: TEXT CONTENT */}
-          <div style={{ maxWidth: "500px" }}>
-            <h2 style={{
-              fontWeight: "bold",
-              marginBottom: "24px",
-              color: "var(--text-color)",
-              display: "flex",
-              alignItems: "center",
-              flexWrap: "wrap"
-            }}>
-              About <img src="/purvankaraimg.png" alt="Puravankara" style={{ height: "60px", objectFit: "contain", margin: "0 10px" }} />
-              <span style={{ color: "#c4122f", fontSize: "2.5rem", fontWeight: "900" }}>GRM</span>
-            </h2>
-            <p style={{
-              color: "#6c757d",
-              fontSize: "1.1rem",
-              lineHeight: "1.8",
-              marginBottom: "30px"
-            }}>
-              {t("aboutDesc")}
-            </p>
-            <div className="row g-3">
-              {[
-                { icon: "bi-clock-history", label: t("feature247") },
-                { icon: "bi-robot", label: t("featureAI") },
-                { icon: "bi-shield-lock", label: t("featureConfidential") },
-                { icon: "bi-graph-up-arrow", label: t("featureRealtime") }
-              ].map((item, idx) => (
-                <div key={idx} className="col-6">
-                  <div className="d-flex align-items-center">
-                    <div className="bg-danger text-white rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: "35px", height: "35px" }}>
-                      <i className={`bi ${item.icon}`} style={{ fontSize: "0.9rem" }}></i>
-                    </div>
-                    <strong style={{ fontSize: "0.9rem" }}>{item.label}</strong>
+                <button
+                  onClick={handleTrack}
+                  className="btn btn-ghost btn-lg px-4 py-3 fw-bold text-white border-light"
+                  style={{ borderRadius: "var(--r-pill)", borderColor: "rgba(255,255,255,0.5)" }}
+                >
+                  Track status
+                </button>
+              </div>
+
+              {/* STAKEHOLDER BADGE STRIP */}
+              <div className="d-flex flex-wrap gap-2 pt-2" style={{ opacity: 0.9 }}>
+                <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <i className="bi bi-person-check me-1"></i> Internal Employees
+                </span>
+                <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <i className="bi bi-hammer me-1"></i> Contract Workforce
+                </span>
+                <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                  <i className="bi bi-globe2 me-1"></i> External Stakeholders
+                </span>
+              </div>
+            </div>
+
+            {/* HERO RIGHT: TRACK CARD */}
+            <div className="col-lg-5">
+              <div className="card trk" id="track">
+                <h3>Where is my complaint?</h3>
+                <p className="sm muted">Enter the reference number from your confirmation email.</p>
+
+                <form onSubmit={handleCheckRef}>
+                  <div className="d-flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      className="inp"
+                      id="ref"
+                      placeholder="GRM-2026-0412"
+                      value={refInput}
+                      onChange={(e) => setRefInput(e.target.value)}
+                      aria-label="Reference number"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="submit"
+                      className="btn btn-accent"
+                      id="go"
+                    >
+                      Check
+                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                </form>
 
-          {/* RIGHT: IMAGE */}
-          <div style={{
-            display: "flex",
-            justifyContent: "center",
-            position: "relative"
-          }}>
-            <img
-              src="https://puravankaraprelaunch.com/wp-content/uploads/2025/11/111111111.png"
-              alt="Puravankara Codename Bliss"
-              style={{
-                width: "100%",
-                maxWidth: "500px",
-                height: "auto",
-                borderRadius: "12px",
-                boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-                border: "4px solid var(--card-bg)"
-              }}
-            />
-            <div style={{
-              position: "absolute",
-              bottom: "-20px",
-              left: "20px",
-              backgroundColor: "var(--card-bg)",
-              padding: "20px",
-              borderRadius: "12px",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
-              borderLeft: "5px solid #c4122f",
-              display: "none" // Hidden on smaller screens via responsive logic if needed, or keeping it clean
-            }} className="d-none d-md-block">
-              <h4 style={{ fontWeight: "bold", margin: 0 }}>98%</h4>
-              <p style={{ color: "#6c757d", margin: 0, fontSize: "0.8rem", fontWeight: "bold", textTransform: "uppercase" }}>Resolution Rate</p>
+                <p className="help mb-0" id="refh">
+                  No number yet? <a href="#demo" id="demo" onClick={handleSampleDemo}>See a sample</a>
+                </p>
+
+                {refStatus && (
+                  <div className="note n-info mt-3" style={{ animation: "fadeIn 0.3s ease" }}>
+                    <div>
+                      <b>{refStatus.title}</b>
+                      <span className="d-block mt-1">{refStatus.msg}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
           </div>
         </div>
       </section>
 
-      {/* ACTION CARDS */}
-      <div className="container mt-5 mb-5 pb-5">
-        <h3 className="fw-bold text-center mb-5" style={{ color: "var(--text-color)" }}>{t("howCanWeHelp")}</h3>
-        <div className="row g-4 justify-content-center">
 
-          {/* LODE COMPLAINT */}
-          <div className="col-md-4">
-            <div
-              onClick={() => handleProtectedAction("/lodge-selection")}
-              className="card h-100 border-0 shadow-sm text-center p-5"
-              style={{ borderRadius: "16px", transition: "all 0.3s ease", cursor: "pointer" }}
-              onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateY(-5px)'; }}
-              onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "rgba(196, 18, 47, 0.1)", color: "#c4122f" }}>
-                <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </div>
-              <h5 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("raiseGrievance")}</h5>
-              <p className="text-muted small mb-0">{t("raiseGrievanceDesc")}</p>
-            </div>
+      {/* ================= STAKEHOLDER CATEGORIES GRID ================= */}
+      <section style={{ padding: "var(--s7) 0", backgroundColor: "var(--surface-2)" }}>
+        <div className="container">
+          <div className="text-center mb-5">
+            <span className="badge b-info mb-2 px-3 py-1">Universal Redressal Mechanism</span>
+            <h2 style={{ fontWeight: "800", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>
+              Designed for All Stakeholders
+            </h2>
+            <p className="muted" style={{ fontSize: "var(--fs-md)", maxWidth: "620px", margin: "0 auto" }}>
+              Whether you are an internal team member, on-site contractor, commercial vendor, or resident, your grievance is handled with strict confidentiality and defined SLA targets.
+            </p>
           </div>
 
-          {/* VIEW STATUS */}
-          <div className="col-md-4">
-            <div
-              onClick={handleTrack}
-              className="card h-100 border-0 shadow-sm text-center p-5"
-              style={{ borderRadius: "16px", transition: "all 0.3s ease", cursor: "pointer" }}
-              onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateY(-5px)'; }}
-              onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "rgba(0,0,0,0.05)", color: "var(--text-color)" }}>
-                <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
+          <div className="row g-4 justify-content-center">
+            {stakeholders.map((s, idx) => (
+              <div key={idx} className="col-md-4">
+                <div
+                  onClick={() => handleProtectedAction(s.path)}
+                  className="card h-100 p-4 border-0 text-start"
+                  style={{
+                    borderRadius: "var(--r-lg)",
+                    backgroundColor: "var(--surface)",
+                    boxShadow: "var(--sh-1)",
+                    cursor: "pointer",
+                    transition: "all 0.25s ease",
+                    borderTop: `4px solid ${s.color}`
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = "var(--sh-2)"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--sh-1)"; }}
+                >
+                  <div className="d-flex align-items-center justify-content-center rounded-circle mb-3"
+                    style={{ width: "52px", height: "52px", backgroundColor: "var(--surface-2)", color: s.color }}>
+                    <i className={`bi ${s.icon}`} style={{ fontSize: "1.4rem" }}></i>
+                  </div>
+                  <h5 className="fw-bold mb-2" style={{ color: "var(--heading-color)", fontSize: "19px" }}>{s.title}</h5>
+                  <p className="sm muted mb-3" style={{ fontSize: "14px", lineHeight: "1.6", minHeight: "65px" }}>{s.desc}</p>
+                  <div className="d-flex align-items-center gap-1 fw-bold" style={{ color: s.color, fontSize: "14px" }}>
+                    <span>Submit details</span>
+                    <i className="bi bi-arrow-right"></i>
+                  </div>
+                </div>
               </div>
-              <h5 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("viewStatus")}</h5>
-              <p className="text-muted small mb-0">{t("viewStatusDesc")}</p>
-            </div>
+            ))}
           </div>
-
-          {/* HELP CENTER */}
-          <div className="col-md-4">
-            <div
-              onClick={() => navigate("/help")}
-              className="card h-100 border-0 shadow-sm text-center p-5"
-              style={{ borderRadius: "16px", transition: "all 0.3s ease", cursor: "pointer" }}
-              onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateY(-5px)'; }}
-              onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateY(0)'; }}
-            >
-              <div className="mx-auto mb-4 d-flex align-items-center justify-content-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "rgba(13, 202, 240, 0.1)", color: "#0dcaf0" }}>
-                <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                  <line x1="12" y1="17" x2="12.01" y2="17" />
-                </svg>
-              </div>
-              <h5 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("helpCenter")}</h5>
-              <p className="text-muted small mb-0">{t("helpCenterDesc")}</p>
-            </div>
-          </div>
-
         </div>
-      </div>
+      </section>
+
+
+      {/* ================= JOURNEY / PROGRESS SECTION ================= */}
+      <section style={{ padding: "var(--s7) 0", backgroundColor: "var(--surface)" }}>
+        <div className="container">
+          <div className="text-center mb-4">
+            <h2 style={{ fontWeight: "700", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>What happens after you submit</h2>
+            <p className="muted" style={{ fontSize: "var(--fs-md)" }}>Every grievance passes through clear, auditable stages regardless of category.</p>
+          </div>
+
+          <div className="journey-line">
+            <div className="journey-line-fill" style={{ width: `${activeStep * 33.3}%` }}></div>
+            {journeyNotes.map((item, idx) => (
+              <div
+                key={idx}
+                className={`journey-stop ${idx <= activeStep ? "on" : ""}`}
+                style={{ cursor: "pointer" }}
+                onClick={() => setActiveStep(idx)}
+              >
+                <h4>{item.title}</h4>
+                <p>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* ================= ABOUT US SECTION ================= */}
+      <section style={{
+        backgroundColor: "var(--bg)",
+        padding: "var(--s8) 0"
+      }}>
+        <div className="container">
+          <div className="row align-items-center g-5">
+
+            {/* LEFT: TEXT CONTENT */}
+            <div className="col-lg-6">
+              <h2 style={{
+                fontWeight: "bold",
+                marginBottom: "20px",
+                color: "var(--heading-color)",
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                fontSize: "var(--fs-h2)"
+              }}>
+                About <img src="/purvankaraimg.png" alt="Puravankara" style={{ height: "55px", objectFit: "contain", margin: "0 10px" }} />
+                <span style={{ color: "var(--accent)", fontSize: "2.5rem", fontWeight: "900" }}>GRM</span>
+              </h2>
+              <p style={{
+                color: "var(--muted)",
+                fontSize: "var(--fs-md)",
+                lineHeight: "1.8",
+                marginBottom: "30px"
+              }}>
+                Puravankara's Grievance Redressal Mechanism (GRM) is an intelligent, multi-tier platform built to ensure complete transparency, automated department routing, and timely resolution of concerns for <strong>employees, contract workers, business partners, homeowners, and external stakeholders</strong>.
+              </p>
+
+              <div className="row g-3">
+                {[
+                  { icon: "bi-people", label: "All Stakeholder Intake", desc: "Equal access for staff, partners & citizens" },
+                  { icon: "bi-robot", label: "AI-Powered Routing", desc: "Instant classification & SLA assignment" },
+                  { icon: "bi-shield-lock", label: "Strict Confidentiality", desc: "Encrypted records & optional anonymous filing" },
+                  { icon: "bi-graph-up-arrow", label: "Realtime Tracking", desc: "Live status updates & multi-tier escalation" }
+                ].map((item, idx) => (
+                  <div key={idx} className="col-sm-6">
+                    <div className="d-flex align-items-start gap-3 p-2">
+                      <div className="text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ width: "38px", height: "38px", backgroundColor: "var(--accent)" }}>
+                        <i className={`bi ${item.icon}`} style={{ fontSize: "1rem" }}></i>
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "var(--fs-sm)", display: "block", color: "var(--text)" }}>{item.label}</strong>
+                        <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)" }}>{item.desc}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* RIGHT: IMAGE */}
+            <div className="col-lg-6 text-center position-relative">
+              <div style={{ display: "inline-block", position: "relative" }}>
+                <img
+                  src="/puravankara_building.png"
+                  alt="Puravankara Building"
+                  style={{
+                    width: "100%",
+                    maxWidth: "520px",
+                    height: "auto",
+                    borderRadius: "var(--r-lg)",
+                    boxShadow: "var(--sh-2)",
+                    border: "4px solid var(--surface)"
+                  }}
+                />
+                <div style={{
+                  position: "absolute",
+                  bottom: "-20px",
+                  left: "20px",
+                  backgroundColor: "var(--surface)",
+                  color: "var(--text)",
+                  padding: "16px 24px",
+                  borderRadius: "var(--r-md)",
+                  boxShadow: "var(--sh-2)",
+                  borderLeft: "5px solid var(--accent)",
+                  textAlign: "left"
+                }}>
+                  <h4 style={{ fontWeight: "800", margin: 0, fontSize: "28px", color: "var(--heading-color)" }}>98%</h4>
+                  <p style={{ color: "var(--muted)", margin: 0, fontSize: "var(--fs-xs)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Resolution Rate
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
 
     </div>
   );
