@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "./i18n"; // Initialize enterprise i18next
 import App from "./App";
 import { ThemeProvider } from "./context/ThemeContext";
 import "./styles/global.css";

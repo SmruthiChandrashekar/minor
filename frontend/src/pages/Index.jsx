@@ -51,30 +51,30 @@ function Index() {
   };
 
   const journeyNotes = [
-    { title: "Received", desc: "Your complaint is logged and you get a unique tracking ID.", step: 0 },
-    { title: "Routed", desc: "AI routes it directly to the designated department head.", step: 1 },
-    { title: "Investigating", desc: "The designated officer investigates and updates progress.", step: 2 },
-    { title: "Resolved", desc: "You confirm satisfaction or escalate for further review.", step: 3 }
+    { title: t('journeyReceivedTitle'), desc: t('journeyReceivedDesc'), step: 0 },
+    { title: t('journeyRoutedTitle'), desc: t('journeyRoutedDesc'), step: 1 },
+    { title: t('journeyInvestigatingTitle'), desc: t('journeyInvestigatingDesc'), step: 2 },
+    { title: t('journeyResolvedTitle'), desc: t('journeyResolvedDesc'), step: 3 }
   ];
 
   const stakeholders = [
     {
-      title: "Internal Employees",
-      desc: "Workplace policies, HR matters, payroll, POSH compliance, facilities, and internal administrative support.",
+      title: t('internalEmployeesBadge'),
+      desc: t('internalEmployeesDesc'),
       icon: "bi-person-badge",
       color: "var(--navy-2)",
       path: "/lodge-internal"
     },
     {
-      title: "Contract Workforce",
-      desc: "On-site safety, contractor payments, worker welfare, site amenities, and working condition issues.",
+      title: t('contractWorkforceBadge'),
+      desc: t('contractWorkforceDesc'),
       icon: "bi-hammer",
       color: "var(--ok)",
       path: "/lodge-contract"
     },
     {
-      title: "External Stakeholders",
-      desc: "Vendors, suppliers, partners, property buyers, residents, and civic/community concerns.",
+      title: t('externalStakeholdersBadge'),
+      desc: t('externalStakeholdersDesc'),
       icon: "bi-globe2",
       color: "var(--accent)",
       path: "/lodge-external"
@@ -97,7 +97,7 @@ function Index() {
             {/* HERO LEFT CONTENT */}
             <div className="col-lg-7">
               <span className="badge mb-3 px-3 py-2 text-white" style={{ backgroundColor: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)", fontSize: "13px" }}>
-                🛡️ Puravankara GRM — Dedicated Portal for All Stakeholders
+                {t('heroBadge')}
               </span>
               <h1 className="text-white" style={{
                 fontSize: "var(--fs-h1)",
@@ -107,7 +107,7 @@ function Index() {
                 color: "#ffffff",
                 marginBottom: "var(--s4)"
               }}>
-                Report it once.<br />Watch it move.
+                {t('heroHeadline1')}<br />{t('heroHeadline2')}
               </h1>
               <p className="text-white" style={{
                 fontSize: "var(--fs-lg)",
@@ -116,7 +116,7 @@ function Index() {
                 lineHeight: "1.6",
                 marginBottom: "var(--s5)"
               }}>
-                A transparent, AI-routed grievance redressal system built for <strong>employees, contract workforce, vendors, partners, homebuyers, and the public</strong>.
+                {t('heroDescription')}
               </p>
               
               <div className="d-flex flex-wrap gap-3 mb-4">
@@ -129,7 +129,7 @@ function Index() {
                     <line x1="12" y1="5" x2="12" y2="19"></line>
                     <line x1="5" y1="12" x2="19" y2="12"></line>
                   </svg>
-                  Lodge a complaint
+                  {t('lodgeComplaintHero')}
                 </button>
 
                 <button
@@ -137,20 +137,20 @@ function Index() {
                   className="btn btn-ghost btn-lg px-4 py-3 fw-bold text-white border-light"
                   style={{ borderRadius: "var(--r-pill)", borderColor: "rgba(255,255,255,0.5)" }}
                 >
-                  Track status
+                  {t('trackStatusHero')}
                 </button>
               </div>
 
               {/* STAKEHOLDER BADGE STRIP */}
               <div className="d-flex flex-wrap gap-2 pt-2" style={{ opacity: 0.9 }}>
                 <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <i className="bi bi-person-check me-1"></i> Internal Employees
+                  <i className="bi bi-person-check me-1"></i> {t('internalEmployeesBadge')}
                 </span>
                 <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <i className="bi bi-hammer me-1"></i> Contract Workforce
+                  <i className="bi bi-hammer me-1"></i> {t('contractWorkforceBadge')}
                 </span>
                 <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                  <i className="bi bi-globe2 me-1"></i> External Stakeholders
+                  <i className="bi bi-globe2 me-1"></i> {t('externalStakeholdersBadge')}
                 </span>
               </div>
             </div>
@@ -158,8 +158,8 @@ function Index() {
             {/* HERO RIGHT: TRACK CARD */}
             <div className="col-lg-5">
               <div className="card trk" id="track">
-                <h3>Where is my complaint?</h3>
-                <p className="sm muted">Enter the reference number from your confirmation email.</p>
+                <h3>{t('trackCardTitle')}</h3>
+                <p className="sm muted">{t('trackCardSubtitle')}</p>
 
                 <form onSubmit={handleCheckRef}>
                   <div className="d-flex gap-2 mb-2">
@@ -178,13 +178,13 @@ function Index() {
                       className="btn btn-accent"
                       id="go"
                     >
-                      Check
+                      {t('checkBtn')}
                     </button>
                   </div>
                 </form>
 
                 <p className="help mb-0" id="refh">
-                  No number yet? <a href="#demo" id="demo" onClick={handleSampleDemo}>See a sample</a>
+                  {t('noNumberYet')} <a href="#demo" id="demo" onClick={handleSampleDemo}>{t('seeSample')}</a>
                 </p>
 
                 {refStatus && (
@@ -207,12 +207,12 @@ function Index() {
       <section style={{ padding: "var(--s7) 0", backgroundColor: "var(--surface-2)" }}>
         <div className="container">
           <div className="text-center mb-5">
-            <span className="badge b-info mb-2 px-3 py-1">Universal Redressal Mechanism</span>
+            <span className="badge b-info mb-2 px-3 py-1">{t('universalRedressalBadge')}</span>
             <h2 style={{ fontWeight: "800", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>
-              Designed for All Stakeholders
+              {t('designedForAllTitle')}
             </h2>
             <p className="muted" style={{ fontSize: "var(--fs-md)", maxWidth: "620px", margin: "0 auto" }}>
-              Whether you are an internal team member, on-site contractor, commercial vendor, or resident, your grievance is handled with strict confidentiality and defined SLA targets.
+              {t('designedForAllDesc')}
             </p>
           </div>
 
@@ -240,7 +240,7 @@ function Index() {
                   <h5 className="fw-bold mb-2" style={{ color: "var(--heading-color)", fontSize: "19px" }}>{s.title}</h5>
                   <p className="sm muted mb-3" style={{ fontSize: "14px", lineHeight: "1.6", minHeight: "65px" }}>{s.desc}</p>
                   <div className="d-flex align-items-center gap-1 fw-bold" style={{ color: s.color, fontSize: "14px" }}>
-                    <span>Submit details</span>
+                    <span>{t('submitDetails')}</span>
                     <i className="bi bi-arrow-right"></i>
                   </div>
                 </div>
@@ -255,8 +255,8 @@ function Index() {
       <section style={{ padding: "var(--s7) 0", backgroundColor: "var(--surface)" }}>
         <div className="container">
           <div className="text-center mb-4">
-            <h2 style={{ fontWeight: "700", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>What happens after you submit</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-md)" }}>Every grievance passes through clear, auditable stages regardless of category.</p>
+            <h2 style={{ fontWeight: "700", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>{t('whatHappensTitle')}</h2>
+            <p className="muted" style={{ fontSize: "var(--fs-md)" }}>{t('whatHappensSubtitle')}</p>
           </div>
 
           <div className="journey-line">
@@ -305,15 +305,15 @@ function Index() {
                 lineHeight: "1.8",
                 marginBottom: "30px"
               }}>
-                Puravankara's Grievance Redressal Mechanism (GRM) is an intelligent, multi-tier platform built to ensure complete transparency, automated department routing, and timely resolution of concerns for <strong>employees, contract workers, business partners, homeowners, and external stakeholders</strong>.
+                {t('aboutSectionDesc')}
               </p>
 
               <div className="row g-3">
                 {[
-                  { icon: "bi-people", label: "All Stakeholder Intake", desc: "Equal access for staff, partners & citizens" },
-                  { icon: "bi-robot", label: "AI-Powered Routing", desc: "Instant classification & SLA assignment" },
-                  { icon: "bi-shield-lock", label: "Strict Confidentiality", desc: "Encrypted records & optional anonymous filing" },
-                  { icon: "bi-graph-up-arrow", label: "Realtime Tracking", desc: "Live status updates & multi-tier escalation" }
+                  { icon: "bi-people", label: t('aboutFeature1Title'), desc: t('aboutFeature1Desc') },
+                  { icon: "bi-robot", label: t('aboutFeature2Title'), desc: t('aboutFeature2Desc') },
+                  { icon: "bi-shield-lock", label: t('aboutFeature3Title'), desc: t('aboutFeature3Desc') },
+                  { icon: "bi-graph-up-arrow", label: t('aboutFeature4Title'), desc: t('aboutFeature4Desc') }
                 ].map((item, idx) => (
                   <div key={idx} className="col-sm-6">
                     <div className="d-flex align-items-start gap-3 p-2">

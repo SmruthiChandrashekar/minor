@@ -8,95 +8,81 @@ const ThemeToggle = () => {
   return (
     <button
       type="button"
-      onClick={toggleTheme}
+      role="switch"
+      aria-checked={isDark}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={toggleTheme}
       title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-      className="theme-toggle-btn"
       style={{
-        width: "38px",
-        height: "38px",
-        borderRadius: "10px",
-        border: "1px solid var(--line, rgba(0, 0, 0, 0.08))",
-        background: "var(--card-bg, rgba(255, 255, 255, 0.7))",
-        backdropFilter: "blur(8px)",
-        color: "var(--text-color, #1e293b)",
+        width: "46px",
+        height: "24px",
+        borderRadius: "9999px",
+        padding: "2px",
+        border: isDark ? "1px solid #334155" : "1px solid #cbd5e1",
+        background: isDark ? "#0f172a" : "#f1f5f9",
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
         position: "relative",
-        padding: "0",
-        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+        cursor: "pointer",
+        outline: "none",
+        transition: "background-color 0.25s ease, border-color 0.25s ease",
         boxShadow: isDark
-          ? "0 2px 8px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
-          : "0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.8)",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.borderColor = isDark ? "rgba(167, 139, 250, 0.4)" : "rgba(245, 158, 11, 0.4)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.borderColor = "var(--line, rgba(0, 0, 0, 0.08))";
-      }}
-      onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.92)";
-      }}
-      onMouseUp={(e) => {
-        e.currentTarget.style.transform = "translateY(-1px)";
+          ? "inset 0 1px 2px rgba(0, 0, 0, 0.4)"
+          : "inset 0 1px 2px rgba(0, 0, 0, 0.06)",
       }}
     >
+      {/* Sliding White Knob */}
       <div
         style={{
+          width: "18px",
+          height: "18px",
+          borderRadius: "50%",
+          transform: isDark ? "translateX(22px)" : "translateX(1px)",
+          background: "#ffffff",
+          boxShadow: isDark
+            ? "0 1px 3px rgba(0, 0, 0, 0.5)"
+            : "0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.08)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease",
-          transform: isDark ? "rotate(0deg) scale(1)" : "rotate(90deg) scale(1)",
+          transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       >
         {isDark ? (
-          /* Moon icon with soft glow */
+          /* ONLY the Moon icon is colored Dark Blue */
           <svg
-            width="19"
-            height="19"
+            width="11"
+            height="11"
             viewBox="0 0 24 24"
-            fill="none"
-            stroke="#a78bfa"
-            strokeWidth="2"
+            fill="#001a4d"
+            stroke="#001a4d"
+            strokeWidth="1.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{
-              filter: "drop-shadow(0 0 6px rgba(167, 139, 250, 0.5))",
-            }}
           >
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-            <circle cx="19" cy="5" r="1" fill="#c4b5fd" stroke="none" />
           </svg>
         ) : (
-          /* Sun icon with warm radiant rays */
+          /* ONLY the Sun icon is colored Red */
           <svg
-            width="20"
-            height="20"
+            width="11"
+            height="11"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#d97706"
-            strokeWidth="2"
+            stroke="#c4122f"
+            strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
-            style={{
-              filter: "drop-shadow(0 0 4px rgba(245, 158, 11, 0.4))",
-            }}
           >
-            <circle cx="12" cy="12" r="4.5" fill="#fef3c7" stroke="#d97706" strokeWidth="1.8" />
-            <line x1="12" y1="1" x2="12" y2="3.5" />
-            <line x1="12" y1="20.5" x2="12" y2="23" />
-            <line x1="4.22" y1="4.22" x2="5.99" y2="5.99" />
-            <line x1="18.01" y1="18.01" x2="19.78" y2="19.78" />
-            <line x1="1" y1="12" x2="3.5" y2="12" />
-            <line x1="20.5" y1="12" x2="23" y2="12" />
-            <line x1="4.22" y1="19.78" x2="5.99" y2="18.01" />
-            <line x1="18.01" y1="5.99" x2="19.78" y2="4.22" />
+            <circle cx="12" cy="12" r="4" fill="#c4122f" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
           </svg>
         )}
       </div>

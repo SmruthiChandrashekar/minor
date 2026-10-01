@@ -92,6 +92,18 @@ async def startup_event():
     # Start SLA monitor background task
     asyncio.create_task(sla_monitor_loop())
 
+@app.get("/health")
+@app.get("/api/health")
+async def health_check():
+    """Enterprise health check endpoint providing service status and component readiness."""
+    return {
+        "status": "healthy",
+        "service": "Puravankara GRM Backend",
+        "version": "1.0.0-enterprise",
+        "rag_ready": is_rag_ready(),
+        "timestamp": time.time()
+    }
+
 @app.get("/api/agents/warmup")
 async def warmup_rag():
     """Endpoint to trigger RAG initialization if not already done."""
@@ -1556,6 +1568,29 @@ async def get_chat_session_messages(session_id: str, user: dict = Depends(get_cu
             r_copy["metadata"] = meta
             cleaned.append(r_copy)
         return cleaned
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class UpdateSessionRequest(BaseModel):
+    title: Optional[str] = None
+
+@app.patch("/api/chat/session/{session_id}")
+async def update_chat_session(session_id: str, payload: UpdateSessionRequest, user: dict = Depends(get_current_user)):
+    try:
+        user_id = user["user_id"]
+        session = supabase.table("chat_sessions").select("user_id").eq("id", session_id).execute()
+        if not session.data or session.data[0]["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to modify this session")
+            
+        update_data = {}
+        if payload.title is not None and payload.title.strip():
+            update_data["title"] = payload.title.strip()
+            
+        if update_data:
+            supabase.table("chat_sessions").update(update_data).eq("id", session_id).execute()
+        return {"status": "success"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
