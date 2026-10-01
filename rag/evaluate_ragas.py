@@ -28,6 +28,13 @@ PROJECT_ROOT = os.path.dirname(BASE_DIR)
 ENV_PATH = os.path.join(PROJECT_ROOT, "backend", ".env")
 load_dotenv(ENV_PATH)
 
+# LangChain 1.4+ compatibility shim for ragas
+import types
+if "langchain_community.chat_models.vertexai" not in sys.modules:
+    _m = types.ModuleType("langchain_community.chat_models.vertexai")
+    _m.ChatVertexAI = None
+    sys.modules["langchain_community.chat_models.vertexai"] = _m
+
 # Ragas and LangChain Imports
 from ragas.llms import llm_factory
 from ragas.run_config import RunConfig
@@ -49,17 +56,34 @@ from ragas.metrics import (
 sys.path.insert(0, BASE_DIR)
 import query_data
 
-# Curated evaluation benchmark — 2 representative policy questions
+# Curated evaluation benchmark — 6 representative Puravankara policy questions
 EVAL_BENCHMARK = [
     {
         "question": "What is the maximum Earned Leave accumulation allowed?",
         "reference": "Employees are allowed to accumulate Earned Leave (EL) up to a maximum of 60 days. Any accrued leave beyond this limit will automatically lapse at the end of the calendar year."
     },
     {
-        "question": "What is the purpose of the POSH policy?",
-        "reference": "The purpose of the POSH policy is to prevent and prohibit sexual harassment at the workplace and provide a safe, secure, and respectful working environment for all employees, visitors, and associates."
+        "question": "What is the purpose of the POSH policy and how are complaints protected?",
+        "reference": "The purpose of the POSH policy is to prevent and prohibit sexual harassment at the workplace and provide a safe and respectful working environment. Complaints are handled confidentially by the Internal Committee (IC), and the identity and contact details of the complainant, victim, or witnesses are strictly prohibited from being disclosed or published to the public or press."
+    },
+    {
+        "question": "What is the Maternity Leave entitlement and eligibility for female employees?",
+        "reference": "Female employees who have completed at least 80 days of service in the preceding 12 months are eligible for Maternity Leave up to a maximum period of 26 weeks (182 days) based on a medical certificate. Maternity leave must be applied 40 days in advance of the expected date of delivery."
+    },
+    {
+        "question": "What are the official reimbursement rates for local conveyance using personal vehicles?",
+        "reference": "As per the Local Conveyance Policy effective 1st November 2023, official travel reimbursement rates are INR 5.50 per km for Two-Wheelers and INR 13.00 per km for Four-Wheelers. Auto or taxi travel is reimbursed at actuals, claimed monthly with HOD approval."
+    },
+    {
+        "question": "What protections exist for employees reporting wrongdoing under the Whistle Blower Policy?",
+        "reference": "Employees submitting a Protected Disclosure under the Whistle Blower Policy are guaranteed complete protection against unfair treatment, discrimination, harassment, victimization, retaliation, or threat of termination or disciplinary action."
+    },
+    {
+        "question": "What is Puravankara's policy regarding gifts and bribery?",
+        "reference": "Puravankara maintains a strict zero-tolerance policy against bribery and corruption. Employees must not give or receive bribes, inappropriate gifts, hospitality, facilitation payments, or unauthorized contributions for obtaining or retaining business advantages."
     }
 ]
+
 
 
 def run_evaluation(force_provider: str = None):
@@ -114,16 +138,17 @@ def run_evaluation(force_provider: str = None):
         groq_api_key = os.environ.get("GROQ_API_KEY")
         if not groq_api_key:
             raise RuntimeError("GROQ_API_KEY environment variable not found.")
-        print("      Using Groq cloud provider: openai/gpt-oss-120b (fast)")
+        groq_model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+        print(f"      Using Groq cloud provider: {groq_model} (fast)")
         groq_client = OpenAI(
             base_url="https://api.groq.com/openai/v1",
             api_key=groq_api_key,
             timeout=60.0
         )
-        evaluator_llm = llm_factory("openai/gpt-oss-120b", client=groq_client)
+        evaluator_llm = llm_factory(groq_model, client=groq_client)
     else:
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-        model = os.getenv("OLLAMA_MODEL", "qwen2.5:3b")
+        model = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
         print(f"      Using local Ollama provider: {model} at {base_url}")
         ollama_client = OpenAI(base_url=base_url, api_key="ollama", timeout=300.0)
         evaluator_llm = llm_factory(model, client=ollama_client)

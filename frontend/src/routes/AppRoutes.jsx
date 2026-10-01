@@ -56,7 +56,7 @@ const MainRoutes = () => {
         <Route path="/assistant" element={<PolicyAssistant />} />
         <Route path="/help" element={<Help />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/login" element={isAuthenticated && !isAdmin ? <Navigate to="/" replace /> : <Auth />} />
+        <Route path="/login" element={isAuthenticated && !isAdmin && !window.location.search.includes("message=") ? <Navigate to="/" replace /> : <Auth />} />
         <Route path="/register" element={<Auth />} />
 
         {/* Admin Routes */}
