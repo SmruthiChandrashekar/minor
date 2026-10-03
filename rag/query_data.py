@@ -134,12 +134,24 @@ def get_rag_response(query_text: str):
     seen_sources = set()
 
     for doc, score in filtered_results[:4]:
+        policy_id = doc.metadata.get("policy_id", "")
         policy_name = doc.metadata.get("policy_name", "Puravankara Policy")
+        department = doc.metadata.get("department", "HR")
+        authority = doc.metadata.get("authority", "")
+        version = doc.metadata.get("version", "")
         source_file = doc.metadata.get("source_file", doc.metadata.get("source", "Policy Document"))
         page = doc.metadata.get("page", 1)
         section = doc.metadata.get("section", "")
 
-        block = f"--- POLICY SOURCE ---\nPolicy: {policy_name}\nPage: {page}"
+        header_info = f"Policy: {policy_name}"
+        if policy_id and policy_id != "LEGACY":
+            header_info += f" [{policy_id}]"
+        if department:
+            header_info += f" | Dept: {department}"
+        if authority:
+            header_info += f" | Authority: {authority}"
+
+        block = f"--- OKF POLICY SOURCE ---\n{header_info}\nPage: {page}"
         if section:
             block += f"\nSection: {section}"
         block += f"\nContent:\n{doc.page_content}\n"
@@ -150,6 +162,10 @@ def get_rag_response(query_text: str):
             seen_sources.add(source_key)
             sources.append({
                 "source": policy_name,
+                "policy_id": policy_id,
+                "department": department,
+                "authority": authority,
+                "version": version,
                 "source_file": source_file,
                 "page": page,
                 "section": section,

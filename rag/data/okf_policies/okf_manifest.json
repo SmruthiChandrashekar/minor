@@ -1,0 +1,1018 @@
+[
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Anti Bribery and Anti Corruption Policy",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2024.1",
+    "tags": [
+      "anti-bribery",
+      "anti-corruption",
+      "compliance",
+      "ethics",
+      "governance"
+    ],
+    "summary": "This policy establishes the framework for preventing bribery and corruption across Puravankara Limited and its subsidiaries, mandating ethical business conduct and compliance with applicable anti-corruption laws for all employees, agents, and stakeholders.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Anti Bribery Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "procedure",
+    "title": "Exit Process Business Process Document",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head - Human Capital",
+    "version": "2016.1",
+    "tags": [
+      "exit_process",
+      "resignation",
+      "full_and_final_settlement",
+      "knowledge_transfer",
+      "clearance"
+    ],
+    "summary": "This document outlines the standard operating procedure for voluntary employee separation, covering resignation acceptance, knowledge transition, exit interviews, and the computation and disbursement of full and final settlement.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "BPD for Exit Activities_Rev 01.docx",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "procedure",
+    "title": "Learning and Development Training Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head - Human Capital",
+    "version": "2016.04",
+    "tags": [
+      "training",
+      "learning_and_development",
+      "skill_development",
+      "iso_9001",
+      "employee_capability"
+    ],
+    "summary": "This policy defines the standardized process for identifying, planning, executing, and evaluating training programs across the Puravankara Group. It outlines responsibilities for the L&D team, training need analysis methods, calendar publication, and efficiency metrics aligned with ISO 9001 standards.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "BPD for Training Policy_Rev 04.docx",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Business Responsibility and Sustainability Charter: Stakeholder Management",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "stakeholder_engagement",
+      "sustainability",
+      "business_responsibility",
+      "grievance_redressal",
+      "social_license"
+    ],
+    "summary": "This policy establishes the framework for identifying, prioritizing, and engaging with stakeholders to ensure transparent communication, timely grievance resolution, and the maintenance of the company's social license to operate.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Business Responsibility & Sustainability Charter.docx",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Corporate Social Responsibility Policy",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "csr",
+      "sustainability",
+      "companies-act-2013",
+      "community-development",
+      "governance"
+    ],
+    "summary": "This policy outlines Puravankara Limited's framework for undertaking Corporate Social Responsibility activities in compliance with Section 135 of the Companies Act, 2013. It defines the governance structure, scope, and lifecycle for identifying, executing, and reporting on CSR projects aimed at community welfare and sustainable development.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "CSR Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Career Progression Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Human Resources",
+    "version": "2025.1",
+    "tags": [
+      "career_progression",
+      "talent_development",
+      "succession_planning",
+      "employee_growth",
+      "leadership"
+    ],
+    "summary": "This policy outlines the framework for employee career progression, defining shared responsibilities between individuals, managers, and HR to support professional growth, leadership development, and succession planning across all locations.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Career Progression Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "declaration",
+    "title": "Declaration of Non-Employment of Child Labour",
+    "department": "ESG",
+    "target_stakeholders": [
+      "external_stakeholders"
+    ],
+    "authority": "General Manager \u2013 HC & Admin",
+    "version": "2019.1",
+    "tags": [
+      "child_labour",
+      "compliance",
+      "declaration",
+      "labour_laws",
+      "esg"
+    ],
+    "summary": "A formal declaration submitted to the Assistant Labour Commissioner confirming that Provident Housing Limited does not engage child labour at its 'Provident Capella' project site.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Child Labour Declaration.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Code of Business Conduct and Ethics for Board of Directors and Senior Management",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "corporate_governance",
+      "board_of_directors",
+      "senior_management",
+      "ethics",
+      "sebi_compliance"
+    ],
+    "summary": "This policy establishes the ethical standards and conduct guidelines for the Board of Directors and Senior Management of Puravankara Limited, ensuring compliance with SEBI regulations and the Companies Act 2013. It defines responsibilities regarding fair dealing, confidentiality, and independence to enhance transparency and accountability within the corporate governance framework.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Code of Conduct & ethics for BOD.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Code of Conduct to Regulate, Monitor and Report Trading by Designated Persons",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "insider_trading",
+      "sebi_regulations",
+      "designated_persons",
+      "upsi",
+      "trading_window",
+      "compliance"
+    ],
+    "summary": "This policy establishes the framework for regulating, monitoring, and reporting securities trading by Designated Persons and their immediate relatives to ensure compliance with SEBI Insider Trading Regulations, 2015. It defines trading windows, pre-clearance procedures, and penalties for contraventions to prevent misuse of Unpublished Price Sensitive Information.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Code_of_Conduct_to_regulate_monitor_and_report_trading_by_DP.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Code of Practices and Procedures for Fair Disclosure of Unpublished Price Sensitive Information",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "upsi",
+      "sebi",
+      "insider_trading",
+      "disclosure",
+      "compliance"
+    ],
+    "summary": "This policy establishes the framework for the fair and non-discriminatory disclosure of Unpublished Price Sensitive Information (UPSI) in compliance with SEBI regulations. It defines the roles of the President-Finance and Compliance Officer in managing information dissemination and responding to market queries.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Code_of_Practices_for_fair_disclosure_of_UPSI (1).pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Code of Practices and Procedures for Fair Disclosure of Unpublished Price Sensitive Information",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "upsi",
+      "sebi",
+      "insider_trading",
+      "disclosure",
+      "compliance"
+    ],
+    "summary": "This policy establishes the framework for the fair and non-discriminatory disclosure of Unpublished Price Sensitive Information (UPSI) in compliance with SEBI regulations. It defines the roles of the President-Finance and Compliance Officer in managing information dissemination and responding to market queries.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Code_of_Practices_for_fair_disclosure_of_UPSI.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Policy for Determining Material Subsidiaries",
+    "department": "Investors",
+    "target_stakeholders": [
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "material-subsidiaries",
+      "sebi-lodr",
+      "governance",
+      "independent-directors",
+      "disclosure"
+    ],
+    "summary": "This policy establishes the criteria for identifying material subsidiaries based on income and net worth thresholds and outlines governance requirements, including the appointment of independent directors and secretarial audits, in compliance with SEBI LODR Regulations.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Determining material subsidies policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Diversity, Anti-Discrimination & Equal Opportunities Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "diversity",
+      "anti-discrimination",
+      "equal-opportunity",
+      "recruitment",
+      "workplace-harassment"
+    ],
+    "summary": "This policy establishes Puravankara Group's commitment to an inclusive workplace by prohibiting discrimination and harassment based on protected characteristics across all employment processes, including recruitment, promotion, and training. It mandates equal treatment for employees, contractors, and external stakeholders in accordance with anti-discrimination legislation.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Diversity Anti-discrimination Equaal Opportunities Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Dividend Distribution Policy",
+    "department": "Investors",
+    "target_stakeholders": [
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "dividend",
+      "shareholder-value",
+      "sebi-compliance",
+      "retained-earnings",
+      "financial-parameters"
+    ],
+    "summary": "This policy governs the declaration, distribution, and payment of dividends by Puravankara Limited, ensuring compliance with the Companies Act 2013 and SEBI Regulations. It outlines the internal and external factors, financial parameters, and circumstances considered to balance long-term shareholder value with corporate growth.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Dividend Distribution Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Policy Guidelines on Professional Work Attire",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head of Human Capital",
+    "version": "2025.1",
+    "tags": [
+      "dress_code",
+      "professional_attire",
+      "grooming",
+      "workplace_etiquette",
+      "brand_ambassador"
+    ],
+    "summary": "This policy defines the mandatory professional dress code and grooming standards for all Puravankara employees, distinguishing between business formal requirements for weekdays and smart casual guidelines for Saturdays to maintain a consistent corporate image.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Dress Code- Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "declaration",
+    "title": "Familiarization Programme for Independent Directors 2024-25",
+    "department": "Investors",
+    "target_stakeholders": [
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2024-25",
+    "tags": [
+      "independent_directors",
+      "sebi_lodr",
+      "corporate_governance",
+      "board_induction",
+      "disclosure"
+    ],
+    "summary": "This document details the familiarization programs conducted for Independent Directors in FY 2024-25, covering topics such as business models, risk management, and strategic plans, in compliance with SEBI LODR Regulations 25(7) and 46.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Familiarization_Programme_2024_25.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-IC-001",
+    "type": "policy",
+    "title": "Gender Affirmation Policy",
+    "department": "IC",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Management",
+    "version": "2025.1",
+    "tags": [
+      "gender_identity",
+      "inclusion",
+      "transgender",
+      "diversity",
+      "workplace_culture"
+    ],
+    "summary": "This policy establishes a safe and inclusive environment for transgender employees by supporting gender affirmation, respecting gender expression, and outlining procedures for updating personal records.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Gender Affirmation Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Grievance Redressal Mechanism Framework",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "grievance_redressal",
+      "stakeholder_engagement",
+      "compliance",
+      "whistleblower",
+      "labor_standards",
+      "governance"
+    ],
+    "summary": "This policy establishes a unified, digital-first framework for handling grievances from employees, contract workers, and external stakeholders. It defines reporting channels, grievance categories, and escalation protocols to ensure transparent and timely resolution aligned with ESG and corporate governance standards.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Grievance Redressal Mechanism- Proposed framework.docx",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Human Rights & Human Rights Risk Management Policy",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "human_rights",
+      "risk_management",
+      "due_diligence",
+      "child_labour",
+      "forced_labour",
+      "stakeholder_engagement"
+    ],
+    "summary": "This policy outlines Puravankara Group's commitment to respecting human rights across its value chain, including employees, contractors, and suppliers. It establishes a framework for identifying, assessing, and mitigating human rights risks through due diligence, prohibiting forced and child labor, and ensuring access to remedy for affected stakeholders.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Human Rights Policy Risk Management.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "List of National & Festival Holidays 2025",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head of Human Capital",
+    "version": "2025.1",
+    "tags": [
+      "holidays",
+      "leave",
+      "calendar",
+      "attendance",
+      "2025"
+    ],
+    "summary": "This document outlines the official list of national and festival holidays for the year 2025 across various Indian states where Puravankara operates. It also specifies the restricted holidays from which employees are entitled to avail one additional day off.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "LIST OF HOLIDAYS FOR 2025.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Leave Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head of Human Capital",
+    "version": "2013.1",
+    "tags": [
+      "leave",
+      "earned_leave",
+      "casual_leave",
+      "maternity_leave",
+      "attendance"
+    ],
+    "summary": "This policy defines the eligibility, accrual, and encashment rules for various types of leave including Earned Leave, Casual/Sick Leave, and Maternity Leave for Puravankara Group employees. It outlines the procedures for applying for leave, loss of pay provisions, and the calendar year basis for leave management.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Leave Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Local Conveyance Reimbursement Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Administration Department",
+    "version": "2023.1",
+    "tags": [
+      "travel",
+      "reimbursement",
+      "conveyance",
+      "expenses",
+      "transport"
+    ],
+    "summary": "This policy outlines the guidelines for local business travel, specifying approved modes of transport, eligibility criteria based on designation, and the process for claiming reimbursement of travel expenses.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Local Conveyance Reimbursement policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "declaration",
+    "title": "Minimum Wages and Working Conditions Declaration for Contract Labour",
+    "department": "ESG",
+    "target_stakeholders": [
+      "contract_workforce"
+    ],
+    "authority": "Principal Employer & Contractor",
+    "version": "2025.1",
+    "tags": [
+      "minimum_wages",
+      "contract_labour",
+      "wage_disbursement",
+      "working_hours",
+      "compliance"
+    ],
+    "summary": "This document declares the statutory minimum wage rates, working hours, and wage disbursement schedules for contract labourers at the Provident Ecopolitan Aerospace Project, ensuring compliance with the Minimum Wages Act and Contract Labour (R&A) Act.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "MINIMUM WAGES.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Leave Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head of Human Capital",
+    "version": "2013.1",
+    "tags": [
+      "leave",
+      "earned_leave",
+      "casual_leave",
+      "maternity_leave",
+      "loss_of_pay"
+    ],
+    "summary": "This policy defines the eligibility, accrual, and encashment rules for various types of leave including Earned Leave, Casual/Sick Leave, and Maternity Leave for Puravankara Group employees. It outlines the procedures for leave application, approval, and the conditions under which Loss of Pay may be granted.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "New Leave Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Nomination and Remuneration Policy",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "nomination",
+      "remuneration",
+      "board-governance",
+      "key-managerial-personnel",
+      "senior-management"
+    ],
+    "summary": "This policy outlines the framework for the appointment, removal, and performance evaluation of Directors, Key Managerial Personnel, and Senior Management. It also establishes the criteria for determining their remuneration and incentives in compliance with the Companies Act, 2013, and SEBI regulations.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Nomination_and_Remuneration_Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Performance Management Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head of Human Capital",
+    "version": "2025.1",
+    "tags": [
+      "performance_appraisal",
+      "promotions",
+      "career_development",
+      "employee_evaluation",
+      "training_needs"
+    ],
+    "summary": "This policy governs the annual performance appraisal process, defining rating scales, promotion criteria based on performance over seniority, and the procedural workflow for employee evaluation and feedback.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "PERFORMANCE MANAGEMENT POLICY.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-IC-001",
+    "type": "policy",
+    "title": "Policy to Provide Protection Against Sexual Harassment in Workplace",
+    "department": "IC",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce"
+    ],
+    "authority": "Head BO & P",
+    "version": "2020.05",
+    "tags": [
+      "posh",
+      "sexual-harassment",
+      "workplace-safety",
+      "complaints-committee",
+      "gender-sensitivity"
+    ],
+    "summary": "This policy establishes the framework for preventing and redressing sexual harassment in the workplace, defining the scope of coverage, the constitution of the Complaints Committee, and the procedural guidelines for enquiry and disciplinary actions.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "POLICY TO PROVIDE PROTECTION AGAINST SEXUAL HARASSMENT IN.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-IC-001",
+    "type": "policy",
+    "title": "Policy to Provide Protection Against Sexual Harassment in Workplace",
+    "department": "IC",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce"
+    ],
+    "authority": "Head \u2013 BO & P",
+    "version": "2020.1",
+    "tags": [
+      "posh",
+      "sexual-harassment",
+      "workplace-safety",
+      "compliance",
+      "gender-sensitivity"
+    ],
+    "summary": "This policy establishes a zero-tolerance framework for preventing and redressing sexual harassment in the workplace, aligned with the Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013. It defines prohibited conduct, covers all employees and contract workers, and outlines the scope of protection for both male and female staff.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "POSH policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Anti Bribery and Anti Corruption Policy",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2020.1",
+    "tags": [
+      "anti-corruption",
+      "anti-bribery",
+      "compliance",
+      "ethics",
+      "governance"
+    ],
+    "summary": "This policy establishes the framework for preventing bribery and corruption across Puravankara Limited and its subsidiaries, mandating ethical business conduct and compliance with applicable anti-corruption laws for all employees, directors, and associated parties.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "PURAVANKARA LIMITED-Anti Corruption Policy 13082020.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Policy on Diversity of the Board",
+    "department": "Investors",
+    "target_stakeholders": [
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "board-diversity",
+      "corporate-governance",
+      "sebi-compliance",
+      "nomination-committee",
+      "listing-requirements"
+    ],
+    "summary": "This policy outlines the Board's approach to ensuring diversity in its composition to enhance corporate governance and strategic decision-making. It mandates the Nomination and Remuneration Committee to review board composition annually and set measurable diversity objectives in compliance with SEBI regulations.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Policy on Board Diversity.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Policy for Determination of Materiality of Events or Information",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "materiality",
+      "sebi",
+      "disclosure",
+      "listing-regulations",
+      "insider-trading"
+    ],
+    "summary": "This policy establishes the framework and criteria for determining the materiality of events or information for Puravankara Limited, ensuring timely and transparent disclosure to stock exchanges in compliance with SEBI Listing Regulations.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Policy on Determination of Materiality.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Policy for Preservation and Archival of Documents",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "document_retention",
+      "sebi_lodr",
+      "archival",
+      "compliance",
+      "record_management"
+    ],
+    "summary": "This policy governs the retention, preservation, and disposal of company documents in physical and electronic formats in compliance with SEBI LODR regulations. It defines preservation periods, storage locations, and website disclosure requirements for listed entity records.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Policy_on_Preservation_and_Archival_of_documents.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Policy on Determination of Legitimate Purposes for Sharing Unpublished Price Sensitive Information and on Dealing with Leakage or Suspected Leakage of Unpublished Price Sensitive Information",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "upsi",
+      "insider_trading",
+      "sebi_regulations",
+      "legitimate_purposes",
+      "leakage_inquiry",
+      "compliance"
+    ],
+    "summary": "This policy defines the legitimate purposes for sharing Unpublished Price Sensitive Information (UPSI) with authorized persons and establishes the procedures for inquiring into and managing instances of UPSI leakage or suspected leakage in compliance with SEBI regulations.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Policy_on_determination_for_legitimate_purposes.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Employee Relocation Policy",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Head of Human Capital",
+    "version": "2025.1",
+    "tags": [
+      "relocation",
+      "transfer",
+      "allowance",
+      "household_shifting",
+      "accommodation"
+    ],
+    "summary": "This policy governs the support and financial assistance provided to employees for company-initiated relocations, including travel, temporary accommodation, and household goods shifting. It outlines eligibility criteria based on employee bands, reimbursement procedures, and recovery clauses for early resignation.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "RELOCATION POLICY.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-HR-001",
+    "type": "policy",
+    "title": "Recognition & Reward Program",
+    "department": "HR",
+    "target_stakeholders": [
+      "internal_employees"
+    ],
+    "authority": "Group CHRO & CEO",
+    "version": "FY 25",
+    "tags": [
+      "recognition",
+      "reward",
+      "performance",
+      "employee-motivation",
+      "riese-10k"
+    ],
+    "summary": "This policy outlines the framework for recognizing and rewarding high-performing employees who have made significant contributions towards the RISE 10K strategic goal. It defines the nomination process, selection criteria, and reward structure including certificates, trophies, and monetary incentives.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Recognition & Reward Program.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Related Party Transaction Policy",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "related-party-transactions",
+      "sebi-regulations",
+      "companies-act-2013",
+      "audit-committee",
+      "disclosure",
+      "conflict-of-interest"
+    ],
+    "summary": "This policy governs the identification, approval, and disclosure of transactions between Puravankara and its related parties to ensure transparency and compliance with SEBI Regulations and the Companies Act, 2013. It outlines the materiality thresholds and procedures for managing conflicts of interest in related party dealings.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Related Party Transaction Policy.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-001",
+    "type": "policy",
+    "title": "Standing Orders for Workmen",
+    "department": "ESG",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "standing-orders",
+      "industrial-employment",
+      "workmen",
+      "compliance",
+      "labor-law"
+    ],
+    "summary": "Certified Standing Orders governing the terms of employment, definitions, and scope for workmen under the Industrial Employment (Standing Orders) Act, 1946, applicable to Puravankara Limited and its group companies.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "Standing Orders.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-INV-001",
+    "type": "policy",
+    "title": "Whistle Blower Policy",
+    "department": "Investors",
+    "target_stakeholders": [
+      "internal_employees",
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2023.1",
+    "tags": [
+      "whistle-blower",
+      "vigil-mechanism",
+      "audit-committee",
+      "sebi-compliance",
+      "fraud-reporting",
+      "ethical-conduct"
+    ],
+    "summary": "This policy establishes a vigil mechanism for directors, employees, and external stakeholders to report unethical conduct, fraud, or legal violations in compliance with the Companies Act and SEBI Listing Regulations. It outlines the procedure for lodging protected disclosures, investigation protocols, and safeguards for whistle blowers.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "WHISTLE BLOWER POLICY.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-007",
+    "type": "policy",
+    "title": "Medical Service Tie-up and Occupational Health Support Policy",
+    "department": "ESG",
+    "target_stakeholders": [
+      "contract_workforce",
+      "external_stakeholders"
+    ],
+    "authority": "General Manager \u2013 Projects",
+    "version": "2025.1",
+    "tags": [
+      "occupational_health",
+      "medical_tieup",
+      "worker_welfare",
+      "biomedical_waste",
+      "site_safety"
+    ],
+    "summary": "This policy establishes a medical service partnership with Sri Maruthi Hospital to provide admission, referral, and emergency care for the project workforce, while defining billing procedures, payment terms, and biomedical waste disposal protocols.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "imageMARUTHI HOSPITAL.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-ESG-007",
+    "type": "declaration",
+    "title": "Inter-State Migrant Workmen (RE&CS) Act 1979 - Certificate of Registration",
+    "department": "ESG",
+    "target_stakeholders": [
+      "contract_workforce"
+    ],
+    "authority": "Joint Director (BOCW), Industrial Safety & Health, Chennai",
+    "version": "2025.1",
+    "tags": [
+      "inter-state-migrant-workmen",
+      "labour-compliance",
+      "construction-safety",
+      "registration-certificate",
+      "migrant-workers"
+    ],
+    "summary": "This document serves as the official Certificate of Registration under the Inter-State Migrant Workmen (RE&CS) Act 1979 for Puravankara Limited's Purva Windermere project. It outlines statutory conditions for the employment of inter-state migrant workers, including minimum wage disbursement, health and safety education, and mandatory web portal reporting.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "imageWindermere ISMW-31-12-2027.pdf",
+      "converted_at": "2026-10-03"
+    }
+  },
+  {
+    "id": "POL-CORP-001",
+    "type": "declaration",
+    "title": "Corporate Profile and Overview",
+    "department": "Investors",
+    "target_stakeholders": [
+      "external_stakeholders"
+    ],
+    "authority": "Board of Directors",
+    "version": "2025.1",
+    "tags": [
+      "company_profile",
+      "corporate_overview",
+      "real_estate",
+      "brand_portfolio"
+    ],
+    "summary": "This document provides a high-level overview of Puravankara Limited, detailing its establishment, operational footprint, and key brand identities. It serves as a foundational corporate profile for external stakeholders and investors.",
+    "okf_spec": "0.2",
+    "provenance": {
+      "source_file": "purvankara_info.txt",
+      "converted_at": "2026-10-03"
+    }
+  }
+]

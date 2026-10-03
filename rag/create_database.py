@@ -1,19 +1,29 @@
-# create_database.py — Policy-only RAG Ingestion Pipeline
+# create_database.py — OKF-Enabled Policy RAG Ingestion Pipeline
 
 import os
+import sys
 import re
 import shutil
 import zipfile
 import xml.etree.ElementTree as ET
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+import okf_schema as okf
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_final")
-DATA_PATH = os.path.join(BASE_DIR, "data", "hr_policies")
+OKF_DATA_PATH = os.path.join(BASE_DIR, "data", "okf_policies")
+FALLBACK_DATA_PATH = os.path.join(BASE_DIR, "data", "hr_policies")
 
 
 def extract_docx_text(file_path: str) -> str:
@@ -67,17 +77,79 @@ def extract_section_header(text: str) -> str:
 
 
 def load_documents():
-    """Load only policy documents from rag/data/hr_policies/."""
+    """
+    Load policy documents.
+    Prefers rag/data/okf_policies/ (Google OKF markdown with YAML frontmatter).
+    Falls back gracefully to rag/data/hr_policies/ if OKF bundle is not found.
+    """
     documents = []
-    if not os.path.exists(DATA_PATH):
-        print(f"Directory {DATA_PATH} does not exist!")
+
+    # Priority 1: Google OKF Bundle
+    if os.path.exists(OKF_DATA_PATH) and len([f for f in os.listdir(OKF_DATA_PATH) if f.endswith(".md")]) > 0:
+        print(f"[OKF INGESTION] Loading Google OKF bundle from '{OKF_DATA_PATH}'...")
+        files = sorted(os.listdir(OKF_DATA_PATH))
+
+        for filename in files:
+            if not filename.endswith(".md") or filename.startswith("."):
+                continue
+
+            file_path = os.path.join(OKF_DATA_PATH, filename)
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    raw_content = f.read()
+
+                # Parse OKF YAML Frontmatter and clean body
+                meta, body = okf.parse_okf_markdown(raw_content)
+                cleaned_body = clean_text(body)
+
+                if not cleaned_body:
+                    continue
+
+                policy_id = meta.get("id", "POL-GEN-001")
+                policy_title = meta.get("title", os.path.splitext(filename)[0])
+                department = meta.get("department", "HR")
+                target_stakeholders = meta.get("target_stakeholders", ["internal_employees"])
+                tags = meta.get("tags", [])
+                authority = meta.get("authority", "Puravankara Group")
+                version = meta.get("version", "2026.1")
+
+                # Store array tags as comma-separated strings for Chroma compatibility
+                stakeholders_str = ",".join(target_stakeholders) if isinstance(target_stakeholders, list) else str(target_stakeholders)
+                tags_str = ",".join(tags) if isinstance(tags, list) else str(tags)
+
+                doc_obj = Document(
+                    page_content=cleaned_body,
+                    metadata={
+                        "policy_id": policy_id,
+                        "policy_name": policy_title,
+                        "department": department,
+                        "target_stakeholders": stakeholders_str,
+                        "tags": tags_str,
+                        "authority": authority,
+                        "version": version,
+                        "source_file": meta.get("provenance", {}).get("source_file", filename),
+                        "source": filename,
+                        "page": 1,
+                        "section": extract_section_header(cleaned_body),
+                        "is_okf": True,
+                    }
+                )
+                documents.append(doc_obj)
+            except Exception as e:
+                print(f"[WARN] Failed to read OKF file {filename}: {e}")
+
+        print(f"[OKF INGESTION] Loaded {len(documents)} OKF policy documents.")
         return documents
 
-    files = sorted(os.listdir(DATA_PATH))
-    for filename in files:
-        file_path = os.path.join(DATA_PATH, filename)
+    # Priority 2: Legacy fallback to raw hr_policies/
+    print(f"[FALLBACK] OKF bundle not found. Falling back to '{FALLBACK_DATA_PATH}'...")
+    if not os.path.exists(FALLBACK_DATA_PATH):
+        print(f"Directory {FALLBACK_DATA_PATH} does not exist!")
+        return documents
 
-        # Ignore directories, hidden files, requirements.txt, or non-policy assets
+    files = sorted(os.listdir(FALLBACK_DATA_PATH))
+    for filename in files:
+        file_path = os.path.join(FALLBACK_DATA_PATH, filename)
         if os.path.isdir(file_path) or filename.startswith(".") or filename.lower() == "requirements.txt":
             continue
 
@@ -95,15 +167,17 @@ def load_documents():
                     if not cleaned_content:
                         continue
                     section = extract_section_header(cleaned_content)
-
                     doc_obj = Document(
                         page_content=cleaned_content,
                         metadata={
+                            "policy_id": "LEGACY",
                             "policy_name": policy_name,
+                            "department": "HR",
                             "source_file": filename,
                             "source": filename,
                             "page": human_page,
-                            "section": section
+                            "section": section,
+                            "is_okf": False,
                         }
                     )
                     documents.append(doc_obj)
@@ -118,37 +192,19 @@ def load_documents():
                 doc_obj = Document(
                     page_content=cleaned_content,
                     metadata={
+                        "policy_id": "LEGACY",
                         "policy_name": policy_name,
+                        "department": "HR",
                         "source_file": filename,
                         "source": filename,
                         "page": 1,
-                        "section": section
+                        "section": section,
+                        "is_okf": False,
                     }
                 )
                 documents.append(doc_obj)
 
-        elif filename.lower().endswith(".txt") or filename.lower().endswith(".md"):
-            try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    raw_text = f.read()
-                cleaned_content = clean_text(raw_text)
-                if cleaned_content:
-                    section = extract_section_header(cleaned_content)
-                    doc_obj = Document(
-                        page_content=cleaned_content,
-                        metadata={
-                            "policy_name": policy_name,
-                            "source_file": filename,
-                            "source": filename,
-                            "page": 1,
-                            "section": section
-                        }
-                    )
-                    documents.append(doc_obj)
-            except Exception as e:
-                print(f"Error reading TXT {filename}: {e}")
-
-    print(f"Loaded {len(documents)} document pages/files from '{DATA_PATH}'.")
+    print(f"Loaded {len(documents)} document pages/files from '{FALLBACK_DATA_PATH}'.")
     return documents
 
 
@@ -160,7 +216,7 @@ def split_text(documents: list[Document]):
     )
     chunks = text_splitter.split_documents(documents)
 
-    # Attach chunk_ids and refine section metadata per chunk
+    # Attach chunk_ids and preserve all OKF metadata per chunk
     for idx, chunk in enumerate(chunks):
         source_file = chunk.metadata.get("source_file", "unknown")
         page = chunk.metadata.get("page", 1)
@@ -175,7 +231,7 @@ def split_text(documents: list[Document]):
 
 
 def save_to_chroma(chunks: list[Document]):
-    """Rebuild Chroma vector store with 1000-char policy chunks."""
+    """Rebuild Chroma vector store with OKF-annotated policy chunks."""
     if os.path.exists(CHROMA_PATH):
         print(f"Removing old vector index at {CHROMA_PATH}...")
         shutil.rmtree(CHROMA_PATH)
@@ -191,7 +247,7 @@ def save_to_chroma(chunks: list[Document]):
     )
 
     db.persist()
-    print(f"Successfully saved {len(chunks)} chunks to '{CHROMA_PATH}'.")
+    print(f"Successfully saved {len(chunks)} OKF chunks to '{CHROMA_PATH}'.")
 
 
 def main():

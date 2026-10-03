@@ -118,14 +118,18 @@ def generate_response_node(state: GrievanceState) -> dict:
         content = msg.get("content", "")
         history_text += f"{role.upper()}: {content}\n"
 
-    # Build source citations
+    # Build source citations with OKF Policy IDs
     source_citations = ""
     if sources:
         source_parts = []
         for s in sources:
             source_name = s.get("source", "Policy")
+            policy_id = s.get("policy_id", "")
             page = s.get("page", "")
-            source_parts.append(f"{source_name} (p.{page})")
+            if policy_id and policy_id != "LEGACY":
+                source_parts.append(f"{source_name} [{policy_id}] (p.{page})")
+            else:
+                source_parts.append(f"{source_name} (p.{page})")
         source_citations = "\n\nSources: " + ", ".join(source_parts)
 
     intent = state.get("intent", "QUERY").strip().upper()
