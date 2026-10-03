@@ -79,13 +79,13 @@ const SuperAdminPortal = () => {
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold" style={{ color: "#001a4d" }}>Super Admin Portal</h2>
+          <h2 className="fw-bold" style={{ color: "var(--navy)" }}>Super Admin Portal</h2>
           <p className="text-muted mb-0">Manage staff access and view system audit logs.</p>
         </div>
         <div>
           <button
             className="btn btn-primary shadow-sm"
-            style={{ backgroundColor: "#001a4d", borderColor: "#001a4d" }}
+            style={{ backgroundColor: "var(--navy)", borderColor: "var(--navy)" }}
             onClick={() => setShowInviteModal(true)}
           >
             <i className="bi bi-person-plus-fill me-2"></i>Invite Staff
@@ -188,7 +188,7 @@ const SuperAdminPortal = () => {
                   ) : logs.map(log => (
                     <tr key={log.log_id}>
                       <td className="px-4 text-muted small">{new Date(log.created_at).toLocaleString()}</td>
-                      <td><span className="fw-semibold" style={{ color: "#001a4d" }}>{log.action}</span></td>
+                      <td><span className="fw-semibold" style={{ color: "var(--navy)" }}>{log.action}</span></td>
                       <td>
                         <div className="fw-medium">{log.actor_name}</div>
                         <div className="small text-muted">{log.actor_role}</div>
@@ -209,7 +209,7 @@ const SuperAdminPortal = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 rounded-4 shadow">
               <div className="modal-header border-bottom-0">
-                <h5 className="modal-title fw-bold" style={{ color: "#001a4d" }}>Invite New Staff</h5>
+                <h5 className="modal-title fw-bold" style={{ color: "var(--navy)" }}>Invite New Staff</h5>
                 <button type="button" className="btn-close" onClick={() => setShowInviteModal(false)}></button>
               </div>
               <div className="modal-body px-4">
@@ -250,7 +250,7 @@ const SuperAdminPortal = () => {
                   </div>
                   <div className="mt-4 d-flex justify-content-end">
                     <button type="button" className="btn btn-light me-2" onClick={() => setShowInviteModal(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" style={{ backgroundColor: "#001a4d", borderColor: "#001a4d" }}>Send Invite</button>
+                    <button type="submit" className="btn btn-primary" style={{ backgroundColor: "var(--navy)", borderColor: "var(--navy)" }}>Send Invite</button>
                   </div>
                 </form>
               </div>

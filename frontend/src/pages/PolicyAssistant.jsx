@@ -648,14 +648,14 @@ function PolicyAssistant() {
                         style={{
                           backgroundColor: '#ffffff',
                           borderColor: '#e2e8f0',
-                          borderLeft: '4px solid #001a4d'
+                          borderLeft: '4px solid var(--navy)'
                         }}
                       >
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <span 
                             className="badge rounded-pill px-2 py-1 text-uppercase fw-bold"
                             style={{ 
-                              backgroundColor: msg.severity === 'high' ? '#c4122f' : '#d97706',
+                              backgroundColor: msg.severity === 'high' ? 'var(--accent)' : '#d97706',
                               color: '#ffffff',
                               fontSize: '10px'
                             }}
@@ -675,7 +675,7 @@ function PolicyAssistant() {
                           type="button"
                           className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2"
                           style={{
-                            background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
+                            background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)',
                             color: '#ffffff',
                             border: 'none',
                             padding: '7px 14px',

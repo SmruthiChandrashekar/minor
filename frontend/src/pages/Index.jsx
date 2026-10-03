@@ -88,17 +88,14 @@ function Index() {
       <section className="hero text-white" style={{
         padding: "var(--s8) 0 var(--s7)",
         color: "#ffffff",
-        background: "radial-gradient(800px 380px at 90% -10%, #1a4d9c, transparent 70%), linear-gradient(160deg, var(--navy), #00305f)",
-        borderBottom: "1px solid var(--line)"
+        background: "radial-gradient(900px 420px at 85% -10%, rgba(121, 141, 166, 0.35), transparent 70%), linear-gradient(155deg, var(--navy) 0%, var(--navy-2) 60%, var(--navy) 100%)",
+        borderBottom: "1px solid rgba(229, 222, 210, 0.2)"
       }}>
         <div className="container text-white">
           <div className="row align-items-center g-5">
 
             {/* HERO LEFT CONTENT */}
             <div className="col-lg-7">
-              <span className="badge mb-3 px-3 py-2 text-white" style={{ backgroundColor: "rgba(255,255,255,0.18)", backdropFilter: "blur(8px)", fontSize: "13px" }}>
-                {t('heroBadge')}
-              </span>
               <h1 className="text-white" style={{
                 fontSize: "var(--fs-h1)",
                 fontWeight: "800",
@@ -134,10 +131,21 @@ function Index() {
 
                 <button
                   onClick={handleTrack}
-                  className="btn btn-ghost btn-lg px-4 py-3 fw-bold text-white border-light"
-                  style={{ borderRadius: "var(--r-pill)", borderColor: "rgba(255,255,255,0.5)" }}
+                  className="btn btn-hero-track btn-lg px-4 py-3 fw-bold text-white d-inline-flex align-items-center gap-2"
+                  style={{
+                    borderRadius: "var(--r-pill)",
+                    color: "#ffffff",
+                    borderColor: "rgba(255, 255, 255, 0.45)",
+                    backgroundColor: "rgba(255, 255, 255, 0.1)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)"
+                  }}
                 >
-                  {t('trackStatusHero')}
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <span>{t('trackStatusHero')}</span>
                 </button>
               </div>
 

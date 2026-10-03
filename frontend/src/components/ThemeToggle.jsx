@@ -69,12 +69,12 @@ const ThemeToggle = () => {
             height="11"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#c4122f"
+            stroke="var(--accent)"
             strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <circle cx="12" cy="12" r="4" fill="#c4122f" />
+            <circle cx="12" cy="12" r="4" fill="var(--accent)" />
             <line x1="12" y1="1" x2="12" y2="3" />
             <line x1="12" y1="21" x2="12" y2="23" />
             <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />

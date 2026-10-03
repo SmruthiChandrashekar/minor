@@ -229,7 +229,7 @@ function LodgeInternal() {
                     </label>
                   </div>
 
-                  <button type="submit" disabled={isSubmitting} className="btn w-100 py-3 fw-bold shadow-sm text-white" style={{ backgroundColor: "#001a4d", fontSize: "1.1rem" }}>
+                  <button type="submit" disabled={isSubmitting} className="btn w-100 py-3 fw-bold shadow-sm text-white" style={{ backgroundColor: "var(--navy)", fontSize: "1.1rem" }}>
                     {isSubmitting ? "Submitting..." : t("submitGrievance")}
                   </button>
 
@@ -277,7 +277,7 @@ function LodgeInternal() {
                   <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
                     {t("submitAnother")}
                   </button>
-                  <button onClick={() => navigate("/track", { state: { trackingId: submittedId } })} className="btn px-4 py-2 fw-bold shadow-sm text-white" style={{ backgroundColor: "#c4122f" }}>
+                  <button onClick={() => navigate("/track", { state: { trackingId: submittedId } })} className="btn px-4 py-2 fw-bold shadow-sm text-white" style={{ backgroundColor: "var(--accent)" }}>
                     {t("trackStatus")}
                   </button>
                 </div>

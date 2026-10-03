@@ -254,21 +254,21 @@ function Profile() {
     if (isAdmin) {
       const tierText = userDetails?.admin_tier ? ` (${userDetails.admin_tier})` : "";
       return {
-        role: { label: `Admin${tierText}`, bg: "#001a4d", color: "#fff" },
+        role: { label: `Admin${tierText}`, bg: "var(--navy)", color: "#fff" },
         deptLabel: userDetails?.department,
         isInternalRole: true
       };
     }
     if (isContract) {
       return {
-        role: { label: "Contract Workforce", bg: "#001a4d", color: "#fff" },
+        role: { label: "Contract Workforce", bg: "var(--navy)", color: "#fff" },
         deptLabel: formData.agency_name || userDetails?.department || "Contract Partner",
         isInternalRole: false
       };
     }
     if (isExternal) {
       return {
-        role: { label: "External Stakeholder", bg: "#001a4d", color: "#fff" },
+        role: { label: "External Stakeholder", bg: "var(--navy)", color: "#fff" },
         deptLabel: null,
         cityLabel: formData.location || userDetails?.department,
         isInternalRole: false
@@ -276,7 +276,7 @@ function Profile() {
     }
     // Default: Internal Employee
     return {
-      role: { label: "Internal Employee", bg: "#001a4d", color: "#fff" },
+      role: { label: "Internal Employee", bg: "var(--navy)", color: "#fff" },
       deptLabel: userDetails?.department || "General",
       isInternalRole: true
     };
@@ -317,7 +317,7 @@ function Profile() {
 
       {/* FEEDBACK ALERT */}
       {feedback.message && (
-        <div className={`alert alert-dark border-0 shadow-sm`} role="alert" style={{ background: "#001a4d", color: "#fff" }}>
+        <div className={`alert alert-dark border-0 shadow-sm`} role="alert" style={{ background: "var(--navy)", color: "#fff" }}>
           {feedback.message}
           <button type="button" className="btn-close btn-close-white" onClick={() => setFeedback({ type: "", message: "" })}></button>
         </div>
@@ -331,7 +331,7 @@ function Profile() {
         {/* BANNER HEADER */}
         <div style={{
           height: "135px",
-          background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
+          background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)",
           position: "relative"
         }}>
           <div style={{
@@ -355,7 +355,7 @@ function Profile() {
                   style={{
                     width: "115px",
                     height: "115px",
-                    backgroundColor: "#001a4d",
+                    backgroundColor: "var(--navy)",
                     border: "4px solid var(--card-bg)",
                     overflow: "hidden",
                     position: "relative"
@@ -407,7 +407,7 @@ function Profile() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
+                    background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)",
                     border: "2px solid var(--card-bg)"
                   }}
                   title="Upload profile photo"
@@ -938,7 +938,7 @@ function Profile() {
                     type="submit" 
                     className="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm"
                     disabled={loading}
-                    style={{ background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)", border: "none", color: "#ffffff" }}
+                    style={{ background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)", border: "none", color: "#ffffff" }}
                   >
                     {loading ? (
                       <><span className="spinner-border spinner-border-sm me-2" role="status" />Saving Changes...</>
@@ -961,7 +961,7 @@ function Profile() {
             <ul className="list-unstyled mb-0 d-flex flex-column gap-3 small">
               <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                 <span className="text-muted">Account Status</span>
-                <span className="badge rounded-pill px-2 py-1" style={{ background: "rgba(0, 26, 77, 0.08)", color: "#001a4d", fontWeight: "600" }}>Active</span>
+                <span className="badge rounded-pill px-2 py-1" style={{ background: "rgba(20, 40, 65, 0.08)", color: "var(--navy)", fontWeight: "600" }}>Active</span>
               </li>
 
               <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
@@ -1057,7 +1057,7 @@ function Profile() {
           <div 
             className="card border-0 shadow-sm rounded-4 p-4 text-center text-white" 
             style={{ 
-              background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)", 
+              background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)", 
               color: "#ffffff" 
             }}
           >
@@ -1070,7 +1070,7 @@ function Profile() {
             <Link 
               to={isAdmin ? "/admin/dashboard" : "/lodge-selection"} 
               className="btn btn-light btn-sm rounded-pill px-4 fw-bold shadow-sm"
-              style={{ color: "#001a4d" }}
+              style={{ color: "var(--navy)" }}
             >
               {isAdmin ? "Go to Admin Dashboard" : "Lodge a Grievance"}
             </Link>

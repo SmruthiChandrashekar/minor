@@ -10,8 +10,8 @@ import AdminAnalytics from "../components/AdminAnalytics";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const DEPT_COLORS = [
-  "#001a4d", "#0c7cd5", "#f59e0b", "#2e7d32",
-  "#c62828", "#6a0dad", "#00838f", "#e65100", "#4527a0", "#558b2f"
+  "#142841", "#798da6", "#a82646", "#0c7cd5",
+  "#f59e0b", "#2e7d32", "#6a0dad", "#00838f", "#e65100", "#558b2f"
 ];
 
 const DeptPieTooltip = ({ active, payload }) => {
@@ -21,7 +21,7 @@ const DeptPieTooltip = ({ active, payload }) => {
         background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8,
         padding: "8px 14px", boxShadow: "0 4px 12px rgba(0,0,0,0.12)", fontSize: 13
       }}>
-        <div style={{ fontWeight: 600, color: "#001a4d" }}>{payload[0].name}</div>
+        <div style={{ fontWeight: 600, color: "#142841" }}>{payload[0].name}</div>
         <div style={{ color: "#64748b" }}>{payload[0].value} grievance{payload[0].value !== 1 ? "s" : ""}</div>
       </div>
     );
@@ -1276,7 +1276,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                         <div className="border rounded p-3 h-100 d-flex flex-column align-items-center justify-content-center bg-light">
                           {isPdf ? (
                             <div className="text-center">
-                              <svg width="48" height="48" fill="#c4122f" viewBox="0 0 16 16" className="mb-2">
+                              <svg width="48" height="48" fill="#a82646" viewBox="0 0 16 16" className="mb-2">
                                 <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/>
                                 <path d="M4.603 12.087a.81.81 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.09.215-.323.593-.548 1.135-.672.482-.11 1.05-.164 1.704-.164.767 0 1.455.074 2.064.22.453.11.83.256 1.13.439.439.268.618.617.535 1.045-.078.406-.388.7-.93.882-.542.183-1.25.274-2.126.274-.848 0-1.57-.087-2.164-.26a3.864 3.864 0 0 1-.99-.444z"/>
                               </svg>
@@ -1515,10 +1515,10 @@ ${ragRecommendation.compliance_notes || ""}`;
                   {ragRecommendation.compliance_notes && (
                     <div 
                       className="card border-0 rounded-3 p-3"
-                      style={{ backgroundColor: isDark ? "rgba(239, 68, 68, 0.12)" : "#fef2f2", borderLeft: "4px solid #c4122f" }}
+                      style={{ backgroundColor: isDark ? "rgba(168, 38, 70, 0.12)" : "#fdf2f4", borderLeft: "4px solid #a82646" }}
                     >
                       <div className="d-flex align-items-center gap-2 mb-1">
-                        <svg width="16" height="16" fill="#c4122f" viewBox="0 0 16 16">
+                        <svg width="16" height="16" fill="#a82646" viewBox="0 0 16 16">
                           <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                         </svg>
                         <strong style={{ color: isDark ? "#fca5a5" : "#991b1b", fontSize: "13px" }}>

@@ -260,8 +260,8 @@ function Track() {
                 style={{
                   width: "32px",
                   height: "32px",
-                  backgroundColor: i <= currentIndex ? "#001a4d" : "#e9ecef",
-                  color: i <= currentIndex ? "#fff" : "#adb5bd",
+                  backgroundColor: i <= currentIndex ? "var(--navy)" : "var(--surface-2)",
+                  color: i <= currentIndex ? "#fff" : "var(--muted)",
                   fontSize: "12px",
                   fontWeight: "bold",
                 }}
@@ -272,7 +272,7 @@ function Track() {
                 style={{
                   fontSize: "10px",
                   fontWeight: i === currentIndex ? "700" : "500",
-                  color: i <= currentIndex ? "#001a4d" : "#adb5bd",
+                  color: i <= currentIndex ? "var(--navy)" : "var(--muted)",
                 }}
               >
                 {step === "Open" ? t("pending") :
@@ -286,7 +286,7 @@ function Track() {
                 className="flex-grow-1 mx-1"
                 style={{
                   height: "3px",
-                  backgroundColor: i < currentIndex ? "#001a4d" : "#e9ecef",
+                  backgroundColor: i < currentIndex ? "var(--navy)" : "var(--line)",
                   marginBottom: "18px",
                 }}
               />
@@ -305,7 +305,7 @@ function Track() {
         <div className="col-12 col-md-9 col-lg-8">
           
           <div className="text-center mb-5">
-            <h2 className="fw-bold mb-2" style={{ color: "#001a4d" }}>{t("trackComplaint")}</h2>
+            <h2 className="fw-bold mb-2" style={{ color: "var(--navy)" }}>{t("trackComplaint")}</h2>
             <p className="text-muted">{t("trackSubtitle")}</p>
           </div>
 
@@ -313,7 +313,7 @@ function Track() {
             <div className="card border-0 shadow-sm p-4 p-md-5 mb-4" style={{ borderRadius: "12px" }}>
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                  <label htmlFor="trackingIdInput" className="form-label fw-bold" style={{ color: "#001a4d" }}>
+                  <label htmlFor="trackingIdInput" className="form-label fw-bold" style={{ color: "var(--navy)" }}>
                     {t("trackingId")}
                   </label>
                   <input
@@ -331,7 +331,7 @@ function Track() {
                 <button
                   type="submit"
                   className="btn btn-lg w-100 fw-bold shadow-sm text-white"
-                  style={{ backgroundColor: "#001a4d", borderColor: "#001a4d", borderRadius: "8px" }}
+                  style={{ backgroundColor: "var(--navy)", borderColor: "var(--navy)", borderRadius: "8px" }}
                   disabled={isTracking}
                 >
                   {isTracking ? (
@@ -354,12 +354,12 @@ function Track() {
                   className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
                   style={{ width: "64px", height: "64px", backgroundColor: "#e8f4fd" }}
                 >
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#001a4d" strokeWidth="2">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-1" style={{ color: "#001a4d" }}>{t("complaintStatus")}</h3>
+                <h3 className="fw-bold mb-1" style={{ color: "var(--navy)" }}>{t("complaintStatus")}</h3>
                 <p className="text-muted mb-0">
                   {t("trackingDetailsFor")} <strong>#{trackedData.id.substring(0, 5)}</strong>
                 </p>
@@ -546,7 +546,7 @@ function Track() {
                     disabled={downloadingReport}
                     className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm d-flex align-items-center justify-content-center gap-2"
                     style={{
-                      background: "linear-gradient(135deg, #001a4d 0%, #003366 100%)",
+                      background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)",
                       borderRadius: "8px",
                       border: "none",
                     }}
@@ -568,7 +568,7 @@ function Track() {
                 <button
                   onClick={() => navigate("/lodge-selection")}
                   className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm"
-                  style={{ backgroundColor: "#001a4d", borderColor: "#001a4d", borderRadius: "8px" }}
+                  style={{ backgroundColor: "var(--navy)", borderColor: "var(--navy)", borderRadius: "8px" }}
                 >
                   {t("raiseNewComplaint")}
                 </button>
