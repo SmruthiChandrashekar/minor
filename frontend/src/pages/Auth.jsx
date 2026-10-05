@@ -220,7 +220,7 @@ const Auth = () => {
                     className="card border-0 shadow-sm p-3"
                     style={{
                       borderRadius: "14px",
-                      borderLeft: "4px solid #c4122f",
+                      borderLeft: "4px solid var(--accent)",
                       transition: "transform 0.2s ease",
                     }}
                     onMouseOver={(e) => (e.currentTarget.style.transform = "translateX(6px)")}
@@ -229,7 +229,7 @@ const Auth = () => {
                     <div className="d-flex align-items-center gap-3">
                       <div
                         className="d-flex align-items-center justify-content-center rounded-circle"
-                        style={{ width: "46px", height: "46px", backgroundColor: "rgba(196, 18, 47, 0.1)", color: "#c4122f", flexShrink: 0 }}
+                        style={{ width: "46px", height: "46px", backgroundColor: "rgba(168, 38, 70, 0.12)", color: "var(--accent)", flexShrink: 0 }}
                       >
                         <i className={`bi ${f.icon}`} style={{ fontSize: "1.2rem" }}></i>
                       </div>
@@ -244,10 +244,10 @@ const Auth = () => {
 
               <div
                 className="card border-0 shadow-sm mt-4 p-4"
-                style={{ borderRadius: "14px", backgroundColor: "#001a4d", color: "#fff" }}
+                style={{ borderRadius: "14px", backgroundColor: "var(--navy)", color: "#fff" }}
               >
                 <div className="d-flex align-items-center gap-2 mb-2">
-                  <i className="bi bi-person-badge" style={{ fontSize: "1.2rem", color: "#c4122f" }}></i>
+                  <i className="bi bi-person-badge" style={{ fontSize: "1.2rem", color: "var(--accent)" }}></i>
                   <span className="fw-bold">{t("adminLoginTitle")}</span>
                 </div>
                 <p className="mb-3 opacity-75" style={{ fontSize: "0.85rem" }}>
@@ -269,14 +269,14 @@ const Auth = () => {
                 /* STEP 1: CATEGORY SELECTION */
                 <div className="card border-0 shadow-lg p-4 p-md-5" style={{ borderRadius: "20px" }}>
                   <div className="text-center mb-4">
-                    <h3 className="fw-bold" style={{ color: "#001a4d" }}>{t("selectCategory")}</h3>
+                    <h3 className="fw-bold" style={{ color: "var(--navy)" }}>{t("selectCategory")}</h3>
                     <p className="text-muted small">{t("selectCategoryDesc")}</p>
                   </div>
                   <div className="row g-3">
                     {[
-                      { type: "Internal", label: t("internalEmployees"), icon: "fa-user-tie", color: "#1e88e5", bg: "#e3f2fd" },
-                      { type: "Contract", label: t("contractWorkforce"), icon: "fa-briefcase", color: "#4caf50", bg: "#e8f5e9" },
-                      { type: "External", label: t("externalStakeholders"), icon: "fa-users", color: "#c4122f", bg: "#f8d7da" }
+                      { type: "Internal", label: t("internalEmployees"), icon: "fa-user-tie", color: "var(--navy)", bg: "var(--surface-2)" },
+                      { type: "Contract", label: t("contractWorkforce"), icon: "fa-briefcase", color: "var(--slate)", bg: "rgba(121, 141, 166, 0.12)" },
+                      { type: "External", label: t("externalStakeholders"), icon: "fa-users", color: "var(--accent)", bg: "rgba(168, 38, 70, 0.1)" }
                     ].map((cat) => (
                       <div key={cat.type} className="col-12">
                         <div 
@@ -290,7 +290,7 @@ const Auth = () => {
                             <i className={`fa-solid ${cat.icon}`} style={{ fontSize: "1.4rem" }}></i>
                           </div>
                           <div className="flex-grow-1 text-start">
-                            <h5 className="fw-bold mb-0" style={{ color: "#001a4d" }}>{cat.label}</h5>
+                            <h5 className="fw-bold mb-0" style={{ color: "var(--navy)" }}>{cat.label}</h5>
                             <p className="text-muted small mb-0">Proceed as {cat.label}</p>
                           </div>
                           <i className="fa-solid fa-chevron-right opacity-25"></i>
@@ -299,7 +299,7 @@ const Auth = () => {
                     ))}
                   </div>
                   <div className="text-center mt-4">
-                    <button onClick={() => switchMode("login")} className="btn btn-link text-decoration-none fw-bold" style={{ color: "#001a4d" }}>
+                    <button onClick={() => switchMode("login")} className="btn btn-link text-decoration-none fw-bold" style={{ color: "var(--navy)" }}>
                       Already have an account? Sign In
                     </button>
                   </div>
@@ -326,7 +326,7 @@ const Auth = () => {
                         fontSize: "0.95rem",
                         cursor: loading ? "not-allowed" : "pointer",
                         transition: "all 0.2s ease",
-                        backgroundColor: mode === tab ? "#001a4d" : "var(--card-bg)",
+                        backgroundColor: mode === tab ? "var(--navy)" : "var(--card-bg)",
                         color: mode === tab ? "#fff" : "var(--text-color)",
                         letterSpacing: "0.5px",
                       }}
@@ -478,7 +478,7 @@ const Auth = () => {
                       <div className="mb-3 d-flex align-items-center justify-content-between p-3" style={{ backgroundColor: "rgba(0,0,0,0.03)", borderRadius: "10px" }}>
                         <div>
                           <span className="text-muted small d-block">Registering as:</span>
-                          <strong style={{ color: "#001a4d" }}>{formData.userType}</strong>
+                          <strong style={{ color: "var(--navy)" }}>{formData.userType}</strong>
                         </div>
                         <button type="button" onClick={() => setFormData(p => ({ ...p, userType: "" }))} className="btn btn-sm btn-outline-secondary" style={{ fontSize: "11px" }}>
                           Change
@@ -493,7 +493,7 @@ const Auth = () => {
                           {t("passwordLabel")}
                         </label>
                         {mode === "login" && (
-                          <a href="#" className="text-decoration-none" style={{ fontSize: "0.8rem", color: "#c4122f" }}>
+                          <a href="#" className="text-decoration-none" style={{ fontSize: "0.8rem", color: "var(--accent)" }}>
                             {t("forgotPassword")}
                           </a>
                         )}
@@ -531,7 +531,7 @@ const Auth = () => {
                     {/* CONFIRM PASSWORD — register only */}
                     {mode === "register" && (
                       <div className="mb-4">
-                        <label className="form-label fw-semibold" style={{ color: "#001a4d", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold" style={{ color: "var(--navy)", fontSize: "0.88rem" }}>
                           {t("confirmPasswordLabel")}
                         </label>
                         <div className="input-group">
@@ -574,13 +574,13 @@ const Auth = () => {
                         borderRadius: "10px",
                         padding: "13px",
                         fontSize: "1rem",
-                        backgroundColor: loading ? "#6c757d" : "#c4122f",
+                        backgroundColor: loading ? "#6c757d" : "var(--accent)",
                         border: "none",
                         transition: "all 0.2s ease",
                         letterSpacing: "0.5px",
                       }}
-                      onMouseOver={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#a30f27"; }}
-                      onMouseOut={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#c4122f"; }}
+                      onMouseOver={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "var(--accent-h)"; }}
+                      onMouseOut={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "var(--accent)"; }}
                     >
                       {loading ? (
                         <>
@@ -607,7 +607,7 @@ const Auth = () => {
                             type="button"
                             onClick={() => switchMode("register")}
                             disabled={loading}
-                            style={{ background: "none", border: "none", color: "#001a4d", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                            style={{ background: "none", border: "none", color: "var(--navy)", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
                           >
                             {t("registerHere")}
                           </button>
@@ -619,7 +619,7 @@ const Auth = () => {
                             type="button"
                             onClick={() => switchMode("login")}
                             disabled={loading}
-                            style={{ background: "none", border: "none", color: "#001a4d", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                            style={{ background: "none", border: "none", color: "var(--navy)", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
                           >
                             {t("signInLink")}
                           </button>
@@ -635,7 +635,7 @@ const Auth = () => {
               <div className="d-lg-none text-center mt-3">
                 <span className="text-muted" style={{ fontSize: "0.85rem" }}>
                   {t("areYouAdminQ")}{" "}
-                  <a href="/admin" style={{ color: "#c4122f", fontWeight: "700", textDecoration: "underline" }}>
+                  <a href="/admin" style={{ color: "var(--accent)", fontWeight: "700", textDecoration: "underline" }}>
                     {t("adminPortalLink")}
                   </a>
                 </span>

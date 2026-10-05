@@ -27,7 +27,7 @@ function Navbar() {
         {/* LOGO */}
         <Link className="navbar-brand d-flex align-items-center text-decoration-none" to="/">
           <img src="/purvankaraimg.png" alt="Puravankara" className="navbar-brand-logo" style={{ height: "55px", objectFit: "contain", marginRight: "6px" }} />
-          <span style={{ color: "#c4122f", fontWeight: "800", fontSize: "1.6rem", letterSpacing: "1px", fontFamily: "Arial Black, sans-serif" }}>GRM</span>
+          <span style={{ color: "var(--accent)", fontWeight: "800", fontSize: "1.6rem", letterSpacing: "1px", fontFamily: "Arial Black, sans-serif" }}>GRM</span>
         </Link>
 
         {/* NAV LINKS */}
@@ -73,7 +73,7 @@ function Navbar() {
           </Link>
 
           <Link to="/track" className="me-4 text-decoration-none nav-link-custom">
-            {t("track")}
+            {t("trackStatus")}
           </Link>
 
           <Link to="/help" className="me-4 text-decoration-none nav-link-custom">

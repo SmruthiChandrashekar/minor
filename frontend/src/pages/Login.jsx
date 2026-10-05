@@ -56,7 +56,7 @@ const Login = () => {
         {/* GRIEVANCE INFORMATION */}
         <div className="col-md-6 mb-4">
           <div className="card p-4 shadow h-100 bg-light border-0">
-            <h4 className="mb-4 text-center" style={{ color: "#c4122f" }}>{t("whoCanLodge")}</h4>
+            <h4 className="mb-4 text-center" style={{ color: "var(--accent)" }}>{t("whoCanLodge")}</h4>
             
             <div className="mb-4">
               <h5>{t("internalEmployees")}</h5>
@@ -135,7 +135,7 @@ const Login = () => {
 
           <div className="text-center mt-4 pt-3 border-top">
             <small className="text-muted">
-              {t("areYouAdmin")} <Link to="/admin" className="text-decoration-none fw-bold" style={{ color: "#001a4d" }}>{t("adminPortal")}</Link>
+              {t("areYouAdmin")} <Link to="/admin" className="text-decoration-none fw-bold" style={{ color: "var(--navy)" }}>{t("adminPortal")}</Link>
             </small>
           </div>
         </form>
