@@ -118,18 +118,14 @@ def generate_response_node(state: GrievanceState) -> dict:
         content = msg.get("content", "")
         history_text += f"{role.upper()}: {content}\n"
 
-    # Build source citations with OKF Policy IDs
+    # Build clean user-facing source citations
     source_citations = ""
     if sources:
         source_parts = []
         for s in sources:
             source_name = s.get("source", "Policy")
-            policy_id = s.get("policy_id", "")
             page = s.get("page", "")
-            if policy_id and policy_id != "LEGACY":
-                source_parts.append(f"{source_name} [{policy_id}] (p.{page})")
-            else:
-                source_parts.append(f"{source_name} (p.{page})")
+            source_parts.append(f"{source_name} (p.{page})")
         source_citations = "\n\nSources: " + ", ".join(source_parts)
 
     intent = state.get("intent", "QUERY").strip().upper()
@@ -151,9 +147,10 @@ def generate_response_node(state: GrievanceState) -> dict:
     if has_policy_match:
         source_type = "POLICY"
         can_escalate = (intent == "GRIEVANCE")
-        chatbot_resolved = True
+        # Ensure no internal technical codes like [POL-IC-001] leak into the answer
+        clean_policy_answer = re.sub(r'\s*\[POL-[A-Z]+-\d+\]', '', policy_answer).strip()
 
-        response = f"According to Puravankara's {primary_policy}:\n\n{policy_answer}{source_citations}"
+        response = f"According to Puravankara's {primary_policy}:\n\n{clean_policy_answer}{source_citations}"
 
     # ── CASE 2: NO POLICY MATCH (GREETING, NON-POLICY QUERY, OR LOW GRIEVANCE) ───
     else:

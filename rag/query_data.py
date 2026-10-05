@@ -185,10 +185,11 @@ If the answer is NOT explicitly stated in the context, output EXACTLY:
 Do NOT extrapolate, deduce, or assume unstated company rules or entitlements.
 
 ### SPECIFICITY & STRUCTURE:
-1. State the relevant policy name and section clearly at the start.
-2. Keep the answer clear, structured, and concise (under 200 words).
-3. Use bullet points for requirements, criteria, or eligibility steps.
-4. If policy tables or clauses state "Nil", "N/A", "0", or "None", explicitly clarify this means zero entitlement or non-applicability.
+1. State the relevant policy title and section name clearly at the start (e.g., "Policy: Leave Policy", "Section: Annual Leave").
+2. DO NOT output internal technical codes, metadata IDs, or document identifiers (such as [POL-IC-001], [POL-HR-001]) in the user-facing text. Use only the human-readable policy title.
+3. Keep the answer clear, structured, and concise (under 200 words).
+4. Use bullet points for requirements, criteria, or eligibility steps.
+5. If policy tables or clauses state "Nil", "N/A", "0", or "None", explicitly clarify this means zero entitlement or non-applicability.
 
 ### INSTRUCTIONAL DOS & DON'TS:
 - DO quote verified clauses and terms directly from the context.
