@@ -1,7 +1,7 @@
 {
   "benchmark_version": "1.0",
   "model_target": "ollama/qwen2.5:3b",
-  "description": "Ground-truth evaluation benchmark for Puravankara Grievance & Query Classification (Severity, Intent, Department)",
+  "description": "Ground-truth evaluation benchmark for Puravankara Grievance & Query Classification (Expanded to 103 test cases across all 6 departments and 3 severity tiers)",
   "test_cases": [
     {
       "id": 1,
@@ -296,6 +296,433 @@
       "expected_severity": "LOW",
       "expected_intent": "QUERY",
       "expected_department": null
+    },
+    {
+      "text": "My PF (Provident Fund) transfer from my previous employer is stuck and the HR team is not approving the transfer request on the EPFO portal.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 43
+    },
+    {
+      "text": "I have not received my full and final settlement (F&F) amount even though 45 days have passed since my last working day.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 44
+    },
+    {
+      "text": "My medical insurance card is showing inactive on the MediBuddy portal and my dependent is hospitalized right now.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 45
+    },
+    {
+      "text": "My appraisal rating was downgraded without any feedback or performance discussion with my reporting manager.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 46
+    },
+    {
+      "text": "I am being forced to work 14 hours a day on weekends by my project manager without any comp-off or overtime approval.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 47
+    },
+    {
+      "text": "My payroll slip for last month shows a wrongful deduction of Rs 8,000 under the LOP category when I was present on all working days.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 48
+    },
+    {
+      "text": "The HR department lost my original educational certificates submitted during onboarding verification.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 49
+    },
+    {
+      "text": "My maternity benefits were discontinued arbitrarily while I was on approved leave under the Maternity Benefit Act.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 50
+    },
+    {
+      "text": "A colleague is spreading false defamatory rumors about my personal life across the entire department floor.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 51
+    },
+    {
+      "text": "I applied for paternity leave two weeks ago, but HR has not processed or acknowledged the request yet.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 52
+    },
+    {
+      "text": "My manager denied my statutory earned leave for my medical surgery scheduled next week despite submitting the doctor prescription.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 53
+    },
+    {
+      "text": "My travel reimbursement claim of Rs 14,500 has been lying pending with finance and HR for over two months.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "HR",
+      "id": 54
+    },
+    {
+      "text": "My supervisor touches my shoulder and waist uncomfortably whenever he enters my cubicle despite repeated objections.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 55
+    },
+    {
+      "text": "An associate vice president is sending lewd messages and explicit photos to my personal phone after office hours.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 56
+    },
+    {
+      "text": "My team lead told me my promotion is guaranteed if I accompany him alone on an overnight client visit.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 57
+    },
+    {
+      "text": "Colleagues in my cabin are making explicit sexual jokes and circulating inappropriate memes targeting women in the team.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 58
+    },
+    {
+      "text": "A vendor representative made sexually suggestive remarks to me during an on-site procurement meeting.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 59
+    },
+    {
+      "text": "I am facing severe retaliation and isolation at work after filing an internal POSH inquiry against my reporting director.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 60
+    },
+    {
+      "text": "A senior executive threatened to ruin my career if I disclose his inappropriate physical advances to the Internal Committee.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 61
+    },
+    {
+      "text": "I want to submit a formal harassment complaint under POSH regarding an incident that occurred at the office annual dinner.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "IC",
+      "id": 62
+    },
+    {
+      "text": "The CRM team is refusing to refund my booking token advance of Rs 2,00,000 even though I cancelled within the 15-day free cancellation period.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 63
+    },
+    {
+      "text": "I have received a demand letter claiming Rs 4,50,000 for milestone completion, but site construction has not even started on that floor.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 64
+    },
+    {
+      "text": "The salesperson falsely promised a club-facing unit at the time of agreement signing, but the allotment letter mentions a boundary-facing unit.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 65
+    },
+    {
+      "text": "My registered agreement of sale has not been handed over to me despite completing registration 6 months ago.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 66
+    },
+    {
+      "text": "The CRM executive is demanding Rs 50,000 cash under the table to fast-track my flat key handover appointment.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 67
+    },
+    {
+      "text": "Puravankara has altered the common terrace layout and reduced our open green area without obtaining RERA consent from buyers.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 68
+    },
+    {
+      "text": "The bank loan disbursement is held up because the CRM team has failed to provide the updated tripartite agreement for 3 weeks.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 69
+    },
+    {
+      "text": "The parking slot allotted to me in the agreement has been reassigned to another buyer without my written consent.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 70
+    },
+    {
+      "text": "Possession of my flat in Tower C has been delayed by 18 months and the company is refusing to pay statutory RERA delay interest.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 71
+    },
+    {
+      "text": "The CRM representative is completely unresponsive on email and phone regarding my interest waiver request.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CRM",
+      "id": 72
+    },
+    {
+      "text": "The main sewage pipeline in basement 2 has burst and raw sewage is flooding the resident parking area.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 73
+    },
+    {
+      "text": "Both passenger elevators in Tower 3 have stopped working leaving elderly residents and patients stranded on upper floors.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 74
+    },
+    {
+      "text": "There is active electrical sparking in the floor distribution board right outside my apartment entrance door.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 75
+    },
+    {
+      "text": "The master bedroom ceiling plaster fell down on the floor during the night and could have seriously injured my family.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 76
+    },
+    {
+      "text": "Severe dampness and mold growth across all bedroom walls due to concealed pipe leakage from the flat above.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 77
+    },
+    {
+      "text": "The firefighting hose pipes in the common corridor are damaged, dry, and not connected to any pressurized water line.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 78
+    },
+    {
+      "text": "The main entrance door of our newly handed-over flat has misaligned hinges and cannot be locked from the outside.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 79
+    },
+    {
+      "text": "Water pressure in the kitchen taps is negligible and the RO purifier is unable to function for the past week.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 80
+    },
+    {
+      "text": "The balcony glass railing on the 18th floor is loose and wobbling dangerously in high winds.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 81
+    },
+    {
+      "text": "Tile hollow sounds and cracked ceramic tiles across the living room floor were reported 4 months ago during pre-possession snagging with zero action taken.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "CSD",
+      "id": 82
+    },
+    {
+      "text": "Construction workers at the Purva Bluemont site are working on 80-foot scaffolding without safety harnesses or helmets.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 83
+    },
+    {
+      "text": "The contractor is employing underage children under 14 years old for carrying bricks and debris at the construction site.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 84
+    },
+    {
+      "text": "Toxic untreated chemical wastewater from the cement batching plant is being directly pumped into the adjoining storm water drain.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 85
+    },
+    {
+      "text": "Contract laborers residing in the temporary site labor colony have had no drinking water supply or sanitation toilets for the last 5 days.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 86
+    },
+    {
+      "text": "Heavy excavation and drilling work is continuing throughout the night after 11 PM causing unbearable noise pollution for neighbors.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 87
+    },
+    {
+      "text": "Dry cement dust from the uncovered loading bay is settling on all surrounding residential balconies causing respiratory issues.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 88
+    },
+    {
+      "text": "The labor contractor has deducted wages from daily wage laborers and failed to pay minimum wages as per the statutory government notification.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 89
+    },
+    {
+      "text": "Trees outside the project boundary on public land were cut down without municipal forest department permission.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "ESG",
+      "id": 90
+    },
+    {
+      "text": "My final dividend payment of Rs 12,400 for FY 2023-24 has not been credited to my bank account registered with the depository.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors",
+      "id": 91
+    },
+    {
+      "text": "The Registrar and Share Transfer Agent (RTA) has rejected my physical share certificate dematerialization request twice without valid reason.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors",
+      "id": 92
+    },
+    {
+      "text": "I suspect illegal insider trading by key managerial personnel ahead of the quarterly financial results announcement.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors",
+      "id": 93
+    },
+    {
+      "text": "As a retail shareholder holding 5,000 shares, I have not received the Annual Report copy or the e-voting link for the upcoming AGM.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors",
+      "id": 94
+    },
+    {
+      "text": "The company failed to report a material subsidiary litigation in the SEBI disclosure filings resulting in sudden stock devaluation.",
+      "expected_severity": "HIGH",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors",
+      "id": 95
+    },
+    {
+      "text": "I submitted transmission documents for shares belonging to my deceased father 3 months ago but name update is still pending.",
+      "expected_severity": "MEDIUM",
+      "expected_intent": "GRIEVANCE",
+      "expected_department": "Investors",
+      "id": 96
+    },
+    {
+      "text": "What is the procedure to apply for paternity leave in the employee self-service portal?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 97
+    },
+    {
+      "text": "Can you tell me the policy on local travel conveyance and per-km reimbursement rates?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 98
+    },
+    {
+      "text": "What are the company guidelines regarding personal social media usage by employees?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 99
+    },
+    {
+      "text": "What is the standard notice period for confirmed managerial staff resigning from Puravankara?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 100
+    },
+    {
+      "text": "How many optional holidays are permitted during the calendar year 2025?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 101
+    },
+    {
+      "text": "What is the criteria for medical insurance coverage for dependent parents?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 102
+    },
+    {
+      "text": "Could you provide details on the company policy regarding gift acceptance from vendors during festivals?",
+      "expected_severity": "LOW",
+      "expected_intent": "QUERY",
+      "expected_department": null,
+      "id": 103
     }
   ]
 }
