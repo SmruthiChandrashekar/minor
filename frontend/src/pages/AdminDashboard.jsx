@@ -301,57 +301,48 @@ const AdminDashboard = () => {
     switch (status) {
       case "Resolved":
         return {
-          title: "Resolve Grievance",
-          bg: "#15803d",
-          label: "Resolution Summary & Actions Taken",
-          placeholder: "Describe the actions and resolution steps taken for this grievance...",
-          btnText: "Confirm Resolution",
-          description: "Please provide a comprehensive resolution summary. This will be recorded in the audit trail and sent to the complainant.",
+          title: "Resolve grievance",
+          tone: "ok",
+          label: "Resolution summary",
+          placeholder: "Describe the actions taken and how the grievance was resolved…",
+          btnText: "Resolve",
+          description: "This summary is saved to the audit trail and shared with the complainant.",
         };
       case "Rejected":
         return {
-          title: "Reject Grievance",
-          bg: "#b91c1c",
-          label: "Reason for Rejection",
-          placeholder: "Explain clearly why this grievance cannot be accepted or is invalid...",
-          btnText: "Confirm Rejection",
-          description: "Please specify the official justification for rejecting this grievance.",
+          title: "Reject grievance",
+          tone: "danger",
+          label: "Reason for rejection",
+          placeholder: "Explain why this grievance can't be accepted…",
+          btnText: "Reject",
+          description: "This reason is saved to the audit trail and shared with the complainant.",
         };
       case "Investigating":
         return {
-          title: "Move to Investigating",
-          bg: "#1e3a8a",
-          label: "Reason / Investigation Scope",
-          placeholder: "Describe what is being inspected, tested, or investigated...",
-          btnText: "Update to Investigating",
-          description: "Record the reason and operational scope for moving this ticket into active investigation.",
-        };
-      case "HUMAN_HANDLING":
-        return {
-          title: "Assign to Human Handling",
-          bg: "#581c87",
-          label: "Reason for Human Review",
-          placeholder: "Detail why manual intervention or departmental review is required...",
-          btnText: "Update to Human Handling",
-          description: "Provide the reason for transferring this grievance to manual human handling.",
+          title: "Move to investigating",
+          tone: "primary",
+          label: "Investigation scope",
+          placeholder: "Describe what will be inspected or investigated…",
+          btnText: "Update status",
+          description: "Record why this ticket is moving into active investigation.",
         };
       case "Open":
         return {
-          title: "Reopen / Set to Pending",
-          bg: "#c2410c",
-          label: "Reason for Reopening / Pending State",
-          placeholder: "Explain why this ticket is being reopened or set back to pending...",
-          btnText: "Update Status",
-          description: "Record the rationale for reverting this ticket back to Open / Pending status.",
+          title: "Set back to pending",
+          tone: "primary",
+          label: "Reason",
+          placeholder: "Explain why this ticket is being reopened or set back to pending…",
+          btnText: "Update status",
+          description: "Record why this ticket is returning to pending.",
         };
       default:
         return {
-          title: `Update Status: ${status}`,
-          bg: "#001a4d",
-          label: "Reason for Status Change",
-          placeholder: `State the reason for changing status to ${status}...`,
-          btnText: "Confirm Status Change",
-          description: `Please provide the reason for changing the grievance status to ${status}.`,
+          title: "Update status",
+          tone: "primary",
+          label: "Reason",
+          placeholder: `Why is the status changing to ${status}?`,
+          btnText: "Update status",
+          description: "Every status change is recorded in the audit trail.",
         };
     }
   };
@@ -1351,154 +1342,69 @@ ${ragRecommendation.compliance_notes || ""}`;
       </div>
 
       {/* TICKET DETAIL MODAL */}
-      {selectedTicket && (
+      {selectedTicket && (() => {
+        const isOpenTicket = !["Resolved", "Rejected", "Closed"].includes(selectedTicket.status);
+        const sla = getSlaStatus(selectedTicket);
+        const history = selectedTicket.escalation_history || [];
+        const escEvents = history.filter(
+          (h) => h.reason || h.from_tier || h.to_tier || h.action?.toLowerCase().includes("escalat")
+        );
+        const latestEsc = escEvents[escEvents.length - 1];
+        const isBreach = latestEsc?.reason === "SLA_BREACH";
+        const formatDateTime = (value) =>
+          new Date(value).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
+        return (
         <div
           className="modal fade show d-block scrim-60"
           tabIndex="-1"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedTicket(null); }}
         >
-          <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+          <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden ticket-modal">
 
               {/* Header */}
-              <div
-                className="modal-header border-0 px-4 py-3 admin-ticket-header"
-              >
-                <div>
-                  <div className="fs-11 fw-semibold admin-ticket-eyebrow">
-                    GRIEVANCE TICKET
+              <div className="modal-header px-4 py-3 ticket-header">
+                <div className="min-w-0">
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <h5 className="modal-title fw-bold mb-0 text-heading">
+                      #{selectedTicket.grievance_id.substring(0, 8).toUpperCase()}
+                    </h5>
+                    {getStatusBadge(selectedTicket.status)}
+                    {selectedTicket.severity && getSeverityBadge(selectedTicket.severity)}
                   </div>
-                  <h5 className="modal-title fw-bold text-white mb-0">
-                    #{selectedTicket.grievance_id.substring(0, 8).toUpperCase()}
-                  </h5>
+                  <div className="fs-13 text-theme-muted mt-1">
+                    {[...new Set([selectedTicket.category, selectedTicket.department].filter(Boolean))].join(" · ")}
+                    {selectedTicket.assigned_tier ? ` · ${selectedTicket.assigned_tier} queue` : ""}
+                  </div>
                 </div>
-                <div className="d-flex align-items-center gap-3">
-                  {getStatusBadge(selectedTicket.status)}
-                  <button
-                    type="button"
-                    className="btn-close btn-close-white"
-                    onClick={() => setSelectedTicket(null)}
-                  />
-                </div>
+                <button
+                  type="button"
+                  className="btn-close"
+                  aria-label="Close"
+                  onClick={() => setSelectedTicket(null)}
+                />
               </div>
 
-              {/* Body — two columns */}
-              <div className="modal-body p-0 bg-surface-alt">
-                <div className="row g-0 admin-ticket-body">
+              <div className="modal-body p-0">
+                <div className="row g-0">
 
-                  {/* LEFT — complaint details */}
-                  <div className="col-7 p-4 admin-modal-left">
+                  {/* MAIN — complaint, escalation, activity */}
+                  <div className="col-12 col-lg-8 p-4 ticket-main">
 
-                    {/* Meta grid */}
-                    <div className="row g-3 mb-4">
-                      {[
-                        ["Category",   selectedTicket.category],
-                        ["Severity",   selectedTicket.severity],
-                        ["Department", selectedTicket.department || "—"],
-                        ["Tier",       selectedTicket.assigned_tier || "—"],
-                        ["Submitted",  new Date(selectedTicket.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })],
-                        ["SLA",        selectedTicket.sla_hours ? `${selectedTicket.sla_hours}h` : "—"],
-                      ].map(([label, val]) => (
-                        <div key={label} className="col-6">
-                          <div className="fs-10 fw-bold text-theme-muted admin-field-label">
-                            {label.toUpperCase()}
-                          </div>
-                          <div className="fs-13 fw-semibold text-heading">{val}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* TIER ESCALATION HANDOFF CALLOUT (Prominently displayed to receiving tier admins) */}
-                    {(() => {
-                      const escEvents = (selectedTicket.escalation_history || []).filter(
-                        (h) => h.reason || h.from_tier || h.to_tier || h.action?.toLowerCase().includes("escalat")
-                      );
-                      if (escEvents.length === 0) return null;
-                      const latest = escEvents[escEvents.length - 1];
-                      const isBreach = latest.reason === "SLA_BREACH";
-                      const reasonText = isBreach ? "SLA Deadline Expired (Automated Escalation)" : (latest.reason || "Manual Tier Escalation");
-
-                      return (
-                        <div
-                          className="p-3 mb-3 rounded-3"
-                          style={{
-                            backgroundColor: isBreach
-                              ? (isDark ? "rgba(239, 68, 68, 0.12)" : "#fef2f2")
-                              : (isDark ? "rgba(245, 158, 11, 0.12)" : "#fffbeb"),
-                            border: isBreach
-                              ? (isDark ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #fecaca")
-                              : (isDark ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid #fde68a"),
-                            borderLeft: isBreach ? "4px solid #ef4444" : "4px solid #f59e0b"
-                          }}
-                        >
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <span
-                              className="fw-bold fs-11 text-uppercase d-flex align-items-center gap-1"
-                              style={{
-                                color: isBreach ? (isDark ? "#fca5a5" : "#b91c1c") : (isDark ? "#fde047" : "#b45309"),
-                                letterSpacing: "0.5px"
-                              }}
-                            >
-                              <i className="bi bi-arrow-up-right-circle-fill me-1" />
-                              {latest.from_tier ? `Escalated from ${latest.from_tier} → ${latest.to_tier || selectedTicket.assigned_tier}` : `Escalated to ${selectedTicket.assigned_tier}`}
-                            </span>
-                            <span className="fs-11 text-muted">
-                              {new Date(latest.timestamp || latest.escalated_at || latest.at || selectedTicket.updated_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
-                            </span>
-                          </div>
-
-                          {/* REASON FOR ESCALATION */}
-                          <div className="mb-2">
-                            <span className="text-muted fs-10 fw-bold text-uppercase d-block mb-1" style={{ letterSpacing: "0.5px" }}>
-                              Reason for Escalation
-                            </span>
-                            <div className="fw-bold fs-13" style={{ color: "var(--heading-color)" }}>
-                              {reasonText}
-                            </div>
-                          </div>
-
-                          {/* HANDOFF NOTES */}
-                          {latest.notes && (
-                            <div className="mt-2 pt-2 border-top" style={{ borderColor: isBreach ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)" }}>
-                              <span className="text-muted fs-10 fw-bold text-uppercase d-block mb-1" style={{ letterSpacing: "0.5px" }}>
-                                Handoff Notes & Actions Taken So Far
-                              </span>
-                              <div className="small fst-italic p-2 rounded" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "#ffffff", color: "var(--text-color)", border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)" }}>
-                                “{latest.notes}”
-                              </div>
-                            </div>
-                          )}
-
-                          {/* HANDLER AUDIT */}
-                          {latest.handler && (
-                            <div className="fs-11 text-muted mt-2 pt-1">
-                              Escalated by: <strong style={{ color: "var(--heading-color)" }}>{latest.handler}</strong> {latest.tier ? `(${latest.tier})` : ""}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Divider */}
-                    <div className="mb-3 admin-divider" />
-
-                    {/* Full complaint */}
-                    <div className="fs-10 fw-bold text-theme-muted mb-2 admin-section-label">
-                      COMPLAINT
-                    </div>
-                    <div className="admin-inset-box p-3 fs-14 overflow-y-auto admin-complaint-text">
+                    <div className="ticket-section-label">Complaint</div>
+                    <p className="fs-14 text-theme mb-0 ticket-description">
                       {selectedTicket.description}
-                    </div>
+                    </p>
 
-                    {/* Resolution reason or latest status remarks */}
                     {selectedTicket.resolution_reason && (
-                      <div className="mt-3">
-                        <div className="fs-10 fw-bold text-theme-muted mb-2 admin-section-label">
+                      <div className="mt-4">
+                        <div className="ticket-section-label">
                           {selectedTicket.status === "Resolved"
-                            ? "RESOLUTION SUMMARY"
+                            ? "Resolution summary"
                             : selectedTicket.status === "Rejected"
-                            ? "REJECTION REASON"
-                            : "LATEST STATUS NOTE / REMARKS"}
+                            ? "Rejection reason"
+                            : "Latest status note"}
                         </div>
                         <div className={`fs-13 text-theme admin-resolution-note is-${(selectedTicket.status || "").toLowerCase()}`}>
                           {selectedTicket.resolution_reason}
@@ -1506,164 +1412,171 @@ ${ragRecommendation.compliance_notes || ""}`;
                       </div>
                     )}
 
-                    {/* ACTIVITY & ESCALATION TRAIL — what L1/L2 and prior admins have done */}
-                    <div className="admin-trail-section">
-                      <div className="d-flex align-items-center justify-content-between mb-2">
-                        <div className="fs-10 fw-bold text-theme-muted admin-section-label">
-                          ACTIVITY & ESCALATION TRAIL ({selectedTicket.escalation_history?.length || 0})
+                    {latestEsc && (
+                      <div className={`ticket-escalation mt-4${isBreach ? " is-breach" : ""}`}>
+                        <i className={`bi ${isBreach ? "bi-clock-history" : "bi-arrow-up-right"} ticket-escalation-icon`} />
+                        <div className="min-w-0">
+                          <div className="fs-13 fw-semibold text-heading">
+                            {latestEsc.from_tier
+                              ? `Escalated from ${latestEsc.from_tier} to ${latestEsc.to_tier || selectedTicket.assigned_tier}`
+                              : `Escalated to ${selectedTicket.assigned_tier}`}
+                            <span className="fw-normal text-theme-muted">
+                              {" — "}{isBreach ? "SLA deadline expired" : (latestEsc.reason || "manual escalation")}
+                            </span>
+                          </div>
+                          {latestEsc.notes && (
+                            <div className="fs-13 text-theme mt-1">{latestEsc.notes}</div>
+                          )}
+                          <div className="fs-12 text-theme-muted mt-1">
+                            {latestEsc.handler || "System"} · {formatDateTime(latestEsc.timestamp || latestEsc.escalated_at || latestEsc.at || selectedTicket.updated_at)}
+                          </div>
                         </div>
-                        {selectedTicket.assigned_tier && (
-                          <span className="badge bg-light text-secondary border fs-10">
-                            Current: {selectedTicket.assigned_tier}
-                          </span>
-                        )}
                       </div>
+                    )}
 
-                      {selectedTicket.escalation_history && selectedTicket.escalation_history.length > 0 ? (
-                        <div className="d-flex flex-column gap-2 overflow-y-auto pe-1 admin-trail-list">
-                          {selectedTicket.escalation_history.map((item, idx) => (
-                            <div key={idx} className="admin-trail-item p-2 rounded mb-1" style={{ backgroundColor: "var(--surface)", border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0" }}>
-                              <div className="d-flex justify-content-between align-items-center mb-1">
-                                <span className="fw-bold fs-11 admin-trail-tier">
-                                  {item.tier ? `[${item.tier}]` : (item.from_tier ? `${item.from_tier} → ${item.to_tier}` : "System")}
-                                  {item.handler ? ` · ${item.handler}` : ""}
+                    {/* Activity timeline */}
+                    <div className="mt-4">
+                      <div className="ticket-section-label">
+                        Activity <span className="text-theme-muted fw-normal">({history.length})</span>
+                      </div>
+                      {history.length > 0 ? (
+                        <ol className="ticket-timeline list-unstyled mb-0">
+                          {history.map((item, idx) => (
+                            <li key={idx} className={`ticket-timeline-item${item.reason === "SLA_BREACH" ? " is-breach" : ""}`}>
+                              <div className="d-flex justify-content-between gap-3">
+                                <span className="fs-13 fw-semibold text-heading">
+                                  {item.action || (item.from_tier ? `Escalated from ${item.from_tier} to ${item.to_tier}` : "Action logged")}
                                 </span>
-                                <span className="fs-11 text-theme-muted">
-                                  {new Date(item.timestamp || item.escalated_at || item.at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                                <span className="fs-12 text-theme-muted text-nowrap">
+                                  {formatDateTime(item.timestamp || item.escalated_at || item.at)}
                                 </span>
                               </div>
-                              <div className="text-theme fw-semibold fs-12">
-                                {item.action || (item.from_tier ? `Escalated from ${item.from_tier} to ${item.to_tier}` : "Action logged")}
+                              <div className="fs-12 text-theme-muted">
+                                {item.handler || "System"}
+                                {item.tier ? ` · ${item.tier}` : item.from_tier ? ` · ${item.from_tier} → ${item.to_tier}` : ""}
                               </div>
-                              {/* EXPLICIT REASON DISPLAY */}
                               {item.reason && (
-                                <div className="fs-12 mt-1">
-                                  <span className="text-muted fw-bold fs-11 text-uppercase me-1">Reason:</span>
-                                  <span className="fw-semibold" style={{ color: item.reason === "SLA_BREACH" ? (isDark ? "#fca5a5" : "#b91c1c") : (isDark ? "#fde047" : "#b45309") }}>
-                                    {item.reason === "SLA_BREACH" ? "SLA Deadline Breach (Automated)" : item.reason}
-                                  </span>
+                                <div className="fs-13 text-theme mt-1">
+                                  <span className="text-theme-muted">Reason: </span>
+                                  {item.reason === "SLA_BREACH" ? "SLA deadline breach (automated)" : item.reason}
                                 </div>
                               )}
-                              {/* HANDOFF NOTES */}
                               {item.notes && (
-                                <div className="admin-trail-notes mt-1 p-2 rounded small fst-italic">
-                                  “{item.notes}”
-                                </div>
+                                <div className="fs-13 text-theme mt-1 ticket-timeline-note">{item.notes}</div>
                               )}
-                            </div>
+                            </li>
                           ))}
-                        </div>
+                        </ol>
                       ) : (
-                        <div className="admin-inset-box p-3 small text-muted fst-italic text-center admin-trail-empty">
-                          No prior tier actions or handoff notes recorded yet.
-                        </div>
+                        <p className="fs-13 text-theme-muted mb-0">No actions recorded yet.</p>
                       )}
                     </div>
                   </div>
 
-                  {/* RIGHT — actions */}
-                  <div className="col-5 p-4 admin-modal-right">
-                    <div className="fs-10 fw-bold text-theme-muted mb-3 admin-section-label">
-                      ACTIONS
-                    </div>
+                  {/* SIDEBAR — details & actions */}
+                  <div className="col-12 col-lg-4 p-4 ticket-sidebar">
 
-                    {/* Status change */}
-                    {selectedTicket.status !== "Resolved" && selectedTicket.status !== "Rejected" && selectedTicket.status !== "Closed" && (
-                      <div className="mb-3">
-                        <label className="fs-11 fw-bold text-theme-muted d-block ls-half admin-status-label">
-                          UPDATE STATUS
-                        </label>
+                    <div className="ticket-section-label">Details</div>
+                    <dl className="ticket-details mb-4">
+                      <dt>Category</dt><dd>{selectedTicket.category || "—"}</dd>
+                      <dt>Department</dt><dd>{selectedTicket.department || "—"}</dd>
+                      <dt>Severity</dt><dd>{selectedTicket.severity || "—"}</dd>
+                      <dt>Tier</dt><dd>{selectedTicket.assigned_tier || "—"}</dd>
+                      <dt>SLA</dt>
+                      <dd className="d-flex align-items-center gap-2 flex-wrap">
+                        {selectedTicket.sla_hours ? `${selectedTicket.sla_hours}h` : !sla && "—"}
+                        {sla && (
+                          <span className={`px-2 py-1 rounded-pill fw-semibold fs-11 tone-badge sla-${sla.tone}`}>
+                            {sla.label}
+                          </span>
+                        )}
+                      </dd>
+                      <dt>Submitted</dt>
+                      <dd>{new Date(selectedTicket.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</dd>
+                    </dl>
+
+                    {isOpenTicket && (
+                      <div className="mb-4">
+                        <label className="ticket-section-label d-block" htmlFor="ticket-status">Status</label>
                         <select
+                          id="ticket-status"
                           className="form-select form-select-sm fs-13"
-                          value={selectedTicket.status}
+                          value={["Open", "Investigating"].includes(selectedTicket.status) ? selectedTicket.status : ""}
                           disabled={updatingId === selectedTicket.grievance_id}
-                          onChange={(e) => {
-                            handleStatusChange(selectedTicket.grievance_id, e.target.value);
-                          }}
+                          onChange={(e) => handleStatusChange(selectedTicket.grievance_id, e.target.value)}
                         >
+                          {/* System-assigned statuses (e.g. HUMAN_HANDLING) aren't manual choices */}
+                          <option value="" disabled hidden>Change status…</option>
                           <option value="Open">Pending</option>
                           <option value="Investigating">Investigating</option>
-                          <option value="HUMAN_HANDLING">Human Handling</option>
                           <option value="Resolved">Resolve</option>
                           <option value="Rejected">Reject</option>
                         </select>
                       </div>
                     )}
 
+                    <div className="ticket-section-label">Actions</div>
                     <div className="d-flex flex-column gap-2">
-
-                      {/* Escalate to Next Tier */}
-                      {selectedTicket.assigned_tier !== "HEAD" && selectedTicket.status !== "Resolved" && selectedTicket.status !== "Rejected" && selectedTicket.status !== "Closed" && (
+                      {(["medium", "high", "critical"].includes(selectedTicket.severity?.toLowerCase()) || selectedTicket.policy_matched || selectedTicket.rag_recommendation) && (
                         <button
-                          className="fs-13 fw-semibold text-start cursor-pointer d-flex align-items-center gap-2 admin-action-btn admin-action-escalate"
+                          type="button"
+                          className="btn admin-action is-primary"
+                          onClick={() => { handleOpenRag(selectedTicket); setSelectedTicket(null); }}
+                        >
+                          <i className="bi bi-journal-text" />
+                          View Policy Advice
+                        </button>
+                      )}
+
+                      {selectedTicket.assigned_tier !== "HEAD" && isOpenTicket && (
+                        <button
+                          type="button"
+                          className="btn admin-action"
                           onClick={() => {
                             setEscalatingTicket(selectedTicket);
                             setEscalationReason("");
                             setEscalationNotes("");
                           }}
                         >
-                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M5 10l7-7m0 0l7 7m-7-7v18"/>
-                          </svg>
+                          <i className="bi bi-arrow-up-circle" />
                           Escalate to Next Tier
                         </button>
                       )}
 
-                      {/* Policy Advice */}
-                      {(["medium", "high", "critical"].includes(selectedTicket.severity?.toLowerCase()) || selectedTicket.policy_matched || selectedTicket.rag_recommendation) && (
-                        <button
-                          className="text-white fs-13 fw-semibold text-start cursor-pointer d-flex align-items-center gap-2 admin-action-btn admin-action-policy"
-                          onClick={() => { handleOpenRag(selectedTicket); setSelectedTicket(null); }}
-                        >
-                          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
-                          </svg>
-                          View Policy Advice
-                        </button>
-                      )}
-
-                      {/* Attachments */}
                       {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
                         <button
-                          className="text-theme fs-13 fw-semibold text-start cursor-pointer d-flex align-items-center gap-2 admin-action-btn admin-action-attachments"
+                          type="button"
+                          className="btn admin-action"
                           onClick={() => setViewingAttachments(selectedTicket.attachments)}
                         >
-                          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-                          </svg>
-                          View Attachments ({selectedTicket.attachments.length})
+                          <i className="bi bi-paperclip" />
+                          View Attachments
+                          <span className="ms-auto fs-11 text-theme-muted">{selectedTicket.attachments.length}</span>
                         </button>
                       )}
 
-                      {/* Case / Admin Report — accessible to super_admin, HEAD, and current tier admin or above */}
                       {canAdminGenerateReport(selectedTicket) && (
                         <button
-                          className="fs-13 fw-semibold text-start cursor-pointer d-flex align-items-center gap-2 admin-action-btn admin-action-report"
+                          type="button"
+                          className="btn admin-action"
                           onClick={() => handleDownloadAdminReport(selectedTicket.grievance_id)}
                           disabled={downloadingReportId === selectedTicket.grievance_id}
                         >
-                          <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                            <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-                          </svg>
+                          <i className="bi bi-download" />
                           {downloadingReportId === selectedTicket.grievance_id ? "Generating..." : "Download Case Report"}
                         </button>
                       )}
-
-                      {/* Delete */}
-                      <button
-                        className="mt-2 bg-transparent fs-13 fw-semibold text-start cursor-pointer d-flex align-items-center gap-2 admin-action-btn admin-action-delete"
-                        onClick={() => { handleDelete(selectedTicket.grievance_id); setSelectedTicket(null); }}
-                        disabled={updatingId === selectedTicket.grievance_id}
-                      >
-                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14H6L5 6"/>
-                          <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
-                        </svg>
-                        Delete Grievance
-                      </button>
                     </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-link btn-sm px-0 mt-4 text-decoration-none ticket-delete"
+                      onClick={() => { handleDelete(selectedTicket.grievance_id); setSelectedTicket(null); }}
+                      disabled={updatingId === selectedTicket.grievance_id}
+                    >
+                      <i className="bi bi-trash3 me-2" />
+                      Delete grievance
+                    </button>
                   </div>
 
                 </div>
@@ -1672,8 +1585,8 @@ ${ragRecommendation.compliance_notes || ""}`;
             </div>
           </div>
         </div>
-      )}
-
+        );
+      })()}
 
 
       {/* ATTACHMENT GALLERY MODAL */}
@@ -1725,227 +1638,180 @@ ${ragRecommendation.compliance_notes || ""}`;
       </div>
 
       {/* RAG POLICY RESOLUTION ADVISORY MODAL */}
-      <div className={`modal fade ${selectedRagTicket ? "show d-block" : ""} scrim-60`} tabIndex="-1">
-        <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div
+        className={`modal fade ${selectedRagTicket ? "show d-block" : ""} scrim-60`}
+        tabIndex="-1"
+        onClick={(e) => { if (e.target === e.currentTarget) setSelectedRagTicket(null); }}
+      >
+        <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
           <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            
-            {/* MODAL HEADER */}
-            <div 
-              className="modal-header border-0 px-4 py-3 text-white admin-rag-header"
-            >
-              <div className="d-flex align-items-center gap-3">
-                <div 
-                  className="rounded-circle d-flex align-items-center justify-content-center admin-modal-icon"
-                >
-                  <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h5 className="modal-title fw-bold mb-0 text-white">Policy & Resolution Advisory</h5>
-                  <p className="small mb-0 opacity-75 text-white">
-                    Grounded recommendations from Puravankara policy documents for Ticket #{selectedRagTicket?.grievance_id?.substring(0, 8)}
-                  </p>
-                </div>
-              </div>
 
-              <div className="d-flex align-items-center gap-2">
-                <span 
-                  className={`badge rounded-pill px-3 py-2 fw-semibold ${selectedRagTicket?.severity?.toLowerCase() === "medium" ? "bg-warning text-dark" : "bg-danger text-white"} fs-12`}
-                >
-                  {selectedRagTicket?.severity?.toUpperCase() || "MEDIUM"} SEVERITY
-                </span>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
-                  onClick={() => setSelectedRagTicket(null)}
-                ></button>
+            {/* Header */}
+            <div className="modal-header px-4 py-3 ticket-header">
+              <div className="min-w-0">
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                  <h5 className="modal-title fw-bold mb-0 text-heading">Policy Advice</h5>
+                  {selectedRagTicket?.severity && getSeverityBadge(selectedRagTicket.severity)}
+                </div>
+                <div className="fs-13 text-theme-muted mt-1">
+                  Ticket #{selectedRagTicket?.grievance_id?.substring(0, 8).toUpperCase()}
+                </div>
               </div>
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Close"
+                onClick={() => setSelectedRagTicket(null)}
+              />
             </div>
 
-            {/* MODAL BODY */}
-            <div className="modal-body p-4 bg-surface-alt">
+            {/* Body */}
+            <div className="modal-body p-4 bg-card">
+              {/* Ticket context */}
+              <div className="row g-3 mb-3">
+                {[
+                  ["Category",  selectedRagTicket?.category || "General"],
+                  ["Tier",      selectedRagTicket?.assigned_tier || "—"],
+                  ["Submitted", selectedRagTicket?.created_at ? new Date(selectedRagTicket.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"],
+                ].map(([label, val]) => (
+                  <div key={label} className="col-4">
+                    <div className="ticket-section-label mb-1">
+                      {label.toUpperCase()}
+                    </div>
+                    <div className="fs-13 fw-semibold text-heading">{val}</div>
+                  </div>
+                ))}
+              </div>
+              <p className="fs-14 text-theme mb-0 ticket-description">
+                {selectedRagTicket?.description}
+              </p>
+
+              <hr className="my-4 ticket-rule" />
+
               {loadingRag ? (
-                <div className="text-center py-5">
-                  <div className="spinner-border text-primary admin-spinner-lg" role="status">
+                <div className="text-center py-4">
+                  <div className="spinner-border spinner-border-sm text-primary" role="status">
                     <span className="visually-hidden">Loading...</span>
                   </div>
-                  <h6 className="fw-bold mt-4 text-heading">Consulting Policy Vector Store...</h6>
-                  <p className="text-muted small mb-0">
-                    Retrieving matching Puravankara policy clauses and generating structured resolution protocol.
+                  <p className="text-muted fs-13 mt-3 mb-0">
+                    Finding the relevant policy clauses for this ticket…
                   </p>
                 </div>
               ) : ragRecommendation ? (
-                <div className="d-flex flex-column gap-4">
-                  
-                  {/* GRIEVANCE CONTEXT HEADER */}
-                  <div className="card border-0 shadow-sm rounded-3 p-3">
-                    <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap mb-2">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="badge bg-secondary-subtle text-secondary px-3 py-1 rounded-pill fw-semibold">
-                          {selectedRagTicket?.category || "General"}
-                        </span>
-                        <span className="badge bg-primary-subtle text-primary px-3 py-1 rounded-pill fw-semibold">
-                          Queue: {selectedRagTicket?.assigned_tier || "L2 Queue"}
-                        </span>
-                      </div>
-                      <span className="text-muted small">
-                        Submitted: {selectedRagTicket?.created_at ? new Date(selectedRagTicket.created_at).toLocaleString("en-IN") : "Recent"}
-                      </span>
+                <>
+                  {/* Applicable policy */}
+                  <div className="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <div className="ticket-section-label mb-0">
+                      APPLICABLE POLICY
                     </div>
-                    <p className="mb-0 small fst-italic p-2 rounded border bg-surface-alt">
-                      "{selectedRagTicket?.description}"
-                    </p>
+                    <span className={`fs-11 fw-semibold admin-match-label${ragRecommendation.has_policy_match ? " is-match" : ""}`}>
+                      <i className={`bi ${ragRecommendation.has_policy_match ? "bi-check-circle-fill" : "bi-info-circle"} me-1`} />
+                      {ragRecommendation.has_policy_match ? "Policy match" : "Standard GRM procedure"}
+                    </span>
                   </div>
+                  <div className="fs-14 fw-bold text-heading mb-1">
+                    {ragRecommendation.primary_policy || "Puravankara Grievance Redressal Policy"}
+                  </div>
+                  <p className="fs-13 text-theme mb-0 admin-rag-text">
+                    {ragRecommendation.executive_summary}
+                  </p>
 
-                  {/* EXECUTIVE SUMMARY & PRIMARY POLICY MATCH */}
-                  <div className="card border-0 shadow-sm rounded-3 p-3">
-                    <div className="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
-                      <h6 className="fw-bold mb-0">
-                        Applicable Policy Framework
-                      </h6>
-                      {ragRecommendation.has_policy_match ? (
-                        <span className="badge rounded-pill px-3 py-1 text-white fs-12 admin-policy-match-badge">
-                          Policy Match Verified
-                        </span>
-                      ) : (
-                        <span className="badge bg-secondary rounded-pill px-3 py-1 fs-12">
-                          Standard GRM SOP
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="p-3 rounded-3 mb-3 admin-policy-card">
-                      <div className="fw-bold mb-1 fs-14 admin-policy-title">
-                        {ragRecommendation.primary_policy || "Puravankara Grievance Redressal Policy"}
+                  {/* Policy references */}
+                  {ragRecommendation.citations && ragRecommendation.citations.length > 0 && (
+                    <div className="mt-3">
+                      <div className="ticket-section-label">
+                        REFERENCES ({ragRecommendation.citations.length})
                       </div>
-                      <p className="mb-0 small">
-                        {ragRecommendation.executive_summary}
-                      </p>
-                    </div>
-
-                    {/* POLICY CITATIONS & CLAUSES */}
-                    {ragRecommendation.citations && ragRecommendation.citations.length > 0 && (
-                      <div>
-                        <div className="text-muted small fw-bold mb-2 text-uppercase ls-half fs-11">
-                          Retrieved Policy References ({ragRecommendation.citations.length})
-                        </div>
-                        <div className="row g-2">
-                          {ragRecommendation.citations.map((c, i) => (
-                            <div key={i} className="col-12 col-md-6">
-                              <div className="border rounded-3 p-2 h-100 small bg-surface-alt">
-                                <div className="d-flex justify-content-between align-items-center mb-1">
-                                  <strong className="text-truncate text-heading admin-source-name">
-                                    {c.source}
-                                  </strong>
-                                  <span className="badge bg-secondary-subtle text-dark fs-10">
-                                    Page {c.page} {c.section ? `• ${c.section}` : ""}
-                                  </span>
-                                </div>
-                                <p className="text-muted mb-0 text-truncate-3 fs-11 admin-source-excerpt">
-                                  {c.excerpt}
-                                </p>
-                              </div>
+                      <div className="d-flex flex-column gap-2">
+                        {ragRecommendation.citations.map((c, i) => (
+                          <div key={i} className="ticket-ref">
+                            <div className="d-flex justify-content-between align-items-center gap-2 mb-1">
+                              <span className="fw-bold text-heading text-truncate">{c.source}</span>
+                              <span className="fs-11 text-theme-muted text-nowrap">
+                                p. {c.page}{c.section ? ` · ${c.section}` : ""}
+                              </span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* RECOMMENDED PROCEDURAL RESOLUTION STEPS */}
-                  <div className="card border-0 shadow-sm rounded-3 p-3">
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                      <h6 className="fw-bold mb-0">
-                        Actionable Resolution Protocol
-                      </h6>
-                      <span className="text-muted small">
-                        {ragRecommendation.recommended_steps?.length || 0} Recommended Steps
-                      </span>
-                    </div>
-
-                    <div className="d-flex flex-column gap-3">
-                      {ragRecommendation.recommended_steps && ragRecommendation.recommended_steps.map((step, idx) => (
-                        <div 
-                          key={idx} 
-                          className="d-flex align-items-start gap-3 p-3 rounded-3 border bg-card"
-                        >
-                          <div 
-                            className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0 fs-14 admin-step-avatar"
-                          >
-                            {step.step_number || idx + 1}
+                            <div className="text-theme-muted text-truncate-3 admin-rag-text">{c.excerpt}</div>
                           </div>
-
-                          <div className="flex-grow-1">
-                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
-                              <strong className="fs-14 text-heading">
-                                {step.title}
-                              </strong>
-                              {step.deadline && (
-                                <span 
-                                  className="badge rounded-pill px-2 py-1 fs-11 admin-step-deadline"
-                                >
-                                  {step.deadline}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-muted small mb-0">
-                              {step.detail}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* COMPLIANCE & SLA MANDATES */}
-                  {ragRecommendation.compliance_notes && (
-                    <div className="card border-0 rounded-3 p-3 admin-compliance-card">
-                      <div className="d-flex align-items-center gap-2 mb-1">
-                        <svg width="16" height="16" fill="#a82646" viewBox="0 0 16 16">
-                          <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
-                        </svg>
-                        <strong className="fs-13 admin-compliance-title">
-                          Statutory & SLA Compliance Alert
-                        </strong>
+                        ))}
                       </div>
-                      <p className="small mb-0 admin-compliance-text">
-                        {ragRecommendation.compliance_notes}
-                      </p>
                     </div>
                   )}
 
-                </div>
+                  {/* Recommended steps */}
+                  {ragRecommendation.recommended_steps && ragRecommendation.recommended_steps.length > 0 && (
+                    <>
+                      <hr className="my-4 ticket-rule" />
+                      <div className="ticket-section-label mb-3">
+                        RECOMMENDED STEPS ({ragRecommendation.recommended_steps.length})
+                      </div>
+                      <ol className="list-unstyled mb-0 d-flex flex-column gap-3">
+                        {ragRecommendation.recommended_steps.map((step, idx) => (
+                          <li key={idx} className="d-flex align-items-start gap-3">
+                            <span className="fs-12 fw-bold flex-shrink-0 admin-step-num">
+                              {step.step_number || idx + 1}
+                            </span>
+                            <div className="flex-grow-1">
+                              <div className="d-flex justify-content-between align-items-baseline gap-2">
+                                <span className="fs-13 fw-bold text-heading">{step.title}</span>
+                                {step.deadline && (
+                                  <span className="fs-11 text-theme-muted text-nowrap">
+                                    <i className="bi bi-clock me-1" />{step.deadline}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="fs-13 text-theme-muted admin-rag-text">{step.detail}</div>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </>
+                  )}
+
+                  {/* Compliance */}
+                  {ragRecommendation.compliance_notes && (
+                    <div className="mt-4">
+                      <div className="ticket-section-label">
+                        COMPLIANCE NOTE
+                      </div>
+                      <div className="fs-13 text-theme admin-resolution-note is-rejected">
+                        {ragRecommendation.compliance_notes}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="text-center py-4 text-muted">
-                  <p className="mb-0">No advisory generated yet. Click "Generate Recommendations" below.</p>
+                <div className="text-center py-3 text-muted fs-13">
+                  No advice generated yet. Use “Re-analyze” below to generate it.
                 </div>
               )}
             </div>
 
-            {/* MODAL FOOTER */}
-            <div className="modal-footer border-top px-4 py-3 d-flex justify-content-between align-items-center">
-              <button 
-                type="button" 
+            {/* Footer */}
+            <div className="modal-footer px-4 py-3 d-flex justify-content-between admin-rag-footer">
+              <button
+                type="button"
                 className="btn btn-outline-secondary btn-sm rounded-pill px-3"
                 disabled={loadingRag}
                 onClick={() => handleRegenerateRag(selectedRagTicket?.grievance_id)}
               >
-                {loadingRag ? "Regenerating..." : "Re-analyze Policy"}
+                <i className="bi bi-arrow-clockwise me-1" />
+                {loadingRag ? "Re-analyzing..." : "Re-analyze"}
               </button>
 
               <div className="d-flex gap-2">
-                <button 
-                  type="button" 
-                  className="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm"
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm rounded-pill px-3"
                   disabled={!ragRecommendation || loadingRag}
                   onClick={handleCopyRecommendation}
                 >
-                  {copiedRecommendation ? "Copied to Clipboard!" : "Copy Guidance"}
+                  <i className={`bi ${copiedRecommendation ? "bi-check2" : "bi-clipboard"} me-1`} />
+                  {copiedRecommendation ? "Copied" : "Copy"}
                 </button>
-                <button 
-                  type="button" 
-                  className="btn btn-dark btn-sm rounded-pill px-4 shadow-sm"
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm rounded-pill px-4"
                   onClick={() => setSelectedRagTicket(null)}
                 >
                   Close
@@ -1960,66 +1826,67 @@ ${ragRecommendation.compliance_notes || ""}`;
       {pendingStatusChange && (() => {
         const cfg = getStatusModalConfig(pendingStatusChange.newStatus);
         return (
-          <div className="modal fade show d-block scrim-65" tabIndex="-1">
+          <div
+            className="modal fade show d-block scrim-60"
+            tabIndex="-1"
+            onClick={(e) => { if (e.target === e.currentTarget) setPendingStatusChange(null); }}
+          >
             <div className="modal-dialog modal-dialog-centered">
-              <div
-                className="modal-content border-0 shadow-lg rounded-4 overflow-hidden admin-status-modal"
-              >
-                <div
-                  className="modal-header border-0 px-4 py-3 text-white"
-                  style={{ background: cfg.bg }}
-                >
-                  <div>
-                    <div className="fs-11 fw-semibold ls-1 text-uppercase admin-status-transition">
-                      Status Transition ({pendingStatusChange.currentStatus || "Current"} → {pendingStatusChange.newStatus})
+              <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden ticket-modal">
+                <div className="modal-header px-4 py-3 ticket-header">
+                  <div className="min-w-0">
+                    <h5 className="modal-title fw-bold mb-0 text-heading">{cfg.title}</h5>
+                    <div className="fs-13 text-theme-muted mt-1">
+                      Ticket #{pendingStatusChange.grievanceId?.substring(0, 8).toUpperCase()}
                     </div>
-                    <h5 className="modal-title fw-bold mb-0">
-                      {cfg.title}
-                    </h5>
                   </div>
                   <button
                     type="button"
-                    className="btn-close btn-close-white"
+                    className="btn-close"
+                    aria-label="Close"
                     onClick={() => setPendingStatusChange(null)}
                   />
                 </div>
-                <div className="modal-body px-4 py-4">
-                  <p className="mb-3 admin-modal-desc">
-                    {cfg.description}
-                  </p>
-                  <label className="form-label fw-semibold fs-13 admin-reason-label">
-                    {cfg.label} <span className="text-danger ms-1">*</span>
+
+                <div className="modal-body p-4">
+                  <div className="d-flex align-items-center gap-2 mb-3">
+                    {getStatusBadge(pendingStatusChange.currentStatus)}
+                    <i className="bi bi-arrow-right text-theme-muted" />
+                    {getStatusBadge(pendingStatusChange.newStatus)}
+                  </div>
+
+                  <label className="form-label fs-13 fw-semibold text-heading mb-1" htmlFor="status-reason">
+                    {cfg.label}
                   </label>
+                  <div className="fs-12 text-theme-muted mb-2">{cfg.description}</div>
                   <textarea
-                    className="form-control fs-14 admin-textarea admin-status-reason"
+                    id="status-reason"
+                    className="form-control fs-14 admin-textarea"
                     rows={4}
+                    autoFocus
                     placeholder={cfg.placeholder}
                     value={resolutionReason}
                     onChange={(e) => setResolutionReason(e.target.value)}
                   />
-                  {!resolutionReason.trim() && (
-                    <small className="text-danger mt-1 d-block fs-12">
-                      A reason or justification is mandatory for changing the grievance status at all admin levels.
-                    </small>
-                  )}
+                  <div className="fs-12 text-theme-muted mt-2">Required for every status change.</div>
                 </div>
-                <div className="modal-footer border-top-0 px-4 pb-4 pt-0 gap-2">
+
+                <div className="modal-footer px-4 py-3 gap-2 admin-rag-footer">
                   <button
                     type="button"
-                    className="btn rounded-pill px-4 admin-cancel-btn"
+                    className="btn btn-outline-secondary btn-sm rounded-pill px-3"
                     onClick={() => setPendingStatusChange(null)}
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
-                    className="btn rounded-pill px-4 fw-semibold text-white shadow-sm"
+                    className={`btn btn-sm rounded-pill px-4 ${cfg.tone === "danger" ? "btn-danger" : cfg.tone === "ok" ? "btn-primary btn-confirm-ok" : "btn-primary"}`}
                     disabled={!resolutionReason.trim() || submittingStatus}
                     onClick={handleResolutionSubmit}
-                    style={{ background: cfg.bg }}
                   >
                     {submittingStatus ? (
-                      <><span className="spinner-border spinner-border-sm me-2" /> Submitting...</>
+                      <><span className="spinner-border spinner-border-sm me-2" />Saving…</>
                     ) : (
                       cfg.btnText
                     )}
@@ -2033,80 +1900,82 @@ ${ragRecommendation.compliance_notes || ""}`;
 
       {/* MANUAL ESCALATION MODAL */}
       {escalatingTicket && (
-        <div className="modal fade show d-block scrim-55" tabIndex="-1">
+        <div
+          className="modal fade show d-block scrim-60"
+          tabIndex="-1"
+          onClick={(e) => { if (e.target === e.currentTarget) setEscalatingTicket(null); }}
+        >
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-              <div
-                className="modal-header border-0 px-4 py-3 text-white admin-escalate-header"
-              >
-                <div>
-                  <div className="fs-11 fw-semibold ls-1 admin-escalate-eyebrow">
-                    TIER ESCALATION HANDOFF
+            <div className="modal-content border-0 shadow-lg rounded-4 overflow-hidden ticket-modal">
+              <div className="modal-header px-4 py-3 ticket-header">
+                <div className="min-w-0">
+                  <h5 className="modal-title fw-bold mb-0 text-heading">Escalate to next tier</h5>
+                  <div className="fs-13 text-theme-muted mt-1">
+                    Ticket #{escalatingTicket.grievance_id.substring(0, 8).toUpperCase()}
+                    {escalatingTicket.assigned_tier ? ` · currently ${escalatingTicket.assigned_tier}` : ""}
                   </div>
-                  <h5 className="modal-title fw-bold mb-0">
-                    Escalate #{escalatingTicket.grievance_id.substring(0, 8).toUpperCase()}
-                  </h5>
                 </div>
                 <button
                   type="button"
-                  className="btn-close btn-close-white"
+                  className="btn-close"
+                  aria-label="Close"
                   onClick={() => setEscalatingTicket(null)}
                 />
               </div>
-              <div className="modal-body px-4 py-4">
-                <div className="p-3 mb-3 rounded-3 admin-escalate-summary">
-                  <div className="fs-12 fw-semibold admin-escalate-summary-title">
-                    Current Tier: <strong>{escalatingTicket.assigned_tier}</strong> → Escalating to next authority level
-                  </div>
-                  <div className="fs-11 admin-escalate-note">
-                    This will reassign the queue, update SLA deadlines, and log your handoff notes into the case history for the receiving admin.
-                  </div>
-                </div>
+
+              <div className="modal-body p-4">
+                <p className="fs-13 text-theme-muted mb-3">
+                  The ticket moves to the next tier's queue with a new SLA deadline. Your notes are added to the case history for the receiving admin.
+                </p>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold fs-13">
-                    Reason for Escalation <span className="text-danger">*</span>
+                  <label className="form-label fs-13 fw-semibold text-heading mb-1" htmlFor="escalation-reason">
+                    Reason
                   </label>
                   <input
+                    id="escalation-reason"
                     type="text"
-                    className="form-control fs-13"
-                    placeholder="e.g. Requires senior engineering inspection / approval"
+                    className="form-control fs-14"
+                    autoFocus
+                    placeholder="e.g. Needs senior approval"
                     value={escalationReason}
                     onChange={(e) => setEscalationReason(e.target.value)}
                   />
                 </div>
 
-                <div className="mb-2">
-                  <label className="form-label fw-semibold fs-13">
-                    Handoff Notes & Actions Taken So Far
+                <div>
+                  <label className="form-label fs-13 fw-semibold text-heading mb-1" htmlFor="escalation-notes">
+                    Handoff notes <span className="fw-normal text-theme-muted">(optional)</span>
                   </label>
                   <textarea
-                    className="form-control fs-13 admin-textarea"
+                    id="escalation-notes"
+                    className="form-control fs-14 admin-textarea"
                     rows={3}
-                    placeholder="Describe what you have investigated, checked, or communicated with the complainant so the next level admin can pick up smoothly..."
+                    placeholder="What you've checked or communicated so far, so the next admin can pick it up…"
                     value={escalationNotes}
                     onChange={(e) => setEscalationNotes(e.target.value)}
                   />
                 </div>
               </div>
-              <div className="modal-footer border-top-0 px-4 pb-4 pt-0 gap-2">
+
+              <div className="modal-footer px-4 py-3 gap-2 admin-rag-footer">
                 <button
                   type="button"
-                  className="btn btn-outline-secondary rounded-pill px-4"
+                  className="btn btn-outline-secondary btn-sm rounded-pill px-3"
                   onClick={() => setEscalatingTicket(null)}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  className="btn rounded-pill px-4 fw-semibold text-white admin-escalate-btn"
+                  className="btn btn-primary btn-sm rounded-pill px-4"
                   disabled={!escalationReason.trim() || submittingEscalation}
                   onClick={handleEscalateSubmit}
                 >
                   {submittingEscalation ? (
-                    <><span className="spinner-border spinner-border-sm me-2" /> Escalating...</>
+                    <><span className="spinner-border spinner-border-sm me-2" />Escalating…</>
                   ) : (
-                    "Confirm & Escalate"
+                    "Escalate"
                   )}
                 </button>
               </div>

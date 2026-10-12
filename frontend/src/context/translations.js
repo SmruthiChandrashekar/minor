@@ -170,6 +170,7 @@ const translations = {
     trackingId: "Tracking ID",
     submitAnother: "Submit Another",
     trackStatus: "Track Status",
+    trackComplaint: "Track Complaint",
 
     // Lodge External
     lodgeExternal: "Lodge Grievance – External Stakeholders",
@@ -453,6 +454,7 @@ const translations = {
     trackingId: "ट्रैकिंग आईडी",
     submitAnother: "एक और जमा करें",
     trackStatus: "स्थिति ट्रैक करें",
+    trackComplaint: "शिकायत ट्रैक करें",
 
     // Lodge External
     lodgeExternal: "शिकायत दर्ज करें – बाहरी हितधारक",
@@ -736,6 +738,7 @@ const translations = {
     trackingId: "ಟ್ರ್ಯಾಕಿಂಗ್ ಐಡಿ",
     submitAnother: "ಮತ್ತೊಂದು ಸಲ್ಲಿಸಿ",
     trackStatus: "ಸ್ಥಿತಿ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ",
+    trackComplaint: "ದೂರು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ",
 
     // Lodge External
     lodgeExternal: "ಕುಂದುಕೊರತೆ ದಾಖಲಿಸಿ – ಬಾಹ್ಯ ಪಾಲುದಾರರು",

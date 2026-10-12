@@ -1151,7 +1151,6 @@ select.form-select {
   border: none !important;
 }
 
-
 .pa-topbar-title {
   color: #ffffff !important;
   font-size: 17px;
@@ -1772,36 +1771,6 @@ select.form-select {
   color: var(--brand-blue);
   font-weight: 700;
   font-size: 13px;
-}
-
-.admin-modal-left {
-  background-color: var(--card-bg);
-  border-right: 1px solid var(--surface-border);
-}
-
-.admin-modal-right {
-  background-color: var(--surface-alt);
-}
-
-.admin-inset-box {
-  background-color: var(--surface-alt);
-  border: 1px solid var(--surface-border);
-  border-radius: 8px;
-  color: var(--text-color);
-}
-
-.admin-trail-item {
-  background-color: var(--surface-alt);
-  border: 1px solid var(--surface-border);
-  border-radius: 7px;
-  padding: 9px 12px;
-  font-size: 12px;
-}
-
-.admin-trail-notes {
-  background-color: var(--card-bg);
-  border: 1px solid var(--surface-border);
-  color: var(--text-color);
 }
 
 /* Utilities (same convention as Bootstrap's: single purpose, !important) */
