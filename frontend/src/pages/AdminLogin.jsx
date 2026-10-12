@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
+import "./AdminLogin.css";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -57,19 +58,19 @@ const AdminLogin = () => {
     <div className="container mt-5 mb-5">
       <div className="row justify-content-center">
         <div className="col-md-5">
-          <div className="card shadow-lg p-5 border-0" style={{ borderRadius: "16px" }}>
+          <div className="card shadow-lg p-5 border-0 rounded-4">
             <div className="text-center mb-4">
-              <div className="mx-auto mb-3 d-flex justify-content-center align-items-center bg-light rounded-circle" style={{ width: "60px", height: "60px", color: "#001a4d" }}>
+              <div className="mx-auto mb-3 d-flex justify-content-center align-items-center bg-light rounded-circle admin-login-icon">
                 <svg width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
-              <h3 className="fw-bold mb-1" style={{ color: "#001a4d" }}>{t("adminPortalTitle")}</h3>
+              <h3 className="fw-bold mb-1 admin-login-title">{t("adminPortalTitle")}</h3>
               <p className="text-muted small">{t("adminSecureAccess")}</p>
             </div>
 
             {error && (
-              <div className="alert alert-danger py-2 text-center fw-semibold" style={{ fontSize: "14px" }}>
+              <div className="alert alert-danger py-2 text-center fw-semibold fs-14">
                 {error}
               </div>
             )}
@@ -99,8 +100,7 @@ const AdminLogin = () => {
               <button 
                 type="submit" 
                 disabled={isLoading}
-                className="btn w-100 py-2 fw-bold text-white shadow-sm" 
-                style={{ backgroundColor: "#001a4d" }}
+                className="btn w-100 py-2 fw-bold text-white shadow-sm admin-login-btn"
               >
                 {isLoading ? "Authenticating..." : t("authenticate")}
               </button>

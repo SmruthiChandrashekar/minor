@@ -1,0 +1,59 @@
+.btn.dash-outline-btn {
+  --bs-btn-border-color: #002b66;
+  --bs-btn-hover-border-color: #002b66;
+  --bs-btn-active-border-color: #002b66;
+  --bs-btn-disabled-border-color: #002b66;
+  --bs-btn-color: #002b66;
+  --bs-btn-hover-color: #002b66;
+  --bs-btn-active-color: #002b66;
+  --bs-btn-disabled-color: #002b66;
+}
+
+td.dash-cell {
+  color: var(--text-color);
+}
+
+.dash-desc-cell {
+  max-width: 220px;
+}
+
+.dashboard-action-card {
+  transition: all 0.2s;
+}
+
+.dash-action-icon {
+  width: 45px;
+  height: 45px;
+}
+
+.dash-action-icon-info {
+  background-color: #17a2b8;
+  width: 45px;
+  height: 45px;
+}
+
+.dash-rating-star {
+  font-size: 2.5rem;
+}
+
+.dash-level-badge {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border: 1px solid #bbdefb;
+}
+
+.dash-level-badge.is-elevated {
+  background-color: #ffebee;
+  color: #b71c1c;
+  border-color: #ffcdd2;
+}
+
+/* Stat cards: coloured left edge (border-0 would otherwise remove it) */
+.card.dash-stat-card {
+  border-left: 4px solid var(--stat-color) !important;
+}
+
+.dash-stat-card.is-total { --stat-color: #6c757d; }
+.dash-stat-card.is-progress { --stat-color: #ffc107; }
+.dash-stat-card.is-resolved { --stat-color: #198754; }
+.dash-stat-card.is-rejected { --stat-color: #dc3545; }

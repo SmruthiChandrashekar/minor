@@ -52,8 +52,8 @@ export async function translateText(text, targetLanguage) {
  * Translate selected fields of an object.
  * Only fields listed in `fields` are translated; all others pass through unchanged.
  *
- * ✅ Translate: description, response, notes (user-generated)
- * ❌ Do NOT translate: category (HR/POSH), status (Open/Closed), IDs, timestamps
+ * Translate: description, response, notes (user-generated)
+ * Do NOT translate: category (HR/POSH), status (Open/Closed), IDs, timestamps
  */
 export async function translateFields(obj, fields, targetLanguage) {
   if (targetLanguage === "English") return obj;

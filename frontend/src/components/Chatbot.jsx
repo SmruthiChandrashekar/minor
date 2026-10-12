@@ -4,6 +4,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { apiClient } from "../services/api";
 import { useAuth } from "../context/AuthProvider";
 
+import "./Chatbot.css";
 /**
  * Formats RAG text to convert asterisks to bullet points, 
  * handles bolding, and nicely formats the "Sources:" section.
@@ -195,7 +196,7 @@ const Chatbot = () => {
 
   useEffect(() => {
     const handleContextTrigger = (e) => {
-      setHintText(e.detail || "Not sure about policy? Ask the assistant first. 👇");
+      setHintText(e.detail || "Not sure about policy? Ask the assistant first.");
       setShowHint(true);
       if (isOpen) setIsOpen(false);
       setTimeout(() => setShowHint(false), 5000);
@@ -224,28 +225,11 @@ const Chatbot = () => {
 
   // ── CHAT HISTORY LOGIC ───────────────────────────────────────────────────
   
-  // Load initial state when user is logged in
+  // Load chat history when user is logged in.
+  // Always start on a fresh conversation; past chats stay available in the history panel.
   useEffect(() => {
-    if (user) {
-      loadLatestSession();
-      loadAllSessions();
-    }
+    if (user) loadAllSessions();
   }, [user]);
-
-  const loadLatestSession = async () => {
-    try {
-      const res = await apiClient("/api/chat/session/latest");
-      if (res.ok) {
-        const session = await res.json();
-        if (session) {
-          setSessionId(session.id);
-          loadSessionMessages(session.id);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load latest session", err);
-    }
-  };
 
   const loadAllSessions = async () => {
     try {
@@ -464,14 +448,14 @@ const Chatbot = () => {
         setHandoffResult(data);
         const confirmMsg = {
           id: Date.now(),
-          text: `✅ **Your request has been forwarded to the support team.**\n\n📋 **Tracking ID**: ${data.grievance_id}\n👤 **Assigned to**: ${data.assigned_to || 'Available representative'}\n📊 **Tier**: ${data.assigned_tier}\n⏱️ **Response SLA**: ${data.sla_hours} hours\n\nYou'll receive a notification when a representative responds.`,
+          text: `**Your request has been forwarded to the support team.**\n\n**Tracking ID**: ${data.grievance_id}\n**Assigned to**: ${data.assigned_to || 'Available representative'}\n**Tier**: ${data.assigned_tier}\n**Response SLA**: ${data.sla_hours} hours\n\nYou'll receive a notification when a representative responds.`,
           isBot: true,
         };
         setMessages(prev => [...prev, confirmMsg]);
       } else {
         setMessages(prev => [...prev, {
           id: Date.now(),
-          text: '⚠️ Sorry, I was unable to connect you to a human representative right now. Please try again or submit a formal grievance.',
+          text: 'Sorry, I was unable to connect you to a human representative right now. Please try again or submit a formal grievance.',
           isBot: true,
         }]);
       }
@@ -479,7 +463,7 @@ const Chatbot = () => {
       console.error('Handoff error:', err);
       setMessages(prev => [...prev, {
         id: Date.now(),
-        text: '⚠️ Connection error. Please try again.',
+        text: 'Connection error. Please try again.',
         isBot: true,
       }]);
     } finally {
@@ -502,129 +486,13 @@ const Chatbot = () => {
 
   return (
     <>
-      <style>{`
-        @keyframes pulseGlow {
-          0% { box-shadow: 0 0 0 0 rgba(0, 26, 77, 0.5); }
-          70% { box-shadow: 0 0 0 15px rgba(0, 26, 77, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(0, 26, 77, 0); }
-        }
-        .chatbot-btn {
-          animation: pulseGlow 2.5s infinite;
-          background: linear-gradient(135deg, #001a4d 0%, #003366 100%) !important;
-          border: none !important;
-          color: #fff !important;
-        }
-        .chatbot-btn:hover {
-          transform: scale(1.04);
-          animation: none;
-          background: linear-gradient(135deg, #00143a 0%, #00264d 100%) !important;
-        }
-        .chatbot-btn.btn-open {
-          width: 60px !important;
-          border-radius: 50% !important;
-          padding: 0 !important;
-          justify-content: center !important;
-          animation: none;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-        }
-        @media (max-width: 576px) {
-          .chatbot-text { display: none !important; }
-          .chatbot-icon { margin-right: 0 !important; }
-          .chatbot-btn { 
-            width: 60px !important; 
-            height: 60px !important; 
-            border-radius: 50% !important; 
-            padding: 0 !important; 
-            justify-content: center !important;
-          }
-        }
-        /* ── Mic recording animations ───────────────────────── */
-        @keyframes micCorePulse {
-          0%, 100% { transform: scale(1);    opacity: 1; }
-          50%       { transform: scale(1.18); opacity: 0.85; }
-        }
-        @keyframes ripple {
-          0%   { transform: scale(1);   opacity: 0.55; }
-          100% { transform: scale(2.6); opacity: 0; }
-        }
-        @keyframes wave {
-          0%, 100% { transform: scaleY(0.4); }
-          50%       { transform: scaleY(1);   }
-        }
-        @keyframes recBarSlideIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0);   }
-        }
-        .rec-bar { animation: recBarSlideIn 0.22s ease; }
-        .mic-core { animation: micCorePulse 1.1s ease-in-out infinite; }
-        .mic-ripple {
-          position: absolute; inset: 0; border-radius: 50%;
-          border: 2px solid #dc3545; animation: ripple 1.4s ease-out infinite;
-        }
-        .mic-ripple-2 { animation-delay: 0.7s; }
-        .sound-bar {
-          width: 3px; border-radius: 3px; background: #dc3545;
-          animation: wave 0.7s ease-in-out infinite;
-        }
-        
-        /* Sidebar Animations */
-        .chat-sidebar {
-          position: absolute;
-          top: 0; left: 0; bottom: 0; width: 250px;
-          background: var(--card-bg);
-          border-right: 1px solid rgba(0,0,0,0.1);
-          z-index: 10;
-          transform: translateX(-100%);
-          transition: transform 0.3s ease;
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .chat-sidebar::-webkit-scrollbar {
-          display: none;
-          width: 0;
-          height: 0;
-        }
-        .chat-sidebar.open {
-          transform: translateX(0);
-        }
-        .chat-main {
-          transition: transform 0.3s ease;
-        }
-        .chat-main.shifted {
-          transform: translateX(250px);
-        }
-        .session-item {
-          padding: 10px 15px;
-          cursor: pointer;
-          border-bottom: 1px solid rgba(0,0,0,0.05);
-          transition: background 0.2s;
-        }
-        .session-item:hover {
-          background: rgba(0, 26, 77, 0.05);
-        }
-        .session-item.active {
-          background: rgba(0, 26, 77, 0.1);
-          border-left: 4px solid #001a4d;
-        }
-      `}</style>
 
       {/* TOOLTIP HINT */}
       <div 
-        className="bg-dark text-white shadow p-2 rounded-3 text-center"
-        style={{
-          position: 'fixed', bottom: '85px', right: '24px', zIndex: 9999,
-          maxWidth: '220px', fontSize: '13px', pointerEvents: 'none',
-          opacity: showHint && !isOpen ? 1 : 0,
-          transform: showHint && !isOpen ? 'translateY(0)' : 'translateY(10px)',
-          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-        }}
+        className={`bg-dark text-white shadow p-2 rounded-3 text-center position-fixed fs-13 pe-none chat-hint${showHint && !isOpen ? " is-visible" : ""}`}
       >
         {hintText || t('chatbotHint')}
-        <div style={{
-          position: 'absolute', bottom: '-6px', right: '24px', width: 0, height: 0,
-          borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
-          borderTop: '6px solid #212529'
-        }} />
+        <div className="position-absolute chat-hint-arrow" />
       </div>
 
       {/* FLOATING BUTTON (PILL) */}
@@ -636,12 +504,7 @@ const Chatbot = () => {
           setShowHint(false);
           if (nextState) apiClient("/api/agents/warmup").catch(err => console.error("Warmup failed", err));
         }}
-        className={`btn shadow-lg d-flex align-items-center chatbot-btn ${isOpen ? 'btn-open' : ''}`}
-        style={{
-          position: 'fixed', bottom: '24px', right: '24px', height: '54px',
-          borderRadius: '27px', padding: '0 24px', zIndex: 9999,
-          transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)',
-        }}
+        className={`btn shadow-lg d-flex align-items-center chatbot-btn ${isOpen ? 'btn-open' : ''} position-fixed`}
       >
         {isOpen ? (
           <svg width="24" height="24" fill="currentColor" viewBox="0 0 16 16" className="me-0">
@@ -649,25 +512,15 @@ const Chatbot = () => {
           </svg>
         ) : (
           <>
-            <img src="/purva-logo.svg" alt="Purva" style={{ width: "26px", height: "26px", borderRadius: "50%", marginRight: "8px", objectFit: "contain" }} />
-            <span className="chatbot-text fw-bold" style={{ fontSize: '15px' }}>{t('chatbotBtn') || "Chat with Purva"}</span>
+            <img className="rounded-circle me-2 object-fit-contain chat-logo" src="/purva-logo.svg" alt="Purva" />
+            <span className="chatbot-text fw-bold">{t('chatbotBtn') || "Chat with Purva"}</span>
           </>
         )}
       </button>
 
       {/* CHAT PANEL */}
       <div 
-        className="card shadow-lg border-0"
-        style={{
-          position: 'fixed', bottom: '100px', right: '24px',
-          width: '380px', height: '80vh', maxHeight: '600px',
-          zIndex: 9998,
-          transform: isOpen ? 'translateX(0)' : 'translateX(120%)',
-          opacity: isOpen ? 1 : 0,
-          pointerEvents: isOpen ? 'auto' : 'none',
-          transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-          borderRadius: '16px', overflow: 'hidden'
-        }}
+        className={`card shadow-lg border-0 position-fixed rounded-4 overflow-hidden chat-window${isOpen ? " is-open" : ""}`}
       >
         {/* SIDEBAR (History) */}
         <div className={`chat-sidebar d-flex flex-column ${isSidebarOpen ? 'open' : ''}`}>
@@ -679,9 +532,8 @@ const Chatbot = () => {
           </div>
           <div className="p-2 border-bottom">
             <button 
-              className="btn w-100 fw-bold rounded-pill shadow-sm text-white" 
+              className="btn w-100 fw-bold rounded-pill shadow-sm text-white border-0 chat-new-btn" 
               onClick={handleNewConversation}
-              style={{ background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)', border: 'none' }}
             >
               + New Conversation
             </button>
@@ -696,10 +548,10 @@ const Chatbot = () => {
                   className={`session-item ${s.id === sessionId ? 'active' : ''}`}
                   onClick={() => switchSession(s.id)}
                 >
-                  <div className="text-truncate fw-bold mb-1" style={{ fontSize: '14px', color: 'var(--text-color)' }}>
+                  <div className="text-truncate fw-bold mb-1 fs-14 text-theme">
                     {s.title || "New Conversation"}
                   </div>
-                  <div className="text-muted" style={{ fontSize: '11px' }}>
+                  <div className="text-muted fs-11">
                     {new Date(s.updated_at).toLocaleDateString()}
                   </div>
                 </div>
@@ -709,56 +561,46 @@ const Chatbot = () => {
         </div>
 
         {/* MAIN CHAT AREA */}
-        <div className={`chat-main d-flex flex-column w-100 h-100 ${isSidebarOpen ? 'shifted' : ''}`} style={{ backgroundColor: 'var(--bg-color)' }}>
+        <div className={`chat-main d-flex flex-column w-100 h-100 ${isSidebarOpen ? 'shifted' : ''}`}>
           {/* HEADER */}
-          <div className="text-white p-3 d-flex justify-content-between align-items-center" style={{ flexShrink: 0, background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)' }}>
+          <div className="text-white p-3 d-flex justify-content-between align-items-center flex-shrink-0 chat-header">
             <div className="d-flex align-items-center gap-2">
               <button 
-                className="btn btn-sm text-white p-0 border-0 shadow-none d-flex align-items-center justify-content-center me-1"
+                className="btn btn-sm text-white p-0 border-0 shadow-none d-flex align-items-center justify-content-center me-1 chat-header-btn"
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                style={{ width: '28px', height: '28px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.1)' }}
               >
                 <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path fillRule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></svg>
               </button>
               <div>
                 <h6 className="mb-0 fw-bold d-flex align-items-center gap-2">
-                  <img src="/purva-logo.svg" alt="Purva" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "contain" }} />
+                  <img className="rounded-circle object-fit-contain chat-header-logo" src="/purva-logo.svg" alt="Purva" />
                   {t('chatbotTitle') || "Purva Policy Assistant"}
                 </h6>
-                <small style={{ opacity: 0.8 }}>{t('chatbotSubtitle') || "Ask me anything"}</small>
+                <small className="chat-header-subtitle">{t('chatbotSubtitle') || "Ask me anything"}</small>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="btn btn-sm text-white" style={{ fontSize: '24px', padding: 0, lineHeight: 1 }}>×</button>
+            <button onClick={() => setIsOpen(false)} className="btn btn-sm text-white p-0 lh-1 chat-close-btn">×</button>
           </div>
 
           {/* OVERLAY FOR SIDEBAR (closes sidebar on click) */}
           {isSidebarOpen && (
-            <div 
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.2)', zIndex: 9 }}
+            <div
+              className="position-absolute chat-sidebar-scrim"
               onClick={() => setIsSidebarOpen(false)}
             />
           )}
 
           {/* MESSAGES BODY */}
-          <div className="flex-grow-1 p-3" style={{ overflowY: 'auto' }}>
+          <div className="flex-grow-1 p-3 overflow-y-auto">
             
             {messages.length === 1 && (
               <div className="mb-4">
-                <p className="small mb-2 text-center" style={{ color: 'var(--text-color)', opacity: 0.7 }}>{t('chatbotSuggestedTopics') || "Suggested Topics:"}</p>
+                <p className="small mb-2 text-center chat-topics-label">{t('chatbotSuggestedTopics') || "Suggested Topics:"}</p>
                 <div className="d-flex flex-wrap gap-2 justify-content-center">
                   {suggestedPrompts.map((prompt, idx) => (
                     <button 
                       key={idx} onClick={() => handlePromptClick(prompt)}
-                      className="btn btn-sm rounded-pill"
-                      style={{ 
-                        fontSize: '13px', 
-                        backgroundColor: 'var(--card-bg)', 
-                        color: 'var(--text-color)',
-                        border: '1px solid #002b66',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(0, 43, 102, 0.08)'; }}
-                      onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'var(--card-bg)'; }}
+                      className="btn btn-sm rounded-pill fs-13 text-theme chat-topic-btn"
                     >
                       {prompt}
                     </button>
@@ -770,21 +612,10 @@ const Chatbot = () => {
             {messages.map((msg) => (
               <div key={msg.id} className={`d-flex mb-3 ${msg.isBot ? 'justify-content-start align-items-start gap-2' : 'justify-content-end'}`}>
                 {msg.isBot && (
-                  <img src="/purva-logo.svg" alt="Purva" style={{ width: "26px", height: "26px", borderRadius: "50%", marginTop: "4px", flexShrink: 0, objectFit: "contain" }} />
+                  <img className="rounded-circle mt-1 flex-shrink-0 object-fit-contain chat-logo" src="/purva-logo.svg" alt="Purva" />
                 )}
                 <div 
-                  className="p-3 shadow-sm"
-                  style={{
-                    maxWidth: '85%',
-                    backgroundColor: msg.isBot ? 'var(--chat-bubble-bot)' : undefined,
-                    background: msg.isBot ? undefined : 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
-                    color: msg.isBot ? 'var(--text-color)' : '#ffffff',
-                    borderTopLeftRadius: '16px', borderTopRightRadius: '16px',
-                    borderBottomLeftRadius: msg.isBot ? '4px' : '16px',
-                    borderBottomRightRadius: msg.isBot ? '16px' : '4px',
-                    fontSize: '14.5px', lineHeight: '1.5',
-                    wordBreak: 'break-word'
-                  }}
+                  className={`p-3 shadow-sm chat-bubble ${msg.isBot ? "is-bot" : "is-user"}`}
                 >
                   {msg.isGreeting ? (
                     t('chatbotGreeting') || "Hi! I'm the AI Policy Assistant. How can I help you today?"
@@ -795,21 +626,11 @@ const Chatbot = () => {
                       {/* TRIGGER GRIEVANCE FORM CARD FOR HIGH / MEDIUM COMPLAINTS */}
                       {msg.trigger_form && (msg.severity === 'high' || msg.severity === 'medium' || msg.form_reason === 'high_severity' || msg.form_reason === 'medium_severity') && (
                         <div 
-                          className="mt-3 p-3 rounded-3 border text-start shadow-sm"
-                          style={{
-                            backgroundColor: '#ffffff',
-                            borderColor: '#e2e8f0',
-                            borderLeft: '4px solid var(--navy)'
-                          }}
+                          className="mt-3 p-3 rounded-3 text-start shadow-sm chat-advisory is-complaint"
                         >
                           <div className="d-flex align-items-center justify-content-between mb-2">
                             <span 
-                              className="badge rounded-pill px-2 py-1 text-uppercase fw-bold"
-                              style={{ 
-                                backgroundColor: msg.severity === 'high' ? 'var(--accent)' : '#d97706',
-                                color: '#ffffff',
-                                fontSize: '10px'
-                              }}
+                              className={`badge rounded-pill px-2 py-1 text-uppercase fw-bold text-white fs-10 chat-severity-badge${msg.severity === "high" ? " is-high" : ""}`}
                             >
                               {msg.severity ? `${msg.severity} Severity Complaint` : 'Formal Complaint'}
                             </span>
@@ -824,14 +645,7 @@ const Chatbot = () => {
                           </p>
                           <button
                             type="button"
-                            className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2"
-                            style={{
-                              background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)',
-                              color: '#ffffff',
-                              border: 'none',
-                              padding: '7px 14px',
-                              fontSize: '13px'
-                            }}
+                            className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2 bg-navy text-white border-0 fs-13 chat-escalate-btn"
                             onClick={() => {
                               setIsOpen(false);
                               navigate(getLodgeRoute(), {
@@ -853,25 +667,19 @@ const Chatbot = () => {
                       {/* SATISFACTION / ESCALATION CARD FOR LOW SEVERITY GRIEVANCES */}
                       {msg.can_escalate && (
                         <div 
-                          className="mt-3 p-3 rounded-3 border text-start shadow-sm"
-                          style={{
-                            backgroundColor: '#ffffff',
-                            borderColor: '#fed7aa',
-                            borderLeft: '4px solid #f97316'
-                          }}
+                          className="mt-3 p-3 rounded-3 text-start shadow-sm chat-advisory is-guidance"
                         >
                           <div className="d-flex align-items-center gap-1 mb-1">
-                            <span className="badge rounded-pill px-2 py-1" style={{ fontSize: '10.5px', fontWeight: '700', backgroundColor: '#ffedd5', color: '#c2410c' }}>
+                            <span className="badge rounded-pill px-2 py-1 fw-bold chat-guidance-badge">
                               Resolution Guidance
                             </span>
                           </div>
-                          <p className="small mb-3 text-muted" style={{ fontSize: '12px' }}>
+                          <p className="small mb-3 text-muted fs-12">
                             Did this address your concern? If this explanation does not resolve the issue, you may lodge an official grievance ticket for formal department handling.
                           </p>
                           <button
                             type="button"
-                            className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
-                            style={{ padding: '6px 14px', fontSize: '12px' }}
+                            className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2 fs-12 chat-followup-btn"
                             onClick={() => {
                               setIsOpen(false);
                               navigate(getLodgeRoute(), {
@@ -893,15 +701,10 @@ const Chatbot = () => {
                       {/* REDIRECT TO FORM FOR UNRESOLVED LOW COMPLAINTS */}
                       {!msg.can_escalate && msg.trigger_form && (msg.form_reason === 'unresolved_low_query' || (!msg.chatbot_resolved && msg.severity === 'low')) && (
                         <div 
-                          className="mt-3 p-3 rounded-3 border text-start shadow-sm"
-                          style={{
-                            backgroundColor: '#ffffff',
-                            borderColor: '#e2e8f0',
-                            borderLeft: '4px solid #475569'
-                          }}
+                          className="mt-3 p-3 rounded-3 text-start shadow-sm chat-advisory is-unresolved"
                         >
                           <div className="d-flex align-items-center gap-1 mb-2">
-                            <span className="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1" style={{ fontSize: '10px', fontWeight: '600' }}>
+                            <span className="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1 fs-10 fw-semibold">
                               Policy Unresolved
                             </span>
                           </div>
@@ -910,8 +713,7 @@ const Chatbot = () => {
                           </p>
                           <button
                             type="button"
-                            className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
-                            style={{ padding: '6px 14px', fontSize: '12.5px' }}
+                            className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2 chat-followup-btn-compact"
                             onClick={() => {
                               setIsOpen(false);
                               navigate(getLodgeRoute(), {
@@ -939,13 +741,10 @@ const Chatbot = () => {
 
             {isTyping && (
               <div className="d-flex mb-3 justify-content-start">
-                <div className="p-3 shadow-sm d-flex align-items-center gap-1" style={{ 
-                  backgroundColor: 'var(--chat-bubble-bot)',
-                  borderTopLeftRadius: '16px', borderTopRightRadius: '16px', borderBottomLeftRadius: '4px', borderBottomRightRadius: '16px' 
-                }}>
-                  <div className="spinner-grow spinner-grow-sm text-muted" style={{ width: '0.35rem', height: '0.35rem' }}></div>
-                  <div className="spinner-grow spinner-grow-sm text-muted" style={{ width: '0.35rem', height: '0.35rem', animationDelay: '0.2s' }}></div>
-                  <div className="spinner-grow spinner-grow-sm text-muted" style={{ width: '0.35rem', height: '0.35rem', animationDelay: '0.4s' }}></div>
+                <div className="p-3 shadow-sm d-flex align-items-center gap-1 chat-typing">
+                  <div className="spinner-grow spinner-grow-sm text-muted chat-typing-dot"></div>
+                  <div className="spinner-grow spinner-grow-sm text-muted chat-typing-dot-2"></div>
+                  <div className="spinner-grow spinner-grow-sm text-muted chat-typing-dot-3"></div>
                 </div>
               </div>
             )}
@@ -955,12 +754,11 @@ const Chatbot = () => {
 
           {/* HANDOFF BUTTON */}
           {messages.length > 2 && !handoffResult && (
-            <div className="text-center py-2 border-top" style={{ backgroundColor: 'var(--chat-bg)' }}>
+            <div className="text-center py-2 border-top chat-footer-bar">
               <button
                 onClick={handleHandoff}
                 disabled={handoffLoading}
-                className="btn btn-sm btn-outline-warning rounded-pill px-3 fw-semibold"
-                style={{ fontSize: '12px', transition: 'all 0.2s' }}
+                className="btn btn-sm btn-outline-warning rounded-pill px-3 fw-semibold fs-12 chat-handoff-btn"
               >
                 {handoffLoading ? (
                   <><span className="spinner-border spinner-border-sm me-1" role="status" /> Connecting...</>
@@ -972,65 +770,55 @@ const Chatbot = () => {
           )}
 
           {/* INPUT BOX */}
-          <div className="border-top" style={{ flexShrink: 0, backgroundColor: 'var(--chat-bg)' }}>
+          <div className="border-top flex-shrink-0 chat-footer-bar">
 
             {listening && (
-              <div className="rec-bar d-flex align-items-center gap-2 px-3" style={{ height: '68px', backgroundColor: '#fff8f8' }}>
-                <button onClick={cancelListening} title="Discard recording" style={{ background: 'none', border: 'none', padding: '6px', color: '#adb5bd', cursor: 'pointer', flexShrink: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="rec-bar d-flex align-items-center gap-2 px-3">
+                <button className="border-0 cursor-pointer flex-shrink-0 rounded-circle d-flex align-items-center justify-content-center rec-discard-btn" onClick={cancelListening} title="Discard recording">
                   <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                     <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
                     <path fillRule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
                   </svg>
                 </button>
-                <div style={{ position: 'relative', width: '38px', height: '38px', flexShrink: 0 }}>
+                <div className="position-relative flex-shrink-0 rec-mic">
                   <div className="mic-ripple" /><div className="mic-ripple mic-ripple-2" />
-                  <div className="mic-core d-flex align-items-center justify-content-center rounded-circle" style={{ width: '38px', height: '38px', backgroundColor: '#dc3545', position: 'relative', zIndex: 1 }}>
+                  <div className="mic-core d-flex align-items-center justify-content-center rounded-circle position-relative">
                     <svg width="15" height="15" fill="white" viewBox="0 0 16 16"><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/><path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/></svg>
                   </div>
                 </div>
-                <div className="d-flex align-items-center gap-1" style={{ flex: 1, overflow: 'hidden' }}>
+                <div className="d-flex align-items-center gap-1 overflow-hidden rec-wave">
                   {[0.3, 0.6, 1, 0.7, 0.45, 0.8, 0.5, 1, 0.65, 0.35].map((delay, i) => (
                     <div key={i} className="sound-bar" style={{ height: `${14 + i % 3 * 8}px`, animationDelay: `${delay * 0.4}s` }} />
                   ))}
-                  <span style={{ marginLeft: '8px', color: '#dc3545', fontWeight: 600, fontSize: '13px', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+                  <span className="ms-2 fw-semibold fs-13 flex-shrink-0 rec-timer">
                     {fmtTime(recordSecs)}
                   </span>
                 </div>
-                <button onClick={stopListening} title="Stop and send" className="btn rounded-circle d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px', flexShrink: 0, border: 'none', background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)', color: '#fff' }}>
+                <button onClick={stopListening} title="Stop and send" className="btn rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 border-0 text-white rec-send-btn">
                   <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
                 </button>
               </div>
             )}
 
             {!listening && (
-              <div className="p-3" style={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+              <div className="p-3 chat-input-bar">
                 <div className="input-group">
                   <input
                     type="text"
-                    className="form-control rounded-pill me-2 border-0 shadow-none px-4"
-                    style={{ backgroundColor: 'var(--bg-color)', color: 'var(--text-color)' }}
+                    className="form-control rounded-pill me-2 border-0 shadow-none px-4 chat-input"
                     placeholder={isTranscribing ? "Transcribing audio..." : (t('chatbotPlaceholder') || "Type a message...")}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={handleKeyDown}
                     disabled={isTyping || isTranscribing}
                   />
-                  <button type="button" className="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center me-2" onClick={startListening} disabled={!isSpeechSupported || isTyping || isTranscribing} style={{ width: '45px', height: '45px', flexShrink: 0 }}>
+                  <button type="button" className="btn btn-outline-secondary rounded-circle d-flex align-items-center justify-content-center me-2 flex-shrink-0 chat-mic-btn" onClick={startListening} disabled={!isSpeechSupported || isTyping || isTranscribing}>
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M3.5 6.5A.5.5 0 0 1 4 7v1a4 4 0 0 0 8 0V7a.5.5 0 0 1 1 0v1a5 5 0 0 1-4.5 4.975V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 .5-.5z"/><path d="M10 8a2 2 0 1 1-4 0V3a2 2 0 1 1 4 0v5zM8 0a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V3a3 3 0 0 0-3-3z"/></svg>
                   </button>
                   <button 
-                    className="btn rounded-circle d-flex align-items-center justify-content-center" 
+                    className="btn rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 text-white border-0 chat-send-btn" 
                     onClick={() => handleSendMessage(inputValue)} 
-                    disabled={!inputValue.trim() || isTyping || isTranscribing} 
-                    style={{ 
-                      width: '45px', 
-                      height: '45px', 
-                      flexShrink: 0,
-                      background: 'linear-gradient(135deg, #001a4d 0%, #003366 100%)',
-                      color: '#fff',
-                      border: 'none',
-                      opacity: (!inputValue.trim() || isTyping || isTranscribing) ? 0.5 : 1
-                    }}
+                    disabled={!inputValue.trim() || isTyping || isTranscribing}
                   >
                     <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
                   </button>
@@ -1039,10 +827,9 @@ const Chatbot = () => {
             )}
             
             {voiceError && (
-              <div style={{ padding: '8px 16px', backgroundColor: '#fff3cd', borderTop: '1px solid #ffc107', color: '#856404', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', animation: 'recBarSlideIn 0.2s ease' }}>
-                <span style={{ fontSize: '15px' }}>⚠️</span>
+              <div className="d-flex align-items-center gap-2 chat-voice-error">
                 {voiceError}
-                <button onClick={() => setVoiceError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#856404', cursor: 'pointer', fontSize: '15px', padding: 0 }}>×</button>
+                <button className="border-0 cursor-pointer p-0 chat-voice-error-close" onClick={() => setVoiceError('')}>×</button>
               </div>
             )}
           </div>

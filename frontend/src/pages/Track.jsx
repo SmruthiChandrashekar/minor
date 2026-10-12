@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { supabase } from "../services/supabaseClient";
 import { useAuth } from "../context/AuthProvider";
 import { apiClient } from "../services/api";
+import "./Track.css";
 
 function Track() {
   const navigate = useNavigate();
@@ -161,8 +162,8 @@ function Track() {
     const s = styles[status] || { bg: "#f5f5f5", color: "#666", label: status };
     return (
       <span
-        className="px-3 py-2 rounded-pill fw-semibold shadow-sm"
-        style={{ backgroundColor: s.bg, color: s.color, fontSize: "13px" }}
+        className="px-3 py-2 rounded-pill fw-semibold shadow-sm fs-13"
+        style={{ backgroundColor: s.bg, color: s.color }}
       >
         {s.label}
       </span>
@@ -179,8 +180,8 @@ function Track() {
     const s = styles[severity] || { bg: "#f5f5f5", color: "#666" };
     return (
       <span
-        className="px-3 py-2 rounded-pill fw-semibold"
-        style={{ backgroundColor: s.bg, color: s.color, fontSize: "12px" }}
+        className="px-3 py-2 rounded-pill fw-semibold fs-12"
+        style={{ backgroundColor: s.bg, color: s.color }}
       >
         {severity || "N/A"}
       </span>
@@ -256,25 +257,11 @@ function Track() {
           <React.Fragment key={step}>
             <div className="text-center">
               <div
-                className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-1"
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  backgroundColor: i <= currentIndex ? "var(--navy)" : "var(--surface-2)",
-                  color: i <= currentIndex ? "#fff" : "var(--muted)",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                }}
+                className={`rounded-circle d-flex align-items-center justify-content-center mx-auto mb-1 fs-12 fw-bold track-step-dot${i <= currentIndex ? " is-done" : ""}`}
               >
                 {i <= currentIndex ? "✓" : i + 1}
               </div>
-              <span
-                style={{
-                  fontSize: "10px",
-                  fontWeight: i === currentIndex ? "700" : "500",
-                  color: i <= currentIndex ? "var(--navy)" : "var(--muted)",
-                }}
-              >
+              <span className={`fs-10 track-step-label${i <= currentIndex ? " is-done" : ""}${i === currentIndex ? " is-current" : ""}`}>
                 {step === "Open" ? t("pending") :
                  step === "Investigating" ? t("inProgress") :
                  step === "Resolved" ? t("resolved") :
@@ -283,12 +270,7 @@ function Track() {
             </div>
             {i < steps.length - 1 && (
               <div
-                className="flex-grow-1 mx-1"
-                style={{
-                  height: "3px",
-                  backgroundColor: i < currentIndex ? "var(--navy)" : "var(--line)",
-                  marginBottom: "18px",
-                }}
+                className={`flex-grow-1 mx-1 track-step-line${i < currentIndex ? " is-done" : ""}`}
               />
             )}
           </React.Fragment>
@@ -300,38 +282,36 @@ function Track() {
   const routingInfo = trackedData ? getRoutingLevelInfo(trackedData) : null;
 
   return (
-    <div className="container py-5" style={{ minHeight: "80vh" }}>
+    <div className="container py-5 track-page">
       <div className="row justify-content-center">
         <div className="col-12 col-md-9 col-lg-8">
           
           <div className="text-center mb-5">
-            <h2 className="fw-bold mb-2" style={{ color: "var(--navy)" }}>{t("trackComplaint")}</h2>
+            <h2 className="fw-bold mb-2 text-navy">{t("trackComplaint")}</h2>
             <p className="text-muted">{t("trackSubtitle")}</p>
           </div>
 
           {!trackedData && (
-            <div className="card border-0 shadow-sm p-4 p-md-5 mb-4" style={{ borderRadius: "12px" }}>
+            <div className="card border-0 shadow-sm p-4 p-md-5 mb-4 track-card">
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                  <label htmlFor="trackingIdInput" className="form-label fw-bold" style={{ color: "var(--navy)" }}>
+                  <label htmlFor="trackingIdInput" className="form-label fw-bold text-navy">
                     {t("trackingId")}
                   </label>
                   <input
                     id="trackingIdInput"
                     type="text"
-                    className={`form-control form-control-lg ${error ? "is-invalid" : ""}`}
+                    className={`form-control form-control-lg ${error ? "is-invalid" : ""} rounded-3 track-id-input`}
                     placeholder={t("trackIdPlaceholder")}
                     value={trackingId}
                     onChange={(e) => { setTrackingId(e.target.value); setError(""); }}
-                    style={{ borderRadius: "8px", border: "1px solid #ced4da" }}
                     autoFocus
                   />
                   {error && <div className="invalid-feedback d-block mt-2">{error}</div>}
                 </div>
                 <button
                   type="submit"
-                  className="btn btn-lg w-100 fw-bold shadow-sm text-white"
-                  style={{ backgroundColor: "var(--navy)", borderColor: "var(--navy)", borderRadius: "8px" }}
+                  className="btn btn-lg w-100 fw-bold shadow-sm text-white bg-navy rounded-3 track-btn"
                   disabled={isTracking}
                 >
                   {isTracking ? (
@@ -348,18 +328,17 @@ function Track() {
           )}
 
           {trackedData && (
-            <div className="card border-0 shadow-sm p-4 p-md-5 mb-4" style={{ borderRadius: "12px" }}>
+            <div className="card border-0 shadow-sm p-4 p-md-5 mb-4 track-card">
               <div className="text-center mb-4">
                 <div
-                  className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
-                  style={{ width: "64px", height: "64px", backgroundColor: "#e8f4fd" }}
+                  className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3 track-result-icon"
                 >
                   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" strokeWidth="2">
                     <circle cx="12" cy="12" r="10" />
                     <polyline points="12 6 12 12 16 14" />
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-1" style={{ color: "var(--navy)" }}>{t("complaintStatus")}</h3>
+                <h3 className="fw-bold mb-1">{t("complaintStatus")}</h3>
                 <p className="text-muted mb-0">
                   {t("trackingDetailsFor")} <strong>#{trackedData.id.substring(0, 5)}</strong>
                 </p>
@@ -381,22 +360,22 @@ function Track() {
                 >
                   <div>
                     <div className="d-flex align-items-center gap-2 mb-1">
-                      <span className="badge px-2 py-1 fw-bold" style={{ backgroundColor: routingInfo.color, color: "#fff", fontSize: "11px" }}>
+                      <span className="badge px-2 py-1 fw-bold text-white fs-11" style={{ backgroundColor: routingInfo.color }}>
                         {routingInfo.levelBadge}
                       </span>
-                      <span className="fw-bold" style={{ color: routingInfo.color, fontSize: "14px" }}>
+                      <span className="fw-bold fs-14" style={{ color: routingInfo.color }}>
                         {routingInfo.title}
                       </span>
                     </div>
-                    <div className="text-muted" style={{ fontSize: "12px" }}>
+                    <div className="text-muted fs-12">
                       {routingInfo.description}
                     </div>
                   </div>
                   <div className="text-end">
-                    <span className="text-muted d-block" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    <span className="text-muted d-block fs-11 text-uppercase ls-half">
                       Resolution Commitment
                     </span>
-                    <span className="fw-bold" style={{ color: routingInfo.color, fontSize: "13px" }}>
+                    <span className="fw-bold fs-13" style={{ color: routingInfo.color }}>
                       {trackedData.sla_hours ? `${trackedData.sla_hours} Hours SLA` : routingInfo.slaLabel}
                     </span>
                   </div>
@@ -407,53 +386,52 @@ function Track() {
               <div className="bg-light p-4 rounded-3 mb-4 border shadow-sm">
                 <div className="row g-3">
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       {t("trackingId").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">#{trackedData.id.substring(0, 5)}</span>
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       {t("status").toUpperCase()}
                     </span>
                     {getStatusBadge(trackedData.status)}
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       ROUTED LEVEL
                     </span>
                     <span 
-                      className="badge px-2 py-1 fw-semibold"
-                      style={{ 
-                        backgroundColor: routingInfo?.bg || "#e3f2fd", 
-                        color: routingInfo?.color || "#0d47a1", 
-                        border: `1px solid ${routingInfo?.border || "#bbdefb"}`,
-                        fontSize: "12px" 
+                      className="badge px-2 py-1 fw-semibold fs-12"
+                      style={{
+                        backgroundColor: routingInfo?.bg || "#e3f2fd",
+                        color: routingInfo?.color || "#0d47a1",
+                        border: `1px solid ${routingInfo?.border || "#bbdefb"}`
                       }}
                     >
                       {routingInfo?.levelBadge || "Normal Level"}
                     </span>
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       {t("category").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.category}</span>
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       SEVERITY
                     </span>
                     {getSeverityBadge(trackedData.severity)}
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       {t("department").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.department || "—"}</span>
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       ASSIGNED QUEUE
                     </span>
                     <span className="fw-semibold text-dark">
@@ -461,7 +439,7 @@ function Track() {
                     </span>
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       RESOLUTION SLA
                     </span>
                     <span className="fw-bold" style={{ color: routingInfo?.color || "#0d47a1" }}>
@@ -469,17 +447,17 @@ function Track() {
                     </span>
                   </div>
                   <div className="col-6 col-md-4">
-                    <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                    <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                       {t("dateSubmitted").toUpperCase()}
                     </span>
                     <span className="fw-bold text-dark">{trackedData.date}</span>
                   </div>
                   {trackedData.description && (
                     <div className="col-12 mt-2">
-                      <span className="text-muted d-block fw-semibold mb-1" style={{ fontSize: "11px", letterSpacing: "1px" }}>
+                      <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
                         DESCRIPTION
                       </span>
-                      <p className="text-dark mb-0" style={{ fontSize: "14px", lineHeight: "1.6" }}>
+                      <p className="text-dark mb-0 fs-14 track-text">
                         {trackedData.description}
                       </p>
                     </div>
@@ -488,8 +466,7 @@ function Track() {
                   {trackedData.resolution_reason && (
                     <div className="col-12 mt-2">
                       <span
-                        className="text-muted d-block fw-semibold mb-1"
-                        style={{ fontSize: "11px", letterSpacing: "1px" }}
+                        className="text-muted d-block fw-semibold mb-1 fs-11 ls-1"
                       >
                         {trackedData.status === "Resolved"
                           ? "RESOLUTION SUMMARY"
@@ -498,30 +475,7 @@ function Track() {
                           : "LATEST STATUS REMARKS / REASON"}
                       </span>
                       <div
-                        className="p-3 rounded-3"
-                        style={{
-                          backgroundColor:
-                            trackedData.status === "Resolved"
-                              ? "#e8f5e9"
-                              : trackedData.status === "Rejected"
-                              ? "#fce4ec"
-                              : "#eff6ff",
-                          borderLeft: `4px solid ${
-                            trackedData.status === "Resolved"
-                              ? "#2e7d32"
-                              : trackedData.status === "Rejected"
-                              ? "#c62828"
-                              : "#2563eb"
-                          }`,
-                          fontSize: "14px",
-                          lineHeight: "1.6",
-                          color:
-                            trackedData.status === "Resolved"
-                              ? "#1b5e20"
-                              : trackedData.status === "Rejected"
-                              ? "#7f1d1d"
-                              : "#1e3a8a",
-                        }}
+                        className={`p-3 rounded-3 fs-14 track-text track-remarks is-${(trackedData.status || "").toLowerCase()}`}
                       >
                         {trackedData.resolution_reason}
                       </div>
@@ -533,8 +487,7 @@ function Track() {
               <div className="d-flex flex-column flex-sm-row justify-content-center gap-3">
                 <button
                   onClick={() => { setTrackedData(null); setTrackingId(""); }}
-                  className="btn btn-outline-secondary px-4 py-3 fw-bold flex-grow-1"
-                  style={{ borderRadius: "8px" }}
+                  className="btn btn-outline-secondary px-4 py-3 fw-bold flex-grow-1 rounded-3"
                 >
                   {t("trackAnother")}
                 </button>
@@ -544,12 +497,7 @@ function Track() {
                   <button
                     onClick={handleDownloadReport}
                     disabled={downloadingReport}
-                    className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm d-flex align-items-center justify-content-center gap-2"
-                    style={{
-                      background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)",
-                      borderRadius: "8px",
-                      border: "none",
-                    }}
+                    className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm d-flex align-items-center justify-content-center gap-2 bg-navy rounded-3 border-0"
                   >
                     {downloadingReport ? (
                       <><span className="spinner-border spinner-border-sm" /> Generating...</>
@@ -567,8 +515,7 @@ function Track() {
 
                 <button
                   onClick={() => navigate("/lodge-selection")}
-                  className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm"
-                  style={{ backgroundColor: "var(--navy)", borderColor: "var(--navy)", borderRadius: "8px" }}
+                  className="btn px-4 py-3 fw-bold flex-grow-1 text-white shadow-sm bg-navy rounded-3 track-btn"
                 >
                   {t("raiseNewComplaint")}
                 </button>

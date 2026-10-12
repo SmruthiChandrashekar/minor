@@ -1,9 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./i18n"; // Initialize enterprise i18next
+import "./styles/global.css";
 import App from "./App";
 import { ThemeProvider } from "./context/ThemeContext";
-import "./styles/global.css";
 
 // Register Service Worker for PWA (offline caching + background sync)
 if ("serviceWorker" in navigator) {

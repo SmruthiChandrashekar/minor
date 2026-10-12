@@ -1,4 +1,4 @@
-/* ============ DESIGN TOKENS ============ */
+/* Design tokens */
 :root {
   --font-d: 'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
   --font-b: 'Figtree', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -168,12 +168,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .hero .card h1, .hero .card h2, .hero .card h3, .hero .card h4, .hero .card h5, .hero .card h6,
 .card h1, .card h2, .card h3, .card h4, .card h5, .card h6 {
-  color: var(--heading-color) !important;
+  color: var(--heading-color);
   font-family: var(--font-d);
 }
 
 .hero .card p, .card p {
-  color: var(--text) !important;
+  color: var(--text);
 }
 
 .hero .card .muted, .hero .card .text-muted, .card .muted, .card .text-muted,
@@ -187,8 +187,8 @@ h1, h2, h3, h4, h5, h6 {
   margin-top: 6px;
 }
 
-.hero .card a, .card a {
-  color: var(--primary) !important;
+.hero .card a:not(.btn), .card a:not(.btn) {
+  color: var(--primary);
 }
 
 /* Tracker card (.trk) */
@@ -228,7 +228,7 @@ h3 {
   font-weight: 700;
 }
 
-/* ============ DESIGN SYSTEM UTILITIES ============ */
+/* Design system utilities */
 .btn-primary {
   background-color: var(--primary) !important;
   color: var(--on-primary) !important;
@@ -279,9 +279,7 @@ h3 {
 .btn-hero-track {
   color: #ffffff !important;
   border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: transparent !important;
   border-radius: var(--r-pill) !important;
   font-weight: 600;
   transition: all var(--t) var(--ease);
@@ -295,8 +293,6 @@ h3 {
   background-color: rgba(255, 255, 255, 0.22) !important;
   border-color: #ffffff !important;
   color: #ffffff !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transform: translateY(-2px);
 }
 
 .btn-pill {
@@ -432,9 +428,7 @@ h3 {
   }
 }
 
-/* ==========================================================================
-   SCROLLBAR SLIDERS (CROSS-BROWSER LIGHT & DARK COMPATIBILITY)
-   ========================================================================== */
+/* Scrollbar sliders (cross-browser light & dark compatibility) */
 html, body {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -468,9 +462,7 @@ html, body {
   background: var(--scrollbar-track);
 }
 
-/* ==========================================================================
-   RANGE INPUT SLIDERS (LIGHT & DARK COMPATIBILITY)
-   ========================================================================== */
+/* Range input sliders (light & dark compatibility) */
 input[type="range"],
 .form-range {
   -webkit-appearance: none;
@@ -514,9 +506,9 @@ input[type="range"]::-webkit-slider-thumb,
 
 [data-theme="dark"] input[type="range"]::-webkit-slider-thumb,
 [data-theme="dark"] .form-range::-webkit-slider-thumb {
-  background: #a78bfa;
+  background: var(--accent);
   border: 2.5px solid #141418;
-  box-shadow: 0 0 10px rgba(167, 139, 250, 0.5), 0 2px 6px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 input[type="range"]::-webkit-slider-thumb:hover,
@@ -550,14 +542,12 @@ input[type="range"]::-moz-range-thumb,
 
 [data-theme="dark"] input[type="range"]::-moz-range-thumb,
 [data-theme="dark"] .form-range::-moz-range-thumb {
-  background: #a78bfa;
+  background: var(--accent);
   border: 2.5px solid #141418;
-  box-shadow: 0 0 10px rgba(167, 139, 250, 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
-/* ==========================================================================
-   FORM SWITCHES / SLIDER TOGGLES (.form-switch)
-   ========================================================================== */
+/* Form switches / slider toggles (.form-switch) */
 .form-switch .form-check-input {
   cursor: pointer;
   height: 1.4em;
@@ -572,21 +562,18 @@ input[type="range"]::-moz-range-thumb,
 }
 
 [data-theme="dark"] .form-switch .form-check-input:checked {
-  background-color: #8b5cf6;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+  background-color: var(--accent);
+  border-color: var(--accent);
 }
 
-/* ==========================================================================
-   THEME TOGGLE BUTTON
-   ========================================================================== */
+/* Theme toggle button */
 .theme-toggle-btn {
   position: relative;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .theme-toggle-btn:focus-visible {
-  box-shadow: 0 0 0 2px var(--navbar-bg), 0 0 0 4px #8b5cf6 !important;
+  box-shadow: 0 0 0 2px var(--navbar-bg), 0 0 0 4px var(--accent) !important;
 }
 
 /* Navbar dark mode border separator */
@@ -693,6 +680,10 @@ select.form-select {
   background-color: var(--input-bg) !important;
   color: var(--input-text) !important;
   border-color: var(--input-border) !important;
+}
+
+[data-theme="dark"] .form-control.is-invalid {
+  border-color: var(--bs-form-invalid-border-color) !important;
 }
 
 [data-theme="dark"] .form-control:focus {
@@ -1020,7 +1011,6 @@ select.form-select {
   padding: 6px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
   z-index: 100;
-  backdrop-filter: blur(10px);
   animation: pa-fade-in 0.15s ease-out;
 }
 
@@ -1124,7 +1114,7 @@ select.form-select {
   justify-content: space-between;
   align-items: center;
   padding: 14px 24px;
-  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%);
+  background: var(--navy);
   color: #fff;
   flex-shrink: 0;
   border-bottom: 1px solid rgba(255,255,255,0.08);
@@ -1136,13 +1126,10 @@ select.form-select {
   height: 42px;
   flex-shrink: 0;
   position: relative;
-  animation: purva-float 3.5s ease-in-out infinite;
 }
 .purva-avatar-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.5));
-  animation: purva-glow-ring 4s linear infinite;
 }
 
 /* Purva avatar — welcome screen large */
@@ -1151,12 +1138,10 @@ select.form-select {
   height: 110px;
   margin: 0 auto 20px;
   position: relative;
-  animation: purva-float 3.5s ease-in-out infinite;
 }
 .purva-welcome-svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.45)) drop-shadow(0 0 6px rgba(244, 114, 182, 0.3));
 }
 
 /* Purva avatar — message bubbles */
@@ -1166,16 +1151,6 @@ select.form-select {
   border: none !important;
 }
 
-@keyframes purva-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-5px); }
-}
-@keyframes purva-glow-ring {
-  0% { filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.6)); }
-  33% { filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.7)); }
-  66% { filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.5)); }
-  100% { filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.6)); }
-}
 
 .pa-topbar-title {
   color: #ffffff !important;
@@ -1255,12 +1230,6 @@ select.form-select {
 .pa-welcome-icon {
   font-size: 52px;
   margin-bottom: 16px;
-  animation: pa-float 3s ease-in-out infinite;
-}
-
-@keyframes pa-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
 }
 
 @keyframes pa-fadeIn {
@@ -1294,8 +1263,6 @@ select.form-select {
 .pa-prompt-chip:hover {
   border-color: var(--navy);
   background: rgba(20, 40, 65, 0.05);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(20, 40, 65, 0.12);
 }
 
 .pa-prompt-icon {
@@ -1348,7 +1315,7 @@ select.form-select {
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 .pa-msg-bubble.user {
-  background: linear-gradient(135deg, var(--navy), var(--navy-2));
+  background: var(--navy);
   color: #fff;
   border-radius: 18px 4px 18px 18px;
   box-shadow: 0 2px 8px rgba(20, 40, 65, 0.25);
@@ -1426,7 +1393,7 @@ select.form-select {
   height: 44px;
   border-radius: 12px;
   border: none;
-  background: linear-gradient(135deg, var(--navy), var(--navy-2));
+  background: var(--navy);
   color: #fff;
   cursor: pointer;
   display: flex;
@@ -1437,8 +1404,7 @@ select.form-select {
   box-shadow: 0 2px 8px rgba(20, 40, 65, 0.3);
 }
 .pa-send-btn:hover:not(:disabled) {
-  transform: scale(1.05);
-  box-shadow: 0 4px 14px rgba(20, 40, 65, 0.4);
+  background: var(--navy-2);
 }
 .pa-send-btn:disabled {
   opacity: 0.4;
@@ -1571,7 +1537,7 @@ select.form-select {
 .pa-flow-connector {
   width: 2px;
   height: 20px;
-  background: linear-gradient(180deg, var(--navy), rgba(20, 40, 65, 0.3));
+  background: var(--navy);
   margin: 0 auto;
   border-radius: 2px;
 }
@@ -1838,4 +1804,42 @@ select.form-select {
   color: var(--text-color);
 }
 
-
+/* Utilities (same convention as Bootstrap's: single purpose, !important) */
+.bg-card { background-color: var(--card-bg) !important; }
+.bg-navy { background-color: var(--navy) !important; }
+.bg-surface-alt { background-color: var(--surface-alt) !important; }
+.cursor-pointer { cursor: pointer !important; }
+.fw-extrabold { font-weight: 800 !important; }
+.fs-10 { font-size: 10px !important; }
+.fs-11 { font-size: 11px !important; }
+.fs-12 { font-size: 12px !important; }
+.fs-13 { font-size: 13px !important; }
+.fs-14 { font-size: 14px !important; }
+.fs-h2 { font-size: var(--fs-h2) !important; }
+.fs-lg { font-size: var(--fs-lg) !important; }
+.fs-md { font-size: var(--fs-md) !important; }
+.fs-sm { font-size: var(--fs-sm) !important; }
+.fs-xs { font-size: var(--fs-xs) !important; }
+.ls-1 { letter-spacing: 1px !important; }
+.ls-2 { letter-spacing: 2px !important; }
+.ls-half { letter-spacing: 0.5px !important; }
+.text-accent { color: var(--accent) !important; }
+.text-heading { color: var(--heading-color) !important; }
+.text-navy { color: var(--navy) !important; }
+.text-theme { color: var(--text-color) !important; }
+.text-theme-muted { color: var(--text-muted) !important; }
+
+/* Shared components */
+.scrim-50 {
+  background-color: rgba(0,0,0,0.5);
+}
+
+.tile-card {
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+  transition: box-shadow 0.25s ease;
+}
+
+.tile-card:hover {
+  box-shadow: var(--sh-2);
+}

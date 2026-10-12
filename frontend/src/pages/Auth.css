@@ -1,0 +1,203 @@
+.auth-hero {
+  padding: 48px 0 0;
+}
+
+.auth-hero-title {
+  font-size: 2.2rem;
+}
+
+.auth-hero-lead {
+  color: #c4d2ec;
+  font-size: 1.05rem;
+}
+
+.auth-hero-wave {
+  margin-bottom: -2px;
+}
+
+.auth-body {
+  background-color: var(--bg-color);
+  padding-bottom: 60px;
+}
+
+.auth-side {
+  padding-top: 40px;
+}
+
+.auth-feature-card {
+  border-radius: 14px;
+}
+
+.card.auth-feature-card {
+  border-left: 4px solid var(--accent) !important;
+}
+
+.auth-feature-icon {
+  width: 46px;
+  height: 46px;
+  background-color: rgba(168, 38, 70, 0.12);
+}
+
+.auth-feature-glyph {
+  font-size: 1.2rem;
+}
+
+.auth-feature-label {
+  font-size: 0.95rem;
+}
+
+.auth-feature-desc {
+  font-size: 0.82rem;
+}
+
+.card.auth-admin-card {
+  background-color: var(--navy) !important;
+  color: #fff !important;
+}
+
+.auth-admin-card p {
+  color: inherit;
+}
+
+.auth-admin-card {
+  border-radius: 14px;
+}
+
+.auth-admin-desc {
+  font-size: 0.85rem;
+}
+
+.auth-card {
+  border-radius: 20px;
+}
+
+.card.auth-category-card {
+  border-left: 6px solid var(--category-color) !important;
+}
+
+.auth-category-card {
+  box-shadow: var(--bs-box-shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.auth-category-card:hover {
+  box-shadow: var(--bs-box-shadow);
+}
+
+.auth-category-icon {
+  width: 50px;
+  height: 50px;
+}
+
+.auth-category-glyph {
+  font-size: 1.4rem;
+}
+
+.auth-tabs {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.auth-tab {
+  flex: 1;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  background-color: var(--card-bg);
+  color: var(--text-color);
+}
+
+.auth-tab.is-active {
+  background-color: var(--navy);
+  color: #fff;
+}
+
+.auth-tab:disabled {
+  cursor: not-allowed;
+}
+
+.auth-hint {
+  font-size: 0.88rem;
+}
+
+.auth-alert {
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.form-control.auth-input {
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.92rem;
+}
+
+.auth-addon-start {
+  border-radius: 10px 0 0 10px !important;
+  background-color: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.auth-input-end {
+  border-radius: 0 10px 10px 0 !important;
+  padding: 12px 14px;
+  font-size: 0.92rem;
+}
+
+.auth-role-summary {
+  background-color: rgba(0,0,0,0.03);
+  border-radius: 10px;
+}
+
+.auth-forgot-link {
+  font-size: 0.8rem;
+}
+
+.form-control.auth-input-mid {
+  padding: 12px 14px;
+  font-size: 0.92rem;
+}
+
+.auth-addon-end {
+  border-radius: 0 10px 10px 0 !important;
+  background-color: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.auth-addon-start-light {
+  border-radius: 10px 0 0 10px !important;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #6c757d;
+}
+
+.auth-addon-end-light {
+  border-radius: 0 10px 10px 0 !important;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  color: #6c757d;
+}
+
+.btn.auth-submit-btn {
+  --bs-btn-bg: var(--accent);
+  --bs-btn-hover-bg: var(--accent-h);
+  --bs-btn-active-bg: var(--accent-h);
+  --bs-btn-disabled-bg: #6c757d;
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 1rem;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.auth-switch {
+  font-size: 0.88rem;
+  color: #6c757d;
+}
+
+.auth-link-btn {
+  background: none;
+  text-decoration: underline;
+}
+
+.auth-link {
+  text-decoration: underline;
+}

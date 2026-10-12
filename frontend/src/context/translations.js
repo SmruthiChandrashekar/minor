@@ -12,7 +12,7 @@ const translations = {
     // Index / Home
     heroTitle: "Grievance Redressal Mechanism",
     heroSubtitle: "Submit and track your grievances efficiently with transparency and accountability.",
-    heroBadge: "🛡️ Puravankara GRM — Dedicated Portal for All Stakeholders",
+    heroBadge: "Puravankara GRM — Dedicated Portal for All Stakeholders",
     heroHeadline1: "Report it once.",
     heroHeadline2: "Watch it move.",
     heroDescription: "A transparent, AI-routed grievance redressal system built for employees, contract workforce, vendors, partners, homebuyers, and the public.",
@@ -240,7 +240,7 @@ const translations = {
     // Help
     aboutRedressal: "About the Redressal Mechanism",
     helpDescription: "As Puravankara continues to strengthen its governance, people practices, and stakeholder engagement, this unified Grievance Redressal Mechanism (GRM) ensures consistent, transparent, and timely grievance handling across the organisation.",
-    stakeholderHelpline: "📞 24/7 Stakeholder Helpline",
+    stakeholderHelpline: "24/7 Stakeholder Helpline",
 
     // Admin Login
     adminPortalTitle: "Admin Portal",
@@ -295,7 +295,7 @@ const translations = {
     // Index / Home
     heroTitle: "शिकायत निवारण तंत्र",
     heroSubtitle: "पारदर्शिता और जवाबदेही के साथ अपनी शिकायतें कुशलतापूर्वक दर्ज करें और ट्रैक करें।",
-    heroBadge: "🛡️ पुरवंकरा GRM — सभी हितधारकों के लिए समर्पित पोर्टल",
+    heroBadge: "पुरवंकरा GRM — सभी हितधारकों के लिए समर्पित पोर्टल",
     heroHeadline1: "एक बार रिपोर्ट करें।",
     heroHeadline2: "प्रगति देखें।",
     heroDescription: "कर्मचारियों, अनुबंध कार्यबल, विक्रेताओं, भागीदारों, घर खरीदारों और जनता के लिए निर्मित एक पारदर्शी, AI-रूटेड शिकायत निवारण प्रणाली।",
@@ -523,7 +523,7 @@ const translations = {
     // Help
     aboutRedressal: "निवारण तंत्र के बारे में",
     helpDescription: "जैसा कि पुरवंकरा अपने शासन, लोगों के अभ्यास और हितधारक जुड़ाव को मजबूत करना जारी रखता है, यह एकीकृत शिकायत निवारण तंत्र (GRM) संगठन में सुसंगत, पारदर्शी और समय पर शिकायत निपटान सुनिश्चित करता है।",
-    stakeholderHelpline: "📞 24/7 हितधारक हेल्पलाइन",
+    stakeholderHelpline: "24/7 हितधारक हेल्पलाइन",
 
     // Admin Login
     adminPortalTitle: "प्रशासक पोर्टल",
@@ -578,7 +578,7 @@ const translations = {
     // Index / Home
     heroTitle: "ಕುಂದುಕೊರತೆ ಪರಿಹಾರ ಕಾರ್ಯವಿಧಾನ",
     heroSubtitle: "ಪಾರದರ್ಶಕತೆ ಮತ್ತು ಜವಾಬ್ದಾರಿಯೊಂದಿಗೆ ನಿಮ್ಮ ಕುಂದುಕೊರತೆಗಳನ್ನು ಸಮರ್ಥವಾಗಿ ಸಲ್ಲಿಸಿ ಮತ್ತು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ.",
-    heroBadge: "🛡️ ಪುರವಂಕರ GRM — ಎಲ್ಲಾ ಪಾಲುದಾರರಿಗಾಗಿ ಮೀಸಲಾದ ಪೋರ್ಟಲ್",
+    heroBadge: "ಪುರವಂಕರ GRM — ಎಲ್ಲಾ ಪಾಲುದಾರರಿಗಾಗಿ ಮೀಸಲಾದ ಪೋರ್ಟಲ್",
     heroHeadline1: "ಒಮ್ಮೆ ವರದಿ ಮಾಡಿ.",
     heroHeadline2: "ಪ್ರಗತಿ ಗಮನಿಸಿ.",
     heroDescription: "ಉದ್ಯೋಗಿಗಳು, ಗುತ್ತಿಗೆ ಕಾರ್ಮಿಕರು, ಮಾರಾಟಗಾರರು, ಪಾಲುದಾರರು, ಮನೆ ಖರೀದಿದಾರರು ಮತ್ತು ಸಾರ್ವಜನಿಕರಿಗಾಗಿ ನಿರ್ಮಿಸಲಾದ ಪಾರದರ್ಶಕ, AI-ಮಾರ್ಗದರ್ಶಿ ಕುಂದುಕೊರತೆ ಪರಿಹಾರ ವ್ಯವಸ್ಥೆ.",
@@ -806,7 +806,7 @@ const translations = {
     // Help
     aboutRedressal: "ಪರಿಹಾರ ಕಾರ್ಯವಿಧಾನದ ಬಗ್ಗೆ",
     helpDescription: "ಪುರವಂಕರ ತನ್ನ ಆಡಳಿತ, ಜನರ ಅಭ್ಯಾಸಗಳು ಮತ್ತು ಪಾಲುದಾರ ನಿಶ್ಚಿತಾರ್ಥವನ್ನು ಬಲಪಡಿಸುವುದನ್ನು ಮುಂದುವರಿಸುತ್ತಿರುವಾಗ, ಈ ಏಕೀಕೃತ ಕುಂದುಕೊರತೆ ಪರಿಹಾರ ಕಾರ್ಯವಿಧಾನ (GRM) ಸಂಸ್ಥೆಯಾದ್ಯಂತ ಸ್ಥಿರ, ಪಾರದರ್ಶಕ ಮತ್ತು ಸಮಯೋಚಿತ ಕುಂದುಕೊರತೆ ನಿರ್ವಹಣೆಯನ್ನು ಖಚಿತಪಡಿಸುತ್ತದೆ.",
-    stakeholderHelpline: "📞 24/7 ಪಾಲುದಾರ ಹೆಲ್ಪ್‌ಲೈನ್",
+    stakeholderHelpline: "24/7 ಪಾಲುದಾರ ಹೆಲ್ಪ್‌ಲೈನ್",
 
     // Admin Login
     adminPortalTitle: "ನಿರ್ವಾಹಕ ಪೋರ್ಟಲ್",

@@ -3,6 +3,7 @@ import { resetApiClientState } from "../services/api";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import { useLanguage } from "../context/LanguageContext";
+import "./Auth.css";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -174,27 +175,22 @@ const Auth = () => {
     <div>
       {/* HERO BANNER */}
       <div
-        className="hero-banner text-white"
-        style={{
-          background: "linear-gradient(135deg, var(--navy) 0%, #003366 100%)",
-          padding: "48px 0 0",
-          color: "#ffffff",
-        }}
+        className="hero-banner text-white bg-navy auth-hero"
       >
         <div className="container text-center pb-5 text-white">
-          <h1 className="fw-bold mb-2 text-white" style={{ fontSize: "2.2rem", color: "#ffffff" }}>
+          <h1 className="fw-bold mb-2 text-white auth-hero-title">
             {mode === "login" ? t("welcomeBack") : t("createYourAccount")}
           </h1>
-          <p className="opacity-90 mb-0 text-white" style={{ fontSize: "1.05rem", color: "#c4d2ec" }}>
+          <p className="opacity-90 mb-0 auth-hero-lead">
             {mode === "login" ? t("signInDesc") : t("createAccountDesc")}
           </p>
         </div>
 
         {/* WAVE DIVIDER */}
         <svg
+          className="d-block auth-hero-wave"
           viewBox="0 0 1440 60"
           xmlns="http://www.w3.org/2000/svg"
-          style={{ display: "block", marginBottom: "-2px" }}
         >
           <path
             fill="var(--bg)"
@@ -204,38 +200,30 @@ const Auth = () => {
       </div>
 
       {/* MAIN CONTENT */}
-      <div style={{ backgroundColor: "var(--bg-color)", paddingBottom: "60px" }}>
+      <div className="auth-body">
         <div className="container">
           <div className="row g-5 justify-content-center align-items-start">
 
             {/* LEFT: FEATURE HIGHLIGHTS */}
-            <div className="col-lg-5 d-none d-lg-block" style={{ paddingTop: "40px" }}>
-              <h4 className="fw-bold mb-4" style={{ color: "var(--text-color)" }}>
+            <div className="col-lg-5 d-none d-lg-block auth-side">
+              <h4 className="fw-bold mb-4 text-theme">
                 {t("whyUseGRM")}
               </h4>
               <div className="d-flex flex-column gap-3">
                 {features.map((f, i) => (
                   <div
                     key={i}
-                    className="card border-0 shadow-sm p-3"
-                    style={{
-                      borderRadius: "14px",
-                      borderLeft: "4px solid var(--accent)",
-                      transition: "transform 0.2s ease",
-                    }}
-                    onMouseOver={(e) => (e.currentTarget.style.transform = "translateX(6px)")}
-                    onMouseOut={(e) => (e.currentTarget.style.transform = "translateX(0)")}
+                    className="card border-0 shadow-sm p-3 auth-feature-card"
                   >
                     <div className="d-flex align-items-center gap-3">
                       <div
-                        className="d-flex align-items-center justify-content-center rounded-circle"
-                        style={{ width: "46px", height: "46px", backgroundColor: "rgba(168, 38, 70, 0.12)", color: "var(--accent)", flexShrink: 0 }}
+                        className="d-flex align-items-center justify-content-center rounded-circle text-accent flex-shrink-0 auth-feature-icon"
                       >
-                        <i className={`bi ${f.icon}`} style={{ fontSize: "1.2rem" }}></i>
+                        <i className={`bi ${f.icon} auth-feature-glyph`}></i>
                       </div>
                       <div>
-                        <div className="fw-bold" style={{ color: "var(--text-color)", fontSize: "0.95rem" }}>{f.label}</div>
-                        <div className="text-muted" style={{ fontSize: "0.82rem" }}>{f.desc}</div>
+                        <div className="fw-bold text-theme auth-feature-label">{f.label}</div>
+                        <div className="text-muted auth-feature-desc">{f.desc}</div>
                       </div>
                     </div>
                   </div>
@@ -243,20 +231,18 @@ const Auth = () => {
               </div>
 
               <div
-                className="card border-0 shadow-sm mt-4 p-4"
-                style={{ borderRadius: "14px", backgroundColor: "var(--navy)", color: "#fff" }}
+                className="card border-0 shadow-sm mt-4 p-4 auth-admin-card"
               >
                 <div className="d-flex align-items-center gap-2 mb-2">
-                  <i className="bi bi-person-badge" style={{ fontSize: "1.2rem", color: "var(--accent)" }}></i>
+                  <i className="bi bi-person-badge text-accent auth-feature-glyph"></i>
                   <span className="fw-bold">{t("adminLoginTitle")}</span>
                 </div>
-                <p className="mb-3 opacity-75" style={{ fontSize: "0.85rem" }}>
+                <p className="mb-3 opacity-75 auth-admin-desc">
                   {t("adminLoginDesc")}
                 </p>
                 <a
                   href="/admin"
-                  className="btn btn-danger btn-sm w-100 mt-2"
-                  style={{ borderRadius: "8px", fontWeight: "600", padding: "8px" }}
+                  className="btn btn-danger btn-sm w-100 mt-2 rounded-3 fw-semibold p-2"
                 >
                   {t("goToAdminPortal")}
                 </a>
@@ -264,12 +250,12 @@ const Auth = () => {
             </div>
 
             {/* RIGHT: AUTH FORM CARD */}
-            <div className="col-lg-7 col-md-10 col-12" style={{ paddingTop: "40px" }}>
+            <div className="col-lg-7 col-md-10 col-12 auth-side">
               {mode === "register" && !formData.userType ? (
                 /* STEP 1: CATEGORY SELECTION */
-                <div className="card border-0 shadow-lg p-4 p-md-5" style={{ borderRadius: "20px" }}>
+                <div className="card border-0 shadow-lg p-4 p-md-5 auth-card">
                   <div className="text-center mb-4">
-                    <h3 className="fw-bold" style={{ color: "var(--navy)" }}>{t("selectCategory")}</h3>
+                    <h3 className="fw-bold">{t("selectCategory")}</h3>
                     <p className="text-muted small">{t("selectCategoryDesc")}</p>
                   </div>
                   <div className="row g-3">
@@ -280,17 +266,15 @@ const Auth = () => {
                     ].map((cat) => (
                       <div key={cat.type} className="col-12">
                         <div 
-                          className="card border-0 shadow-sm p-4 d-flex flex-row align-items-center gap-4"
-                          style={{ borderRadius: "16px", cursor: "pointer", transition: "all 0.2s ease", borderLeft: `6px solid ${cat.color}` }}
+                          className="card border-0 p-4 d-flex flex-row align-items-center gap-4 rounded-4 cursor-pointer auth-category-card"
+                          style={{ "--category-color": cat.color }}
                           onClick={() => setFormData(prev => ({ ...prev, userType: cat.type }))}
-                          onMouseOver={(e) => { e.currentTarget.classList.replace('shadow-sm', 'shadow'); e.currentTarget.style.transform = 'translateX(8px)'; }}
-                          onMouseOut={(e) => { e.currentTarget.classList.replace('shadow', 'shadow-sm'); e.currentTarget.style.transform = 'translateX(0)'; }}
                         >
-                          <div className="d-flex align-items-center justify-content-center rounded-circle" style={{ width: "50px", height: "50px", backgroundColor: cat.bg, color: cat.color }}>
-                            <i className={`fa-solid ${cat.icon}`} style={{ fontSize: "1.4rem" }}></i>
+                          <div className="d-flex align-items-center justify-content-center rounded-circle auth-category-icon" style={{ backgroundColor: cat.bg, color: cat.color }}>
+                            <i className={`fa-solid ${cat.icon} auth-category-glyph`}></i>
                           </div>
                           <div className="flex-grow-1 text-start">
-                            <h5 className="fw-bold mb-0" style={{ color: "var(--navy)" }}>{cat.label}</h5>
+                            <h5 className="fw-bold mb-0">{cat.label}</h5>
                             <p className="text-muted small mb-0">Proceed as {cat.label}</p>
                           </div>
                           <i className="fa-solid fa-chevron-right opacity-25"></i>
@@ -299,7 +283,7 @@ const Auth = () => {
                     ))}
                   </div>
                   <div className="text-center mt-4">
-                    <button onClick={() => switchMode("login")} className="btn btn-link text-decoration-none fw-bold" style={{ color: "var(--navy)" }}>
+                    <button onClick={() => switchMode("login")} className="btn btn-link text-decoration-none fw-bold text-navy">
                       Already have an account? Sign In
                     </button>
                   </div>
@@ -307,29 +291,17 @@ const Auth = () => {
               ) : (
                 /* STEP 2: ACTUAL FORM */
                 <div
-                  className="card border-0 shadow"
-                  style={{ borderRadius: "20px", overflow: "hidden" }}
+                  className="card border-0 shadow overflow-hidden auth-card"
                 >
                 {/* TAB SWITCHER */}
-                <div className="d-flex" style={{ borderBottom: "1px solid #e9ecef" }}>
+                <div className="d-flex auth-tabs">
                   {["login", "register"].map((tab) => (
                     <button
+                      className={`p-3 border-0 fw-bold ls-half auth-tab${mode === tab ? " is-active" : ""}`}
                       key={tab}
                       type="button"
                       onClick={() => switchMode(tab)}
                       disabled={loading}
-                      style={{
-                        flex: 1,
-                        padding: "16px",
-                        border: "none",
-                        fontWeight: "700",
-                        fontSize: "0.95rem",
-                        cursor: loading ? "not-allowed" : "pointer",
-                        transition: "all 0.2s ease",
-                        backgroundColor: mode === tab ? "var(--navy)" : "var(--card-bg)",
-                        color: mode === tab ? "#fff" : "var(--text-color)",
-                        letterSpacing: "0.5px",
-                      }}
                     >
                       {tab === "login" ? t("signInTab") : t("registerTab")}
                     </button>
@@ -337,10 +309,10 @@ const Auth = () => {
                 </div>
 
                 <div className="p-4 p-md-5">
-                  <h3 className="fw-bold mb-1" style={{ color: "var(--text-color)" }}>
+                  <h3 className="fw-bold mb-1">
                     {mode === "login" ? t("loginToAccount") : t("createAnAccount")}
                   </h3>
-                  <p className="text-muted mb-4" style={{ fontSize: "0.88rem" }}>
+                  <p className="text-muted mb-4 auth-hint">
                     {mode === "login" ? t("loginToAccountDesc") : t("fillDetailsDesc")}
                   </p>
 
@@ -353,8 +325,7 @@ const Auth = () => {
                           : message.type === "info"
                           ? "alert-info"
                           : "alert-danger"
-                      } d-flex align-items-center gap-2`}
-                      style={{ borderRadius: "10px", fontSize: "0.88rem" }}
+                      } d-flex align-items-center gap-2 auth-alert`}
                       role="alert"
                     >
                       <i
@@ -374,7 +345,7 @@ const Auth = () => {
                     {/* FULL NAME — register only */}
                     {mode === "register" && (
                       <div className="mb-3">
-                        <label className="form-label fw-semibold" style={{ color: "var(--text-color)", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold text-theme auth-hint">
                           {t("fullNameLabel")}
                         </label>
                         <input
@@ -382,10 +353,9 @@ const Auth = () => {
                           name="name"
                           value={formData.name}
                           onChange={handleInputChange}
-                          className={`form-control ${errors.name ? "is-invalid" : ""}`}
+                          className={`form-control ${errors.name ? "is-invalid" : ""} auth-input`}
                           placeholder={t("fullNamePlaceholder")}
                           disabled={loading}
-                          style={{ borderRadius: "10px", padding: "12px 14px", fontSize: "0.92rem" }}
                         />
                         {errors.name && <div className="invalid-feedback">{errors.name}</div>}
                       </div>
@@ -394,7 +364,7 @@ const Auth = () => {
                     {/* CATEGORY-SPECIFIC FIELDS */}
                     {mode === "register" && formData.userType === "Internal" && (
                       <div className="mb-3">
-                        <label className="form-label fw-semibold" style={{ color: "var(--text-color)", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold text-theme auth-hint">
                           Employee ID
                         </label>
                         <input
@@ -402,17 +372,16 @@ const Auth = () => {
                           name="employeeId"
                           value={formData.employeeId}
                           onChange={handleInputChange}
-                          className="form-control"
+                          className="form-control auth-input"
                           placeholder="Enter your Employee ID"
                           disabled={loading}
-                          style={{ borderRadius: "10px", padding: "12px 14px", fontSize: "0.92rem" }}
                         />
                       </div>
                     )}
 
                     {mode === "register" && formData.userType === "Contract" && (
                       <div className="mb-3">
-                        <label className="form-label fw-semibold" style={{ color: "var(--text-color)", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold text-theme auth-hint">
                           Agency Name
                         </label>
                         <input
@@ -420,17 +389,16 @@ const Auth = () => {
                           name="agencyName"
                           value={formData.agencyName}
                           onChange={handleInputChange}
-                          className="form-control"
+                          className="form-control auth-input"
                           placeholder="Enter your Agency/Contractor name"
                           disabled={loading}
-                          style={{ borderRadius: "10px", padding: "12px 14px", fontSize: "0.92rem" }}
                         />
                       </div>
                     )}
 
                     {mode === "register" && formData.userType === "External" && (
                       <div className="mb-3">
-                        <label className="form-label fw-semibold" style={{ color: "var(--text-color)", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold text-theme auth-hint">
                           City / Location
                         </label>
                         <input
@@ -438,10 +406,9 @@ const Auth = () => {
                           name="location"
                           value={formData.location}
                           onChange={handleInputChange}
-                          className="form-control"
+                          className="form-control auth-input"
                           placeholder="e.g. Bengaluru, Mumbai"
                           disabled={loading}
-                          style={{ borderRadius: "10px", padding: "12px 14px", fontSize: "0.92rem" }}
                         />
                       </div>
                     )}
@@ -449,13 +416,12 @@ const Auth = () => {
 
                     {/* EMAIL */}
                     <div className="mb-3">
-                      <label className="form-label fw-semibold" style={{ color: "var(--text-color)", fontSize: "0.88rem" }}>
+                      <label className="form-label fw-semibold text-theme auth-hint">
                         {t("emailAddress")}
                       </label>
                       <div className="input-group">
                         <span
-                          className="input-group-text"
-                          style={{ borderRadius: "10px 0 0 10px", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-color)" }}
+                          className="input-group-text text-theme auth-addon-start"
                         >
                           <i className="bi bi-envelope"></i>
                         </span>
@@ -464,10 +430,9 @@ const Auth = () => {
                           name="email"
                           value={formData.email}
                           onChange={handleInputChange}
-                          className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                          className={`form-control ${errors.email ? "is-invalid" : ""} auth-input-end`}
                           placeholder={t("emailPlaceholder")}
                           disabled={loading}
-                          style={{ borderRadius: "0 10px 10px 0", padding: "12px 14px", fontSize: "0.92rem" }}
                         />
                         {errors.email && <div className="invalid-feedback">{errors.email}</div>}
                       </div>
@@ -475,12 +440,12 @@ const Auth = () => {
 
                     {/* USER TYPE INDICATOR — register only */}
                     {mode === "register" && (
-                      <div className="mb-3 d-flex align-items-center justify-content-between p-3" style={{ backgroundColor: "rgba(0,0,0,0.03)", borderRadius: "10px" }}>
+                      <div className="mb-3 d-flex align-items-center justify-content-between p-3 auth-role-summary">
                         <div>
                           <span className="text-muted small d-block">Registering as:</span>
-                          <strong style={{ color: "var(--navy)" }}>{formData.userType}</strong>
+                          <strong className="text-navy">{formData.userType}</strong>
                         </div>
-                        <button type="button" onClick={() => setFormData(p => ({ ...p, userType: "" }))} className="btn btn-sm btn-outline-secondary" style={{ fontSize: "11px" }}>
+                        <button type="button" onClick={() => setFormData(p => ({ ...p, userType: "" }))} className="btn btn-sm btn-outline-secondary fs-11">
                           Change
                         </button>
                       </div>
@@ -489,19 +454,18 @@ const Auth = () => {
                     {/* PASSWORD */}
                     <div className="mb-3">
                       <div className="d-flex justify-content-between align-items-center mb-1">
-                        <label className="form-label fw-semibold mb-0" style={{ color: "var(--text-color)", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold mb-0 text-theme auth-hint">
                           {t("passwordLabel")}
                         </label>
                         {mode === "login" && (
-                          <a href="#" className="text-decoration-none" style={{ fontSize: "0.8rem", color: "var(--accent)" }}>
+                          <a href="#" className="text-decoration-none text-accent auth-forgot-link">
                             {t("forgotPassword")}
                           </a>
                         )}
                       </div>
                       <div className="input-group">
                         <span
-                          className="input-group-text"
-                          style={{ borderRadius: "10px 0 0 10px", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-color)" }}
+                          className="input-group-text text-theme auth-addon-start"
                         >
                           <i className="bi bi-lock"></i>
                         </span>
@@ -510,16 +474,14 @@ const Auth = () => {
                           name="password"
                           value={formData.password}
                           onChange={handleInputChange}
-                          className={`form-control ${errors.password ? "is-invalid" : ""}`}
+                          className={`form-control ${errors.password ? "is-invalid" : ""} rounded-0 auth-input-mid`}
                           placeholder="••••••••"
                           disabled={loading}
-                          style={{ borderRadius: "0", padding: "12px 14px", fontSize: "0.92rem" }}
                         />
                         <button
                           type="button"
-                          className="input-group-text"
+                          className="input-group-text cursor-pointer text-theme auth-addon-end"
                           onClick={() => setShowPassword((p) => !p)}
-                          style={{ borderRadius: "0 10px 10px 0", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", color: "var(--text-color)" }}
                           tabIndex={-1}
                         >
                           <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
@@ -531,13 +493,12 @@ const Auth = () => {
                     {/* CONFIRM PASSWORD — register only */}
                     {mode === "register" && (
                       <div className="mb-4">
-                        <label className="form-label fw-semibold" style={{ color: "var(--navy)", fontSize: "0.88rem" }}>
+                        <label className="form-label fw-semibold text-navy auth-hint">
                           {t("confirmPasswordLabel")}
                         </label>
                         <div className="input-group">
                           <span
-                            className="input-group-text"
-                            style={{ borderRadius: "10px 0 0 10px", backgroundColor: "#f8f9fa", border: "1px solid #dee2e6", color: "#6c757d" }}
+                            className="input-group-text auth-addon-start-light"
                           >
                             <i className="bi bi-lock-fill"></i>
                           </span>
@@ -546,16 +507,14 @@ const Auth = () => {
                             name="confirmPassword"
                             value={formData.confirmPassword}
                             onChange={handleInputChange}
-                            className={`form-control ${errors.confirmPassword ? "is-invalid" : ""}`}
+                            className={`form-control ${errors.confirmPassword ? "is-invalid" : ""} rounded-0 auth-input-mid`}
                             placeholder="••••••••"
                             disabled={loading}
-                            style={{ borderRadius: "0", padding: "12px 14px", fontSize: "0.92rem" }}
                           />
                           <button
                             type="button"
-                            className="input-group-text"
+                            className="input-group-text cursor-pointer auth-addon-end-light"
                             onClick={() => setShowConfirmPassword((p) => !p)}
-                            style={{ borderRadius: "0 10px 10px 0", backgroundColor: "#f8f9fa", border: "1px solid #dee2e6", cursor: "pointer", color: "#6c757d" }}
                             tabIndex={-1}
                           >
                             <i className={`bi ${showConfirmPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
@@ -569,18 +528,7 @@ const Auth = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="btn btn-danger w-100 fw-bold"
-                      style={{
-                        borderRadius: "10px",
-                        padding: "13px",
-                        fontSize: "1rem",
-                        backgroundColor: loading ? "#6c757d" : "var(--accent)",
-                        border: "none",
-                        transition: "all 0.2s ease",
-                        letterSpacing: "0.5px",
-                      }}
-                      onMouseOver={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "var(--accent-h)"; }}
-                      onMouseOut={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "var(--accent)"; }}
+                      className="btn btn-danger w-100 fw-bold ls-half auth-submit-btn"
                     >
                       {loading ? (
                         <>
@@ -599,15 +547,15 @@ const Auth = () => {
                     </button>
 
                     {/* SWITCH MODE LINK */}
-                    <div className="text-center mt-4" style={{ fontSize: "0.88rem", color: "#6c757d" }}>
+                    <div className="text-center mt-4 auth-switch">
                       {mode === "login" ? (
                         <>
                           {t("dontHaveAccount")}{" "}
                           <button
+                            className="border-0 text-navy fw-bold cursor-pointer p-0 auth-link-btn"
                             type="button"
                             onClick={() => switchMode("register")}
                             disabled={loading}
-                            style={{ background: "none", border: "none", color: "var(--navy)", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
                           >
                             {t("registerHere")}
                           </button>
@@ -616,10 +564,10 @@ const Auth = () => {
                         <>
                           {t("alreadyHaveAccount")}{" "}
                           <button
+                            className="border-0 text-navy fw-bold cursor-pointer p-0 auth-link-btn"
                             type="button"
                             onClick={() => switchMode("login")}
                             disabled={loading}
-                            style={{ background: "none", border: "none", color: "var(--navy)", fontWeight: "700", cursor: "pointer", padding: 0, textDecoration: "underline" }}
                           >
                             {t("signInLink")}
                           </button>
@@ -633,9 +581,9 @@ const Auth = () => {
 
               {/* ADMIN PORTAL LINK — mobile only */}
               <div className="d-lg-none text-center mt-3">
-                <span className="text-muted" style={{ fontSize: "0.85rem" }}>
+                <span className="text-muted auth-admin-desc">
                   {t("areYouAdminQ")}{" "}
-                  <a href="/admin" style={{ color: "var(--accent)", fontWeight: "700", textDecoration: "underline" }}>
+                  <a className="text-accent fw-bold auth-link" href="/admin">
                     {t("adminPortalLink")}
                   </a>
                 </span>

@@ -5,6 +5,7 @@ import {
 } from "recharts";
 import { apiClient } from "../services/api";
 import { ThemeContext } from "../context/ThemeContext";
+import "./AdminAnalytics.css";
 
 const AdminAnalytics = ({ adminDepartment }) => {
   const { theme } = useContext(ThemeContext);
@@ -57,12 +58,12 @@ const AdminAnalytics = ({ adminDepartment }) => {
   return (
     <div className="mb-5">
       {/* Filters */}
-      <div className="card shadow-sm border-0 mb-4 p-3" style={{ borderRadius: "12px" }}>
+      <div className="card shadow-sm border-0 mb-4 p-3 analytics-filter-card">
         <div className="row g-3 align-items-center">
           <div className="col-auto">
-            <span className="fw-bold" style={{ color: "var(--heading-color)" }}>
+            <span className="fw-bold text-heading">
               <h5 className="mb-0 ms-2">
-                <i className="bi bi-graph-up me-2" style={{ color: isDark ? "#e4e4e7" : "var(--brand-blue)" }}></i>
+                <i className="bi bi-graph-up me-2 analytics-title-icon"></i>
                 {adminDepartment ? `${adminDepartment} Analytics` : 'Overall Analytics'}
               </h5>
             </span>
@@ -76,7 +77,7 @@ const AdminAnalytics = ({ adminDepartment }) => {
               <option value="Critical">Critical</option>
             </select>
           </div>
-          <div className="col-md-6 text-end text-muted" style={{ fontSize: "0.85rem" }}>
+          <div className="col-md-6 text-end text-muted analytics-count">
             Showing {filteredCount} records for {adminDepartment}
           </div>
         </div>
@@ -85,36 +86,36 @@ const AdminAnalytics = ({ adminDepartment }) => {
       {/* KPI Cards */}
       <div className="row g-3 mb-4 row-cols-2 row-cols-md-5">
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#e4e4e7" : "#001a4d"}` }}>
-            <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Total Grievances</div>
-            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#fafafa" : "#001a4d" }}>{filteredCount}</h3>
+          <div className="card shadow-sm border-0 p-3 h-100 analytics-stat is-total">
+            <div className="text-muted text-uppercase fw-semibold mb-1 analytics-stat-label">Total Grievances</div>
+            <h3 className="fw-bold mb-0 analytics-stat-value">{filteredCount}</h3>
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: "4px solid #f59e0b" }}>
-            <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Avg Resolution Time</div>
-            <h3 className="fw-bold mb-0" style={{ color: "#f59e0b" }}>{metrics.avg_resolution_time} hrs</h3>
+          <div className="card shadow-sm border-0 p-3 h-100 analytics-stat is-resolution">
+            <div className="text-muted text-uppercase fw-semibold mb-1 analytics-stat-label">Avg Resolution Time</div>
+            <h3 className="fw-bold mb-0 analytics-stat-value">{metrics.avg_resolution_time} hrs</h3>
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#34d399" : "#2e7d32"}` }}>
-            <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>User Satisfaction</div>
-            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#34d399" : "#2e7d32" }}>
+          <div className="card shadow-sm border-0 p-3 h-100 analytics-stat is-satisfaction">
+            <div className="text-muted text-uppercase fw-semibold mb-1 analytics-stat-label">User Satisfaction</div>
+            <h3 className="fw-bold mb-0 analytics-stat-value">
               {metrics.avg_satisfaction ? `${metrics.avg_satisfaction} / 5` : "N/A"}
-              {metrics.avg_satisfaction && <span className="text-warning ms-2" style={{ fontSize: "1.5rem", lineHeight: "1" }}>★</span>}
+              {metrics.avg_satisfaction && <span className="text-warning ms-2 lh-1 analytics-star">★</span>}
             </h3>
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#f87171" : "#c62828"}` }}>
-            <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>High/Critical Risk</div>
-            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#f87171" : "#c62828" }}>{insights.high_severity}</h3>
+          <div className="card shadow-sm border-0 p-3 h-100 analytics-stat is-risk">
+            <div className="text-muted text-uppercase fw-semibold mb-1 analytics-stat-label">High/Critical Risk</div>
+            <h3 className="fw-bold mb-0 analytics-stat-value">{insights.high_severity}</h3>
           </div>
         </div>
         <div className="col">
-          <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#a1a1aa" : "#0c7cd5"}` }}>
-            <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Pending Cases</div>
-            <h3 className="fw-bold mb-0" style={{ color: isDark ? "#d4d4d8" : "#0c7cd5" }}>
+          <div className="card shadow-sm border-0 p-3 h-100 analytics-stat is-pending">
+            <div className="text-muted text-uppercase fw-semibold mb-1 analytics-stat-label">Pending Cases</div>
+            <h3 className="fw-bold mb-0 analytics-stat-value">
               {(insights.status_distribution.open || 0) + (insights.status_distribution.investigating || 0)}
             </h3>
           </div>
@@ -125,8 +126,8 @@ const AdminAnalytics = ({ adminDepartment }) => {
       <div className="row g-3">
         <div className="col-md-8">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h6 className="fw-bold mb-3" style={{ color: "var(--heading-color)" }}>Complaint Volume Trends</h6>
-            <div style={{ height: "250px", width: "100%" }}>
+            <h6 className="fw-bold mb-3">Complaint Volume Trends</h6>
+            <div className="w-100 analytics-chart-lg">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trends}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDark ? "rgba(255,255,255,0.06)" : "#e2e8f0"} />
@@ -150,8 +151,8 @@ const AdminAnalytics = ({ adminDepartment }) => {
         </div>
         <div className="col-md-4">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h6 className="fw-bold mb-3" style={{ color: "var(--heading-color)" }}>Status Distribution</h6>
-            <div style={{ height: "200px", width: "100%" }}>
+            <h6 className="fw-bold mb-3">Status Distribution</h6>
+            <div className="w-100 analytics-chart-sm">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie

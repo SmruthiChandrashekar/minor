@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
 import { translateList } from "../services/translationService";
 import { apiClient } from "../services/api";
+import "./Dashboard.css";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -165,15 +166,14 @@ function Dashboard() {
       {/* HEADER SECTION */}
       <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
         <div>
-          <h2 className="fw-bold mb-1" style={{ color: "var(--text-color)" }}>{t("dashboardTitle")}</h2>
+          <h2 className="fw-bold mb-1 text-theme">{t("dashboardTitle")}</h2>
           <p className="text-muted mb-0">
             {t("welcomeBack")} <span className="fw-bold text-dark">{userDetails?.name || "User"}</span>. {t("dashboardOverview")}
           </p>
         </div>
         <div className="d-flex align-items-center gap-2">
           <button 
-            className="btn btn-outline-primary px-3 shadow-sm rounded-pill fw-semibold"
-            style={{ borderColor: "#002b66", color: "#002b66" }}
+            className="btn btn-outline-primary px-3 shadow-sm rounded-pill fw-semibold dash-outline-btn"
             onClick={() => navigate("/profile")}
           >
             My Profile
@@ -181,7 +181,7 @@ function Dashboard() {
           <button 
             className="btn btn-danger px-4 shadow-sm" 
             onClick={() => {
-              window.dispatchEvent(new CustomEvent('chatbot-hint', { detail: 'Not sure about policy? Ask the assistant first. 👇' }));
+              window.dispatchEvent(new CustomEvent('chatbot-hint', { detail: 'Not sure about policy? Ask the assistant first.' }));
               navigate(getLodgeRoute());
             }}
           >
@@ -193,26 +193,26 @@ function Dashboard() {
       {/* STATS OVERVIEW */}
       <div className="row g-4 mb-5">
         <div className="col-md-3">
-          <div className="card bg-light border-0 shadow-sm p-4 h-100" style={{ borderLeft: "4px solid #6c757d" }}>
-            <p className="text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: "12px", letterSpacing: "1px" }}>{t("totalGrievances")}</p>
+          <div className="card bg-light border-0 shadow-sm p-4 h-100 dash-stat-card is-total">
+            <p className="text-muted mb-1 fw-bold text-uppercase fs-12 ls-1">{t("totalGrievances")}</p>
             <h3 className="fw-bold mb-0">{totalGrievances}</h3>
           </div>
         </div>
         <div className="col-md-3">
-          <div className="card bg-light border-0 shadow-sm p-4 h-100" style={{ borderLeft: "4px solid #ffc107" }}>
-            <p className="text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: "12px", letterSpacing: "1px" }}>{t("inProgress")}</p>
+          <div className="card bg-light border-0 shadow-sm p-4 h-100 dash-stat-card is-progress">
+            <p className="text-muted mb-1 fw-bold text-uppercase fs-12 ls-1">{t("inProgress")}</p>
             <h3 className="fw-bold mb-0 text-warning">{inProgress}</h3>
           </div>
         </div>
         <div className="col-md-3">
-          <div className="card bg-light border-0 shadow-sm p-4 h-100" style={{ borderLeft: "4px solid #198754" }}>
-            <p className="text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: "12px", letterSpacing: "1px" }}>{t("resolved")}</p>
+          <div className="card bg-light border-0 shadow-sm p-4 h-100 dash-stat-card is-resolved">
+            <p className="text-muted mb-1 fw-bold text-uppercase fs-12 ls-1">{t("resolved")}</p>
             <h3 className="fw-bold mb-0 text-success">{resolved}</h3>
           </div>
         </div>
         <div className="col-md-3">
-          <div className="card bg-light border-0 shadow-sm p-4 h-100" style={{ borderLeft: "4px solid #dc3545" }}>
-            <p className="text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: "12px", letterSpacing: "1px" }}>{t("rejected")}</p>
+          <div className="card bg-light border-0 shadow-sm p-4 h-100 dash-stat-card is-rejected">
+            <p className="text-muted mb-1 fw-bold text-uppercase fs-12 ls-1">{t("rejected")}</p>
             <h3 className="fw-bold mb-0 text-danger">{rejected}</h3>
           </div>
         </div>
@@ -224,7 +224,7 @@ function Dashboard() {
         {/* RECENT TABLE */}
         <div className="col-lg-8">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h5 className="fw-bold mb-4" style={{ color: "var(--text-color)" }}>{t("recentActivity")}</h5>
+            <h5 className="fw-bold mb-4">{t("recentActivity")}</h5>
             
             {loading ? (
               <div className="text-center py-5">
@@ -257,22 +257,16 @@ function Dashboard() {
                   <tbody>
                     {(translating ? grievances : translatedGrievances).map((g) => (
                       <tr key={g.grievance_id}>
-                        <td className="fw-bold" style={{ color: "var(--text-color)" }}>#{g.grievance_id.substring(0, 5)}</td>
-                        <td style={{ color: "var(--text-color)" }}>{g.category}</td>
+                        <td className="fw-bold dash-cell">#{g.grievance_id.substring(0, 5)}</td>
+                        <td className="dash-cell">{g.category}</td>
                         <td>
                           <span 
-                            className="badge px-2 py-1 fw-semibold" 
-                            style={{
-                              backgroundColor: g.assigned_tier === "L2" || g.severity === "High" ? "#ffebee" : "#e3f2fd",
-                              color: g.assigned_tier === "L2" || g.severity === "High" ? "#b71c1c" : "#0d47a1",
-                              fontSize: "11px",
-                              border: `1px solid ${g.assigned_tier === "L2" || g.severity === "High" ? "#ffcdd2" : "#bbdefb"}`
-                            }}
+                            className={`badge px-2 py-1 fw-semibold fs-11 dash-level-badge${g.assigned_tier === "L2" || g.severity === "High" ? " is-elevated" : ""}`}
                           >
                             {g.assigned_tier ? `Level ${g.assigned_tier.replace("L", "")}` : (g.severity === "High" ? "Level 2" : "Level 1")}
                           </span>
                         </td>
-                        <td className="text-muted" style={{ maxWidth: "220px" }}>
+                        <td className="text-muted dash-desc-cell">
                           {translating ? (
                             <span className="spinner-border spinner-border-sm text-secondary" role="status" />
                           ) : (
@@ -333,18 +327,17 @@ function Dashboard() {
         {/* QUICK LINKS */}
         <div className="col-lg-4">
           <div className="card shadow-sm border-0 p-4 h-100">
-            <h5 className="fw-bold mb-4" style={{ color: "var(--text-color)" }}>{t("quickActions")}</h5>
+            <h5 className="fw-bold mb-4">{t("quickActions")}</h5>
 
             {/* ACTION 1 */}
             <div 
-              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light dashboard-action-card"
-              style={{ cursor: "pointer", transition: "all 0.2s" }}
+              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light dashboard-action-card cursor-pointer"
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('chatbot-hint', { detail: 'Not sure about policy? Ask the assistant first. 👇' }));
+                window.dispatchEvent(new CustomEvent('chatbot-hint', { detail: 'Not sure about policy? Ask the assistant first.' }));
                 navigate(getLodgeRoute());
               }}
             >
-              <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center me-3" style={{ width: "45px", height: "45px" }}>
+              <div className="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center me-3 dash-action-icon">
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -358,11 +351,10 @@ function Dashboard() {
 
             {/* ACTION 2 */}
             <div 
-              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light dashboard-action-card"
-              style={{ cursor: "pointer", transition: "all 0.2s" }}
+              className="d-flex align-items-center mb-3 p-3 rounded shadow-sm bg-light dashboard-action-card cursor-pointer"
               onClick={() => navigate("/track")}
             >
-              <div className="text-white rounded-circle d-flex justify-content-center align-items-center me-3" style={{ backgroundColor: "#17a2b8", width: "45px", height: "45px" }}>
+              <div className="text-white rounded-circle d-flex justify-content-center align-items-center me-3 dash-action-icon-info">
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -376,11 +368,10 @@ function Dashboard() {
 
             {/* ACTION 3 */}
             <div 
-              className="d-flex align-items-center p-3 rounded shadow-sm bg-light dashboard-action-card"
-              style={{ cursor: "pointer", transition: "all 0.2s" }}
+              className="d-flex align-items-center p-3 rounded shadow-sm bg-light dashboard-action-card cursor-pointer"
               onClick={() => navigate("/help")}
             >
-              <div className="bg-secondary text-white rounded-circle d-flex justify-content-center align-items-center me-3" style={{ width: "45px", height: "45px" }}>
+              <div className="bg-secondary text-white rounded-circle d-flex justify-content-center align-items-center me-3 dash-action-icon">
                 <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
@@ -399,7 +390,7 @@ function Dashboard() {
       </div>
 
       {/* FEEDBACK MODAL */}
-      <div className={`modal fade ${showFeedbackModal ? "show d-block" : ""}`} tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      <div className={`modal fade ${showFeedbackModal ? "show d-block" : ""} scrim-50`} tabIndex="-1">
         <div className="modal-dialog modal-dialog-centered">
           <div className="modal-content border-0 shadow">
             <div className="modal-header border-bottom-0 pb-0">
@@ -412,8 +403,7 @@ function Dashboard() {
                 {[1, 2, 3, 4, 5].map((star) => (
                   <span 
                     key={star} 
-                    className={`${feedbackRating >= star ? "text-warning" : "text-secondary"} mx-1`}
-                    style={{ cursor: "pointer", fontSize: "2.5rem", lineHeight: "1" }}
+                    className={`${feedbackRating >= star ? "text-warning" : "text-secondary"} mx-1 cursor-pointer lh-1 dash-rating-star`}
                     onClick={() => setFeedbackRating(star)}
                   >
                     {feedbackRating >= star ? "★" : "☆"}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthProvider';
 import { apiClient } from '../services/api';
+import "./PolicyAssistant.css";
 
 /**
  * Formats RAG text: bold, bullets, source citations.
@@ -63,12 +64,10 @@ function PolicyAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // ── Load sessions when user is logged in ───────────────────────────────
+  // ── Load chat history when user is logged in ───────────────────────────
+  // Always open on a fresh conversation; past chats stay available in the sidebar.
   useEffect(() => {
-    if (user) {
-      loadLatestSession();
-      loadAllSessions();
-    }
+    if (user) loadAllSessions();
   }, [user]);
 
   // Warmup RAG on page load
@@ -77,19 +76,6 @@ function PolicyAssistant() {
   }, []);
 
   // ── Session management ─────────────────────────────────────────────────
-  const loadLatestSession = async () => {
-    try {
-      const res = await apiClient("/api/chat/session/latest");
-      if (res.ok) {
-        const session = await res.json();
-        if (session) {
-          setSessionId(session.id);
-          loadSessionMessages(session.id);
-        }
-      }
-    } catch (err) { console.error("Failed to load latest session", err); }
-  };
-
   const loadAllSessions = async () => {
     try {
       const res = await apiClient("/api/chat/sessions");
@@ -572,7 +558,7 @@ function PolicyAssistant() {
               </button>
             )}
             <div className="purva-avatar-topbar">
-              <img src="/purva-logo.svg" alt="Purva" className="purva-avatar-svg" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "contain" }} />
+              <img src="/purva-logo.svg" alt="Purva" className="purva-avatar-svg w-100 h-100 rounded-circle object-fit-contain" />
             </div>
             <div>
               <h5 className="mb-0 fw-bold pa-topbar-title text-white">Purva</h5>
@@ -591,9 +577,9 @@ function PolicyAssistant() {
           {messages.length <= 1 && (
             <div className="pa-welcome">
               <div className="purva-welcome-avatar">
-                <img src="/purva-logo.svg" alt="Purva" className="purva-welcome-svg" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "contain" }} />
+                <img src="/purva-logo.svg" alt="Purva" className="purva-welcome-svg w-100 h-100 rounded-circle object-fit-contain" />
               </div>
-              <h4 className="fw-bold mb-2">Hi, I'm <span style={{ background: 'linear-gradient(135deg, #a78bfa, #f472b6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Purva</span></h4>
+              <h4 className="fw-bold mb-2">Hi, I'm Purva</h4>
               <p className="text-muted mb-4">Your AI companion for company policies, grievance procedures, POSH compliance, and filing complaints — I'm here to help!</p>
               <div className="pa-prompts-grid">
                 {suggestedPrompts.map((prompt, idx) => (
@@ -614,7 +600,7 @@ function PolicyAssistant() {
             <div key={msg.id} className={`pa-msg-row ${msg.isBot ? 'bot' : 'user'}`}>
               {msg.isBot && (
                 <div className="pa-msg-avatar purva-msg-avatar">
-                  <img src="/purva-logo.svg" alt="Purva" style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "contain" }} />
+                  <img className="rounded-circle object-fit-contain pa-msg-avatar-img" src="/purva-logo.svg" alt="Purva" />
                 </div>
               )}
               <div className={`pa-msg-bubble ${msg.isBot ? 'bot' : 'user'}`}>
@@ -631,12 +617,8 @@ function PolicyAssistant() {
                       </div>
                     )}
                     {msg.severity === 'low' && !msg.isGreeting && (
-                      <div className="pa-routing-badge low d-flex align-items-center gap-1" style={{
-                        background: msg.source_type === 'POLICY' ? '#eff6ff' : '#f8fafc',
-                        color: msg.source_type === 'POLICY' ? '#1d4ed8' : '#334155',
-                        border: msg.source_type === 'POLICY' ? '1px solid #bfdbfe' : '1px solid #e2e8f0'
-                      }}>
-                        <span className="pa-routing-dot" style={{ backgroundColor: msg.source_type === 'POLICY' ? '#2563eb' : '#10b981' }}></span>
+                      <div className={`pa-routing-badge low d-flex align-items-center gap-1 ${msg.source_type === "POLICY" ? "is-policy" : "is-general"}`}>
+                        <span className="pa-routing-dot"></span>
                         <span>{msg.source_type === 'POLICY' ? `Policy: ${msg.policy_name || 'Official Policy'}` : (msg.intent === 'GRIEVANCE' ? 'Purva Resolution' : 'General Guidance')}</span>
                       </div>
                     )}
@@ -644,21 +626,11 @@ function PolicyAssistant() {
                     {/* TRIGGER GRIEVANCE FORM CARD FOR HIGH / MEDIUM COMPLAINTS */}
                     {msg.trigger_form && (msg.severity === 'high' || msg.severity === 'medium' || msg.form_reason === 'high_severity' || msg.form_reason === 'medium_severity') && (
                       <div 
-                        className="mt-3 p-3 rounded-3 border text-start shadow-sm"
-                        style={{
-                          backgroundColor: '#ffffff',
-                          borderColor: '#e2e8f0',
-                          borderLeft: '4px solid var(--navy)'
-                        }}
+                        className="mt-3 p-3 rounded-3 text-start shadow-sm pa-advisory is-complaint"
                       >
                         <div className="d-flex align-items-center justify-content-between mb-2">
                           <span 
-                            className="badge rounded-pill px-2 py-1 text-uppercase fw-bold"
-                            style={{ 
-                              backgroundColor: msg.severity === 'high' ? 'var(--accent)' : '#d97706',
-                              color: '#ffffff',
-                              fontSize: '10px'
-                            }}
+                            className={`badge rounded-pill px-2 py-1 text-uppercase fw-bold text-white fs-10 pa-severity-badge${msg.severity === "high" ? " is-high" : ""}`}
                           >
                             {msg.severity ? `${msg.severity} Severity Complaint` : 'Formal Complaint'}
                           </span>
@@ -673,14 +645,7 @@ function PolicyAssistant() {
                         </p>
                         <button
                           type="button"
-                          className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2"
-                          style={{
-                            background: 'linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)',
-                            color: '#ffffff',
-                            border: 'none',
-                            padding: '7px 14px',
-                            fontSize: '13px'
-                          }}
+                          className="btn btn-sm w-100 fw-bold shadow-sm rounded-pill d-flex align-items-center justify-content-center gap-2 bg-navy text-white border-0 fs-13 pa-escalate-btn"
                           onClick={() => {
                             navigate(getLodgeRoute(), {
                               state: {
@@ -701,25 +666,19 @@ function PolicyAssistant() {
                     {/* SATISFACTION / ESCALATION CARD FOR LOW SEVERITY GRIEVANCES */}
                     {msg.can_escalate && (
                       <div 
-                        className="mt-3 p-3 rounded-3 border text-start shadow-sm"
-                        style={{
-                          backgroundColor: '#ffffff',
-                          borderColor: '#fed7aa',
-                          borderLeft: '4px solid #f97316'
-                        }}
+                        className="mt-3 p-3 rounded-3 text-start shadow-sm pa-advisory is-guidance"
                       >
                         <div className="d-flex align-items-center gap-1 mb-1">
-                          <span className="badge rounded-pill px-2 py-1" style={{ fontSize: '10.5px', fontWeight: '700', backgroundColor: '#ffedd5', color: '#c2410c' }}>
+                          <span className="badge rounded-pill px-2 py-1 fw-bold pa-guidance-badge">
                             Resolution Guidance
                           </span>
                         </div>
-                        <p className="small mb-3 text-muted" style={{ fontSize: '12.5px' }}>
+                        <p className="small mb-3 text-muted pa-guidance-text">
                           Did this address your concern? If this explanation does not resolve the issue, you may lodge an official grievance ticket for formal department handling.
                         </p>
                         <button
                           type="button"
-                          className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
-                          style={{ padding: '6px 14px', fontSize: '12.5px' }}
+                          className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2 pa-followup-btn"
                           onClick={() => {
                             navigate(getLodgeRoute(), {
                               state: {
@@ -740,15 +699,10 @@ function PolicyAssistant() {
                     {/* REDIRECT TO FORM FOR UNRESOLVED LOW COMPLAINTS */}
                     {!msg.can_escalate && msg.trigger_form && (msg.form_reason === 'unresolved_low_query' || (!msg.chatbot_resolved && msg.severity === 'low')) && (
                       <div 
-                        className="mt-3 p-3 rounded-3 border text-start shadow-sm"
-                        style={{
-                          backgroundColor: '#ffffff',
-                          borderColor: '#e2e8f0',
-                          borderLeft: '4px solid #475569'
-                        }}
+                        className="mt-3 p-3 rounded-3 text-start shadow-sm pa-advisory is-unresolved"
                       >
                         <div className="d-flex align-items-center gap-1 mb-2">
-                          <span className="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1" style={{ fontSize: '10px', fontWeight: '600' }}>
+                          <span className="badge bg-secondary-subtle text-dark rounded-pill px-2 py-1 fs-10 fw-semibold">
                             Policy Unresolved
                           </span>
                         </div>
@@ -757,8 +711,7 @@ function PolicyAssistant() {
                         </p>
                         <button
                           type="button"
-                          className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2"
-                          style={{ padding: '6px 14px', fontSize: '12.5px' }}
+                          className="btn btn-outline-dark btn-sm w-100 fw-semibold rounded-pill d-flex align-items-center justify-content-center gap-2 pa-followup-btn"
                           onClick={() => {
                             navigate(getLodgeRoute(), {
                               state: {
@@ -787,7 +740,7 @@ function PolicyAssistant() {
           {isTyping && (
             <div className="pa-msg-row bot">
               <div className="pa-msg-avatar purva-msg-avatar">
-                <img src="/purva-logo.svg" alt="Purva" style={{ width: "32px", height: "32px", borderRadius: "50%", objectFit: "contain" }} />
+                <img className="rounded-circle object-fit-contain pa-msg-avatar-img" src="/purva-logo.svg" alt="Purva" />
               </div>
               <div className="pa-msg-bubble bot pa-typing">
                 <span className="pa-dot"></span>
@@ -816,7 +769,7 @@ function PolicyAssistant() {
               </button>
               <div className="pa-recording-pulse"></div>
               <span className="pa-recording-time">{fmtTime(recordSecs)}</span>
-              <div style={{flex: 1}}></div>
+              <div className="pa-rec-spacer"></div>
               <button className="pa-send-btn" onClick={stopListening} title="Stop and send">
                 <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16"><path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z"/></svg>
               </button>

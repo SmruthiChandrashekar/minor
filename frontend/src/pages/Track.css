@@ -1,0 +1,82 @@
+.track-step-dot {
+  width: 32px;
+  height: 32px;
+  background-color: var(--surface-2);
+  color: var(--muted);
+}
+
+.track-step-line {
+  height: 3px;
+  margin-bottom: 18px;
+  background-color: var(--line);
+}
+
+.track-page {
+  min-height: 80vh;
+}
+
+.track-card {
+  border-radius: 12px;
+}
+
+.form-control.track-id-input:not(.is-invalid) {
+  border-color: #ced4da;
+}
+
+.btn.track-btn {
+  --bs-btn-border-color: var(--navy);
+  --bs-btn-hover-border-color: var(--navy);
+  --bs-btn-active-border-color: var(--navy);
+  --bs-btn-disabled-border-color: var(--navy);
+}
+
+.track-result-icon {
+  width: 64px;
+  height: 64px;
+  background-color: #e8f4fd;
+}
+
+.track-text {
+  line-height: 1.6;
+}
+
+.track-step-dot.is-done {
+  background-color: var(--navy);
+  color: #fff;
+}
+
+.track-step-label {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.track-step-label.is-done {
+  color: var(--navy);
+}
+
+.track-step-label.is-current {
+  font-weight: 700;
+}
+
+.track-step-line.is-done {
+  background-color: var(--navy);
+}
+
+/* Remarks box tinted by status */
+.track-remarks {
+  background-color: #eff6ff;
+  border-left: 4px solid #2563eb;
+  color: #1e3a8a;
+}
+
+.track-remarks.is-resolved {
+  background-color: #e8f5e9;
+  border-left-color: #2e7d32;
+  color: #1b5e20;
+}
+
+.track-remarks.is-rejected {
+  background-color: #fce4ec;
+  border-left-color: #c62828;
+  color: #7f1d1d;
+}

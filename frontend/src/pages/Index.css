@@ -1,0 +1,148 @@
+.home-page {
+  background-color: var(--bg);
+}
+
+.home-hero {
+  padding: var(--s8) 0 var(--s7);
+  border-bottom: 1px solid rgba(229, 222, 210, 0.2);
+}
+
+.home-hero-title {
+  font-size: var(--fs-h1);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  margin-bottom: var(--s4);
+}
+
+.home-hero-lead {
+  color: #c4d2ec;
+  max-width: 42ch;
+  line-height: 1.6;
+  margin-bottom: var(--s5);
+}
+
+.btn.home-lodge-btn {
+  border-radius: var(--r-pill);
+  --bs-btn-focus-box-shadow: var(--sh-2);
+  box-shadow: var(--sh-2);
+}
+
+.btn.home-track-btn {
+  --bs-btn-bg: transparent;
+  --bs-btn-hover-bg: transparent;
+  --bs-btn-active-bg: transparent;
+  --bs-btn-disabled-bg: transparent;
+}
+
+.home-badges {
+  opacity: 0.9;
+}
+
+.home-badge {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.home-categories {
+  padding: var(--s7) 0;
+  background-color: var(--surface-2);
+}
+
+.home-section-lead {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.home-category-icon {
+  width: 52px;
+  height: 52px;
+  background-color: var(--surface-2);
+}
+
+.home-category-glyph {
+  font-size: 1.4rem;
+}
+
+.home-category-title {
+  font-size: 19px;
+}
+
+.home-category-desc {
+  line-height: 1.6;
+  min-height: 65px;
+}
+
+.home-journey {
+  padding: var(--s7) 0;
+  background-color: var(--surface);
+}
+
+.home-about {
+  background-color: var(--bg);
+  padding: var(--s8) 0;
+}
+
+.home-about-title {
+  margin-bottom: 20px;
+}
+
+.home-about-logo {
+  height: 55px;
+  margin: 0 10px;
+}
+
+.home-about-mark {
+  font-size: 2.5rem;
+  font-weight: 900;
+}
+
+.home-about-text {
+  color: var(--muted);
+  line-height: 1.8;
+  margin-bottom: 30px;
+}
+
+.home-feature-icon {
+  width: 38px;
+  height: 38px;
+  background-color: var(--accent);
+}
+
+.home-feature-glyph {
+  font-size: 1rem;
+}
+
+.home-feature-label {
+  color: var(--text);
+}
+
+.home-feature-desc {
+  color: var(--muted);
+}
+
+.home-about-img {
+  max-width: 520px;
+  height: auto;
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2);
+  border: 4px solid var(--surface);
+}
+
+.home-stat-card {
+  bottom: -20px;
+  left: 20px;
+  background-color: var(--surface);
+  color: var(--text);
+  padding: 16px 24px;
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
+  border-left: 5px solid var(--accent);
+}
+
+.home-stat-value {
+  font-size: 28px;
+}
+
+.home-stat-label {
+  color: var(--muted);
+}

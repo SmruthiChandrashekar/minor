@@ -4,6 +4,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { supabase } from "../services/supabaseClient";
 import { apiClient } from "../services/api";
 import { Link, useNavigate } from "react-router-dom";
+import "./Profile.css";
 
 function Profile() {
   const { user, userDetails, isAdmin, isSuperAdmin, refreshUserDetails, updateUserDetailsLocally } = useAuth();
@@ -285,7 +286,7 @@ function Profile() {
   const badges = getProfileBadges();
 
   return (
-    <div className="container py-5" style={{ minHeight: "85vh" }}>
+    <div className="container py-5 profile-page">
 
       {/* BREADCRUMB */}
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -297,12 +298,12 @@ function Profile() {
                   {isAdmin ? "Admin Portal" : "Dashboard"}
                 </Link>
               </li>
-              <li className="breadcrumb-item active" aria-current="page" style={{ color: "var(--text-color)" }}>
+              <li className="breadcrumb-item active text-theme" aria-current="page">
                 {isExternal ? "Stakeholder Profile" : (isContract ? "Contractor Profile" : "Profile")}
               </li>
             </ol>
           </nav>
-          <h2 className="fw-bold mb-0" style={{ color: "var(--text-color)" }}>
+          <h2 className="fw-bold mb-0 text-theme">
             {isExternal ? "Stakeholder Profile" : (isContract ? "Workforce Profile" : "Account Profile")}
           </h2>
         </div>
@@ -317,7 +318,7 @@ function Profile() {
 
       {/* FEEDBACK ALERT */}
       {feedback.message && (
-        <div className={`alert alert-dark border-0 shadow-sm`} role="alert" style={{ background: "var(--navy)", color: "#fff" }}>
+        <div className={`alert alert-dark border-0 shadow-sm bg-navy text-white`} role="alert">
           {feedback.message}
           <button type="button" className="btn-close btn-close-white" onClick={() => setFeedback({ type: "", message: "" })}></button>
         </div>
@@ -325,61 +326,40 @@ function Profile() {
 
       {/* TOP PROFILE HERO CARD */}
       <div 
-        className="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" 
-        style={{ background: "var(--card-bg)" }}
+        className="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden profile-card"
       >
         {/* BANNER HEADER */}
-        <div style={{
-          height: "135px",
-          background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)",
-          position: "relative"
-        }}>
-          <div style={{
-            position: "absolute", right: "20px", top: "20px",
-            color: "rgba(255,255,255,0.15)", fontSize: "65px", fontWeight: "900",
-            userSelect: "none", lineHeight: 1
-          }}>
+        <div className="bg-navy position-relative profile-banner">
+          <div className="position-absolute user-select-none lh-1 profile-banner-mark">
             GRM
           </div>
         </div>
 
         {/* AVATAR + DETAILS ROW */}
-        <div className="px-4 pb-4" style={{ marginTop: "-60px" }}>
+        <div className="px-4 pb-4 profile-header-body">
           <div className="d-flex flex-column flex-md-row align-items-md-end justify-content-between gap-3">
             
             {/* AVATAR & NAME */}
             <div className="d-flex align-items-end gap-3">
-              <div style={{ position: "relative" }}>
+              <div className="position-relative">
                 <div 
-                  className="rounded-circle shadow-lg d-flex align-items-center justify-content-center"
-                  style={{
-                    width: "115px",
-                    height: "115px",
-                    backgroundColor: "var(--navy)",
-                    border: "4px solid var(--card-bg)",
-                    overflow: "hidden",
-                    position: "relative"
-                  }}
+                  className="rounded-circle shadow-lg d-flex align-items-center justify-content-center bg-navy overflow-hidden position-relative profile-avatar"
                 >
                   {formData.avatar_url ? (
-                    <img 
+                    <img
+                      className="w-100 h-100 object-fit-cover"
                       src={formData.avatar_url} 
                       alt={formData.name || "User Avatar"} 
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }} 
                     />
                   ) : (
-                    <span style={{ fontSize: "2.6rem", color: "#fff", fontWeight: "bold" }}>
+                    <span className="text-white fw-bold profile-avatar-initial">
                       {formData.name ? formData.name.charAt(0).toUpperCase() : (user?.email?.charAt(0).toUpperCase() || "U")}
                     </span>
                   )}
 
                   {uploadingAvatar && (
-                    <div 
-                      style={{
-                        position: "absolute", inset: 0,
-                        backgroundColor: "rgba(0,0,0,0.6)",
-                        display: "flex", alignItems: "center", justifyContent: "center"
-                      }}
+                    <div
+                      className="position-absolute d-flex align-items-center justify-content-center profile-avatar-overlay"
                     >
                       <div className="spinner-border text-light spinner-border-sm" role="status"></div>
                     </div>
@@ -397,19 +377,7 @@ function Profile() {
                 <button 
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="btn btn-sm btn-primary rounded-circle shadow position-absolute"
-                  style={{
-                    bottom: "4px",
-                    right: "4px",
-                    width: "34px",
-                    height: "34px",
-                    padding: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)",
-                    border: "2px solid var(--card-bg)"
-                  }}
+                  className="btn btn-sm btn-primary rounded-circle shadow position-absolute p-0 d-flex align-items-center justify-content-center profile-avatar-upload"
                   title="Upload profile photo"
                   disabled={uploadingAvatar}
                 >
@@ -423,35 +391,35 @@ function Profile() {
               {/* USERNAME & BADGES */}
               <div>
                 <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                  <h3 className="fw-bold mb-0" style={{ color: "var(--text-color)" }}>
+                  <h3 className="fw-bold mb-0">
                     {formData.name || "User Profile"}
                   </h3>
                   
                   {/* Persona Badge */}
                   <span 
-                    className="badge rounded-pill px-3 py-1"
-                    style={{ backgroundColor: badges.role.bg, color: badges.role.color, fontSize: "12px", fontWeight: "600" }}
+                    className="badge rounded-pill px-3 py-1 fs-12 fw-semibold"
+                    style={{ backgroundColor: badges.role.bg, color: badges.role.color }}
                   >
                     {badges.role.label}
                   </span>
 
                   {/* Department Badge (only for Internal/Admin) */}
                   {badges.deptLabel && (
-                    <span className="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1" style={{ fontSize: "12px" }}>
+                    <span className="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fs-12">
                       {badges.deptLabel}
                     </span>
                   )}
 
                   {/* City Badge (for External Stakeholder) */}
                   {isExternal && badges.cityLabel && (
-                    <span className="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1" style={{ fontSize: "12px" }}>
+                    <span className="badge bg-secondary-subtle text-secondary rounded-pill px-3 py-1 fs-12">
                       Location: {badges.cityLabel}
                     </span>
                   )}
 
                   {/* Trade / Role badge for contract */}
                   {isContract && formData.designation && (
-                    <span className="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1" style={{ fontSize: "12px" }}>
+                    <span className="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1 fs-12">
                       Trade: {formData.designation}
                     </span>
                   )}
@@ -468,9 +436,8 @@ function Profile() {
               <button 
                 type="button" 
                 onClick={() => fileInputRef.current?.click()}
-                className="btn btn-outline-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1"
+                className="btn btn-outline-primary btn-sm rounded-pill px-3 d-flex align-items-center gap-1 profile-photo-btn"
                 disabled={uploadingAvatar}
-                style={{ borderColor: "#002b66", color: "#002b66" }}
               >
                 <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
                   <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
@@ -500,18 +467,13 @@ function Profile() {
 
         {/* LEFT COLUMN: FORM TABS */}
         <div className="col-lg-8">
-          <div className="card border-0 shadow-sm rounded-4" style={{ background: "var(--card-bg)" }}>
+          <div className="card border-0 shadow-sm rounded-4 profile-card">
             
             {/* TABS */}
             <div className="border-bottom px-4 pt-3 d-flex gap-3">
               <button
                 type="button"
-                className={`btn btn-sm rounded-0 border-0 pb-3 fw-bold ${activeTab === 'info' ? 'text-primary' : 'text-muted'}`}
-                style={{
-                  borderBottom: activeTab === 'info' ? '3px solid #002b66' : '3px solid transparent',
-                  color: activeTab === 'info' ? '#002b66' : undefined,
-                  fontSize: '14.5px'
-                }}
+                className={`btn btn-sm rounded-0 pb-3 fw-bold profile-tab ${activeTab === 'info' ? "is-active" : "text-muted"}`}
                 onClick={() => setActiveTab('info')}
               >
                 {isExternal ? "Contact & Relationship Details" : (isContract ? "Contractor & Trade Details" : "Professional & Contact Info")}
@@ -519,12 +481,7 @@ function Profile() {
 
               <button
                 type="button"
-                className={`btn btn-sm rounded-0 border-0 pb-3 fw-bold ${activeTab === 'contacts' ? 'text-primary' : 'text-muted'}`}
-                style={{
-                  borderBottom: activeTab === 'contacts' ? '3px solid #002b66' : '3px solid transparent',
-                  color: activeTab === 'contacts' ? '#002b66' : undefined,
-                  fontSize: '14.5px'
-                }}
+                className={`btn btn-sm rounded-0 pb-3 fw-bold profile-tab ${activeTab === 'contacts' ? "is-active" : "text-muted"}`}
                 onClick={() => setActiveTab('contacts')}
               >
                 {isExternal ? "Alternate Contacts & Preferences" : "Emergency & Reporting Contacts"}
@@ -532,12 +489,7 @@ function Profile() {
 
               <button
                 type="button"
-                className={`btn btn-sm rounded-0 border-0 pb-3 fw-bold ${activeTab === 'security' ? 'text-primary' : 'text-muted'}`}
-                style={{
-                  borderBottom: activeTab === 'security' ? '3px solid #002b66' : '3px solid transparent',
-                  color: activeTab === 'security' ? '#002b66' : undefined,
-                  fontSize: '14.5px'
-                }}
+                className={`btn btn-sm rounded-0 pb-3 fw-bold profile-tab ${activeTab === 'security' ? "is-active" : "text-muted"}`}
                 onClick={() => setActiveTab('security')}
               >
                 Account & Security
@@ -556,7 +508,7 @@ function Profile() {
                     
                     {/* FULL NAME */}
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Full Name *</label>
+                      <label className="form-label small fw-semibold text-theme">Full Name *</label>
                       <input 
                         type="text" 
                         name="name"
@@ -570,21 +522,20 @@ function Profile() {
 
                     {/* EMAIL */}
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Email Address</label>
+                      <label className="form-label small fw-semibold text-theme">Email Address</label>
                       <input 
                         type="email" 
                         name="email"
-                        className="form-control"
+                        className="form-control profile-input-locked"
                         value={formData.email}
                         disabled
-                        style={{ backgroundColor: "rgba(0,0,0,0.03)", opacity: 0.85 }}
                       />
-                      <span className="text-muted" style={{ fontSize: "11px" }}>Email is linked to your login credentials.</span>
+                      <span className="text-muted fs-11">Email is linked to your login credentials.</span>
                     </div>
 
                     {/* PRIMARY PHONE */}
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Primary Phone Number</label>
+                      <label className="form-label small fw-semibold text-theme">Primary Phone Number</label>
                       <input 
                         type="tel" 
                         name="phone"
@@ -599,7 +550,7 @@ function Profile() {
                     {isExternal && (
                       <>
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Stakeholder Category *</label>
+                          <label className="form-label small fw-semibold text-theme">Stakeholder Category *</label>
                           <select 
                             name="stakeholder_type" 
                             className="form-select"
@@ -616,7 +567,7 @@ function Profile() {
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Associated Property / Project Name</label>
+                          <label className="form-label small fw-semibold text-theme">Associated Property / Project Name</label>
                           <input 
                             type="text" 
                             name="associated_project"
@@ -625,11 +576,11 @@ function Profile() {
                             onChange={handleChange}
                             placeholder="e.g. Purva Silversands (Unit 402) / Purva Bliss"
                           />
-                          <span className="text-muted" style={{ fontSize: "11px" }}>Property or site related to your interaction or grievance.</span>
+                          <span className="text-muted fs-11">Property or site related to your interaction or grievance.</span>
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>City / Residential Location</label>
+                          <label className="form-label small fw-semibold text-theme">City / Residential Location</label>
                           <input 
                             type="text" 
                             name="location"
@@ -641,7 +592,7 @@ function Profile() {
                         </div>
 
                         <div className="col-12">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Notes / Remarks (Optional)</label>
+                          <label className="form-label small fw-semibold text-theme">Notes / Remarks (Optional)</label>
                           <textarea 
                             name="bio"
                             className="form-control"
@@ -658,7 +609,7 @@ function Profile() {
                     {isContract && (
                       <>
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Contracting Agency / Company</label>
+                          <label className="form-label small fw-semibold text-theme">Contracting Agency / Company</label>
                           <input 
                             type="text" 
                             name="agency_name"
@@ -670,7 +621,7 @@ function Profile() {
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Trade / Workforce Role *</label>
+                          <label className="form-label small fw-semibold text-theme">Trade / Workforce Role *</label>
                           <input 
                             type="text" 
                             name="designation"
@@ -682,7 +633,7 @@ function Profile() {
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Assigned Project / Site Location</label>
+                          <label className="form-label small fw-semibold text-theme">Assigned Project / Site Location</label>
                           <input 
                             type="text" 
                             name="location"
@@ -694,7 +645,7 @@ function Profile() {
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Contractor / Worker ID</label>
+                          <label className="form-label small fw-semibold text-theme">Contractor / Worker ID</label>
                           <input 
                             type="text" 
                             name="associated_project"
@@ -706,7 +657,7 @@ function Profile() {
                         </div>
 
                         <div className="col-12">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Work Notes & Skills Summary</label>
+                          <label className="form-label small fw-semibold text-theme">Work Notes & Skills Summary</label>
                           <textarea 
                             name="bio"
                             className="form-control"
@@ -723,7 +674,7 @@ function Profile() {
                     {(isInternal || isAdmin) && (
                       <>
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Job Title / Designation *</label>
+                          <label className="form-label small fw-semibold text-theme">Job Title / Designation *</label>
                           <input 
                             type="text" 
                             name="designation"
@@ -735,7 +686,7 @@ function Profile() {
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Employee ID</label>
+                          <label className="form-label small fw-semibold text-theme">Employee ID</label>
                           <input 
                             type="text" 
                             name="employee_id"
@@ -747,7 +698,7 @@ function Profile() {
                         </div>
 
                         <div className="col-md-6">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Base Office / Branch Location</label>
+                          <label className="form-label small fw-semibold text-theme">Base Office / Branch Location</label>
                           <input 
                             type="text" 
                             name="location"
@@ -759,7 +710,7 @@ function Profile() {
                         </div>
 
                         <div className="col-12">
-                          <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Professional Bio / Role Overview</label>
+                          <label className="form-label small fw-semibold text-theme">Professional Bio / Role Overview</label>
                           <textarea 
                             name="bio"
                             className="form-control"
@@ -782,7 +733,7 @@ function Profile() {
                   <div className="row g-3">
                     
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Alternate / Secondary Phone Number</label>
+                      <label className="form-label small fw-semibold text-theme">Alternate / Secondary Phone Number</label>
                       <input 
                         type="tel" 
                         name="alternate_phone"
@@ -795,7 +746,7 @@ function Profile() {
 
                     {isExternal && (
                       <div className="col-md-6">
-                        <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>Preferred Communication Channel</label>
+                        <label className="form-label small fw-semibold text-theme">Preferred Communication Channel</label>
                         <select 
                           name="preferred_contact_method" 
                           className="form-select"
@@ -811,7 +762,7 @@ function Profile() {
                     )}
 
                     <div className="col-12 pt-3 border-top mt-3">
-                      <h6 className="fw-bold mb-1" style={{ color: "var(--text-color)" }}>
+                      <h6 className="fw-bold mb-1">
                         {isExternal ? "Secondary Point of Contact (Optional)" : "Emergency Contact Details"}
                       </h6>
                       <p className="text-muted small mb-3">
@@ -822,7 +773,7 @@ function Profile() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>
+                      <label className="form-label small fw-semibold text-theme">
                         {isExternal ? "Contact Person Name" : "Emergency Contact Name"}
                       </label>
                       <input 
@@ -836,7 +787,7 @@ function Profile() {
                     </div>
 
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-color)" }}>
+                      <label className="form-label small fw-semibold text-theme">
                         {isExternal ? "Contact Number & Relationship" : "Contact Number & Relationship"}
                       </label>
                       <input 
@@ -852,24 +803,24 @@ function Profile() {
                     {/* Department info for internal/admin */}
                     {!isExternal && (
                       <div className="col-12 pt-3 border-top mt-3">
-                        <h6 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>Organization Summary</h6>
+                        <h6 className="fw-bold mb-3">Organization Summary</h6>
                         <div className="row g-3">
                           <div className="col-md-4">
                             <div className="p-3 rounded-3 bg-light border">
                               <span className="text-muted small d-block">Department / Queue</span>
-                              <strong style={{ color: "var(--text-color)" }}>{userDetails?.department || "General"}</strong>
+                              <strong className="text-theme">{userDetails?.department || "General"}</strong>
                             </div>
                           </div>
                           <div className="col-md-4">
                             <div className="p-3 rounded-3 bg-light border">
                               <span className="text-muted small d-block">Classification</span>
-                              <strong style={{ color: "var(--text-color)" }}>{userType}</strong>
+                              <strong className="text-theme">{userType}</strong>
                             </div>
                           </div>
                           <div className="col-md-4">
                             <div className="p-3 rounded-3 bg-light border">
                               <span className="text-muted small d-block">Operational Tier</span>
-                              <strong style={{ color: "var(--text-color)" }}>{userDetails?.admin_tier || "Standard"}</strong>
+                              <strong className="text-theme">{userDetails?.admin_tier || "Standard"}</strong>
                             </div>
                           </div>
                         </div>
@@ -885,7 +836,7 @@ function Profile() {
                 {activeTab === "security" && (
                   <div>
                     <div className="mb-4">
-                      <h6 className="fw-bold mb-2" style={{ color: "var(--text-color)" }}>Password & Access</h6>
+                      <h6 className="fw-bold mb-2">Password & Access</h6>
                       <p className="text-muted small mb-3">Manage authentication and password security.</p>
                       
                       <div className="p-3 rounded-3 bg-light border d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -911,14 +862,13 @@ function Profile() {
                     </div>
 
                     <div className="mb-3">
-                      <h6 className="fw-bold mb-2" style={{ color: "var(--text-color)" }}>System User ID</h6>
+                      <h6 className="fw-bold mb-2">System User ID</h6>
                       <div className="input-group">
                         <input 
                           type="text" 
-                          className="form-control font-monospace small" 
+                          className="form-control font-monospace small profile-input-readonly" 
                           value={user?.id || ""} 
-                          readOnly 
-                          style={{ backgroundColor: "rgba(0,0,0,0.03)" }}
+                          readOnly
                         />
                         <button 
                           className="btn btn-outline-secondary" 
@@ -936,9 +886,8 @@ function Profile() {
                 <div className="pt-4 border-top mt-4 d-flex justify-content-end gap-2">
                   <button 
                     type="submit" 
-                    className="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm"
+                    className="btn btn-primary px-4 py-2 fw-semibold rounded-pill shadow-sm profile-save-btn"
                     disabled={loading}
-                    style={{ background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)", border: "none", color: "#ffffff" }}
                   >
                     {loading ? (
                       <><span className="spinner-border spinner-border-sm me-2" role="status" />Saving Changes...</>
@@ -955,18 +904,18 @@ function Profile() {
 
         {/* RIGHT COLUMN: TAILORED SUMMARY CARD */}
         <div className="col-lg-4">
-          <div className="card border-0 shadow-sm rounded-4 p-4 mb-4" style={{ background: "var(--card-bg)" }}>
-            <h6 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>Profile Summary</h6>
+          <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 profile-card">
+            <h6 className="fw-bold mb-3">Profile Summary</h6>
             
             <ul className="list-unstyled mb-0 d-flex flex-column gap-3 small">
               <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                 <span className="text-muted">Account Status</span>
-                <span className="badge rounded-pill px-2 py-1" style={{ background: "rgba(20, 40, 65, 0.08)", color: "var(--navy)", fontWeight: "600" }}>Active</span>
+                <span className="badge rounded-pill px-2 py-1 text-navy fw-semibold profile-status-badge">Active</span>
               </li>
 
               <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                 <span className="text-muted">Category</span>
-                <span className="fw-bold" style={{ color: "var(--text-color)" }}>
+                <span className="fw-bold text-theme">
                   {isExternal ? "External Stakeholder" : (isContract ? "Contract Partner" : "Internal Team")}
                 </span>
               </li>
@@ -976,20 +925,20 @@ function Profile() {
                 <>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Stakeholder Type</span>
-                    <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                    <span className="fw-bold text-end text-theme profile-summary-value">
                       {formData.stakeholder_type || "Homebuyer / Owner"}
                     </span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">City / Location</span>
-                    <span className="fw-bold" style={{ color: "var(--text-color)" }}>
+                    <span className="fw-bold text-theme">
                       {formData.location || userDetails?.department || "Not set"}
                     </span>
                   </li>
                   {formData.associated_project && (
                     <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                       <span className="text-muted">Associated Property</span>
-                      <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                      <span className="fw-bold text-end text-theme profile-summary-value">
                         {formData.associated_project}
                       </span>
                     </li>
@@ -1002,19 +951,19 @@ function Profile() {
                 <>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Agency</span>
-                    <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                    <span className="fw-bold text-end text-theme profile-summary-value">
                       {formData.agency_name || userDetails?.department || "Not set"}
                     </span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Trade / Role</span>
-                    <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                    <span className="fw-bold text-end text-theme profile-summary-value">
                       {formData.designation || "Workforce"}
                     </span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Site Location</span>
-                    <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                    <span className="fw-bold text-end text-theme profile-summary-value">
                       {formData.location || "Not set"}
                     </span>
                   </li>
@@ -1026,19 +975,19 @@ function Profile() {
                 <>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Department</span>
-                    <span className="fw-bold" style={{ color: "var(--text-color)" }}>
+                    <span className="fw-bold text-theme">
                       {userDetails?.department || "General"}
                     </span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Job Title</span>
-                    <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                    <span className="fw-bold text-end text-theme profile-summary-value">
                       {formData.designation || "Not set"}
                     </span>
                   </li>
                   <li className="d-flex justify-content-between align-items-center border-bottom pb-2">
                     <span className="text-muted">Office Location</span>
-                    <span className="fw-bold text-end" style={{ color: "var(--text-color)", maxWidth: "160px" }}>
+                    <span className="fw-bold text-end text-theme profile-summary-value">
                       {formData.location || "Corporate HQ"}
                     </span>
                   </li>
@@ -1047,7 +996,7 @@ function Profile() {
 
               <li className="d-flex justify-content-between align-items-center">
                 <span className="text-muted">Contact Phone</span>
-                <span className="fw-bold" style={{ color: "var(--text-color)" }}>
+                <span className="fw-bold text-theme">
                   {formData.phone || "Not set"}
                 </span>
               </li>
@@ -1055,22 +1004,17 @@ function Profile() {
           </div>
 
           <div 
-            className="card border-0 shadow-sm rounded-4 p-4 text-center text-white" 
-            style={{ 
-              background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%)", 
-              color: "#ffffff" 
-            }}
+            className="card border-0 shadow-sm rounded-4 p-4 text-center text-white profile-cta-card"
           >
-            <h5 className="fw-bold mb-2 text-white" style={{ color: "#ffffff" }}>Puravankara GRM</h5>
-            <p className="small mb-3 text-white" style={{ color: "#e2e8f0", opacity: 0.9 }}>
+            <h5 className="fw-bold mb-2 text-white">Puravankara GRM</h5>
+            <p className="small mb-3 profile-cta-text">
               {isExternal 
                 ? "Manage your contact details and property associations for transparent grievance resolution." 
                 : "Keep your contact information current for timely assignment and resolution alerts."}
             </p>
             <Link 
               to={isAdmin ? "/admin/dashboard" : "/lodge-selection"} 
-              className="btn btn-light btn-sm rounded-pill px-4 fw-bold shadow-sm"
-              style={{ color: "var(--navy)" }}
+              className="btn btn-light text-navy btn-sm rounded-pill px-4 fw-bold shadow-sm"
             >
               {isAdmin ? "Go to Admin Dashboard" : "Lodge a Grievance"}
             </Link>

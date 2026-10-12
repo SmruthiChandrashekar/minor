@@ -1,0 +1,116 @@
+.profile-page {
+  min-height: 85vh;
+}
+
+.profile-card {
+  background: var(--card-bg);
+}
+
+.profile-banner {
+  height: 135px;
+}
+
+.profile-banner-mark {
+  right: 20px;
+  top: 20px;
+  color: rgba(255,255,255,0.15);
+  font-size: 65px;
+  font-weight: 900;
+}
+
+.profile-header-body {
+  margin-top: -60px;
+}
+
+.profile-avatar {
+  width: 115px;
+  height: 115px;
+  border: 4px solid var(--card-bg);
+}
+
+.profile-avatar-initial {
+  font-size: 2.6rem;
+}
+
+.profile-avatar-overlay {
+  inset: 0;
+  background-color: rgba(0,0,0,0.6);
+}
+
+.btn.profile-avatar-upload {
+  bottom: 4px;
+  right: 4px;
+  width: 34px;
+  height: 34px;
+  --bs-btn-bg: var(--navy);
+  --bs-btn-hover-bg: var(--navy);
+  --bs-btn-active-bg: var(--navy);
+  --bs-btn-disabled-bg: var(--navy);
+  border: 2px solid var(--card-bg);
+  --bs-btn-border-color: var(--card-bg);
+  --bs-btn-hover-border-color: var(--card-bg);
+  --bs-btn-active-border-color: var(--card-bg);
+  --bs-btn-disabled-border-color: var(--card-bg);
+}
+
+.btn.profile-photo-btn {
+  --bs-btn-border-color: #002b66;
+  --bs-btn-hover-border-color: #002b66;
+  --bs-btn-active-border-color: #002b66;
+  --bs-btn-disabled-border-color: #002b66;
+  --bs-btn-color: #002b66;
+  --bs-btn-hover-color: #002b66;
+  --bs-btn-active-color: #002b66;
+  --bs-btn-disabled-color: #002b66;
+}
+
+.btn.profile-tab {
+  font-size: 14.5px;
+  border-width: 0 0 3px;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
+}
+
+.btn.profile-tab.is-active {
+  --bs-btn-color: #002b66;
+  --bs-btn-hover-color: #002b66;
+  --bs-btn-active-color: #002b66;
+  --bs-btn-border-color: #002b66;
+  --bs-btn-hover-border-color: #002b66;
+  --bs-btn-active-border-color: #002b66;
+}
+
+.form-control.profile-input-locked {
+  background-color: rgba(0,0,0,0.03);
+  opacity: 0.85;
+}
+
+.form-control.profile-input-readonly {
+  background-color: rgba(0,0,0,0.03);
+}
+
+.btn.profile-save-btn {
+  --bs-btn-bg: var(--navy);
+  --bs-btn-hover-bg: var(--navy);
+  --bs-btn-active-bg: var(--navy);
+  --bs-btn-disabled-bg: var(--navy);
+  border: none;
+}
+
+.profile-status-badge {
+  background: rgba(20, 40, 65, 0.08);
+}
+
+.profile-summary-value {
+  max-width: 160px;
+}
+
+.card.profile-cta-card {
+  background-color: var(--navy) !important;
+}
+
+.profile-cta-card .profile-cta-text {
+  color: #e2e8f0;
+  opacity: 0.9;
+}

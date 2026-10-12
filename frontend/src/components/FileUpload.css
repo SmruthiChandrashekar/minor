@@ -1,0 +1,8 @@
+.upload-dropzone {
+  background-color: #f8f9fa;
+  border: var(--bs-border-width) dashed #ced4da;
+}
+
+.upload-file-name {
+  max-width: 80%;
+}

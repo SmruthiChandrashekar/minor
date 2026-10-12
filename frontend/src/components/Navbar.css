@@ -1,0 +1,90 @@
+.site-navbar {
+  background-color: var(--navbar-bg);
+}
+
+.navbar-brand-logo {
+  height: 55px;
+  margin-right: 6px;
+}
+
+.brand-mark {
+  font-size: 1.6rem;
+  font-family: Arial Black, sans-serif;
+}
+
+.nav-assistant-link {
+  color: var(--text-color);
+  font-weight: 600;
+  opacity: 0.85;
+  transition: color 0.2s, opacity 0.2s;
+  font-size: 14.5px;
+}
+
+.nav-assistant-link.is-active {
+  color: var(--brand-navy);
+  font-weight: 700;
+  opacity: 1;
+}
+
+.purva-nav-avatar {
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid color-mix(in srgb, var(--brand-navy) 35%, transparent);
+  transition: border-color 0.2s;
+}
+
+.nav-assistant-link.is-active .purva-nav-avatar {
+  border-color: var(--brand-navy);
+}
+
+.nav-live-dot {
+  width: 6px;
+  height: 6px;
+  background: #22c55e;
+  animation: pa-pulse-dot 2s ease-in-out infinite;
+}
+
+.nav-lang-select {
+  width: auto;
+}
+
+.nav-profile-link {
+  transition: all 0.2s;
+}
+
+.nav-avatar-admin {
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--brand-navy);
+}
+
+.nav-avatar-admin-fallback {
+  width: 34px;
+  height: 34px;
+  background-color: var(--brand-navy);
+}
+
+.nav-avatar-user {
+  width: 34px;
+  height: 34px;
+  border: 2px solid #00838f;
+}
+
+.nav-avatar-user-fallback {
+  width: 34px;
+  height: 34px;
+  background-color: #ff5722;
+}
+
+.nav-greeting {
+  font-size: 15px;
+}
+
+.nav-greeting-hi {
+  opacity: 0.8;
+}
+
+/* nav-link-custom forces the theme text colour; the portal link is red */
+.nav-link-custom.nav-link-portal {
+  color: #d32f2f !important;
+}

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
+import "./Index.css";
 
 function Index() {
   const { t } = useLanguage();
@@ -82,45 +83,26 @@ function Index() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--bg)" }}>
+    <div className="min-vh-100 home-page">
 
-      {/* ================= HERO SECTION ================= */}
-      <section className="hero text-white" style={{
-        padding: "var(--s8) 0 var(--s7)",
-        color: "#ffffff",
-        background: "radial-gradient(900px 420px at 85% -10%, rgba(121, 141, 166, 0.35), transparent 70%), linear-gradient(155deg, var(--navy) 0%, var(--navy-2) 60%, var(--navy) 100%)",
-        borderBottom: "1px solid rgba(229, 222, 210, 0.2)"
-      }}>
+      {/* Hero Section */}
+      <section className="hero text-white bg-navy home-hero">
         <div className="container text-white">
           <div className="row align-items-center g-5">
 
-            {/* HERO LEFT CONTENT */}
+            {/* Hero left content */}
             <div className="col-lg-7">
-              <h1 className="text-white" style={{
-                fontSize: "var(--fs-h1)",
-                fontWeight: "800",
-                lineHeight: "1.02",
-                letterSpacing: "-0.035em",
-                color: "#ffffff",
-                marginBottom: "var(--s4)"
-              }}>
+              <h1 className="text-white fw-extrabold home-hero-title">
                 {t('heroHeadline1')}<br />{t('heroHeadline2')}
               </h1>
-              <p className="text-white" style={{
-                fontSize: "var(--fs-lg)",
-                color: "#c4d2ec",
-                maxWidth: "42ch",
-                lineHeight: "1.6",
-                marginBottom: "var(--s5)"
-              }}>
+              <p className="fs-lg home-hero-lead">
                 {t('heroDescription')}
               </p>
               
               <div className="d-flex flex-wrap gap-3 mb-4">
                 <button
                   onClick={() => handleProtectedAction("/lodge-selection")}
-                  className="btn btn-accent btn-lg px-4 py-3 fw-bold d-inline-flex align-items-center gap-2"
-                  style={{ borderRadius: "var(--r-pill)", boxShadow: "var(--sh-2)" }}
+                  className="btn btn-accent btn-lg px-4 py-3 fw-bold d-inline-flex align-items-center gap-2 home-lodge-btn"
                 >
                   <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -131,15 +113,7 @@ function Index() {
 
                 <button
                   onClick={handleTrack}
-                  className="btn btn-hero-track btn-lg px-4 py-3 fw-bold text-white d-inline-flex align-items-center gap-2"
-                  style={{
-                    borderRadius: "var(--r-pill)",
-                    color: "#ffffff",
-                    borderColor: "rgba(255, 255, 255, 0.45)",
-                    backgroundColor: "rgba(255, 255, 255, 0.1)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)"
-                  }}
+                  className="btn btn-hero-track btn-lg px-4 py-3 fw-bold text-white d-inline-flex align-items-center gap-2 home-track-btn"
                 >
                   <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"></circle>
@@ -149,21 +123,21 @@ function Index() {
                 </button>
               </div>
 
-              {/* STAKEHOLDER BADGE STRIP */}
-              <div className="d-flex flex-wrap gap-2 pt-2" style={{ opacity: 0.9 }}>
-                <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              {/* Stakeholder badge strip */}
+              <div className="d-flex flex-wrap gap-2 pt-2 home-badges">
+                <span className="badge text-white home-badge">
                   <i className="bi bi-person-check me-1"></i> {t('internalEmployeesBadge')}
                 </span>
-                <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <span className="badge text-white home-badge">
                   <i className="bi bi-hammer me-1"></i> {t('contractWorkforceBadge')}
                 </span>
-                <span className="badge text-white" style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <span className="badge text-white home-badge">
                   <i className="bi bi-globe2 me-1"></i> {t('externalStakeholdersBadge')}
                 </span>
               </div>
             </div>
 
-            {/* HERO RIGHT: TRACK CARD */}
+            {/* Hero right: Track card */}
             <div className="col-lg-5">
               <div className="card trk" id="track">
                 <h3>{t('trackCardTitle')}</h3>
@@ -196,7 +170,7 @@ function Index() {
                 </p>
 
                 {refStatus && (
-                  <div className="note n-info mt-3" style={{ animation: "fadeIn 0.3s ease" }}>
+                  <div className="note n-info mt-3">
                     <div>
                       <b>{refStatus.title}</b>
                       <span className="d-block mt-1">{refStatus.msg}</span>
@@ -211,15 +185,15 @@ function Index() {
       </section>
 
 
-      {/* ================= STAKEHOLDER CATEGORIES GRID ================= */}
-      <section style={{ padding: "var(--s7) 0", backgroundColor: "var(--surface-2)" }}>
+      {/* Stakeholder Categories Grid */}
+      <section className="home-categories">
         <div className="container">
           <div className="text-center mb-5">
             <span className="badge b-info mb-2 px-3 py-1">{t('universalRedressalBadge')}</span>
-            <h2 style={{ fontWeight: "800", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>
+            <h2 className="fw-extrabold fs-h2 text-heading">
               {t('designedForAllTitle')}
             </h2>
-            <p className="muted" style={{ fontSize: "var(--fs-md)", maxWidth: "620px", margin: "0 auto" }}>
+            <p className="muted fs-md home-section-lead">
               {t('designedForAllDesc')}
             </p>
           </div>
@@ -229,25 +203,18 @@ function Index() {
               <div key={idx} className="col-md-4">
                 <div
                   onClick={() => handleProtectedAction(s.path)}
-                  className="card h-100 p-4 border-0 text-start"
+                  className="card h-100 p-4 border-0 text-start cursor-pointer tile-card"
                   style={{
-                    borderRadius: "var(--r-lg)",
-                    backgroundColor: "var(--surface)",
-                    boxShadow: "var(--sh-1)",
-                    cursor: "pointer",
-                    transition: "all 0.25s ease",
                     borderTop: `4px solid ${s.color}`
                   }}
-                  onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-6px)"; e.currentTarget.style.boxShadow = "var(--sh-2)"; }}
-                  onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--sh-1)"; }}
                 >
-                  <div className="d-flex align-items-center justify-content-center rounded-circle mb-3"
-                    style={{ width: "52px", height: "52px", backgroundColor: "var(--surface-2)", color: s.color }}>
-                    <i className={`bi ${s.icon}`} style={{ fontSize: "1.4rem" }}></i>
+                  <div className="d-flex align-items-center justify-content-center rounded-circle mb-3 home-category-icon"
+                    style={{ color: s.color }}>
+                    <i className={`bi ${s.icon} home-category-glyph`}></i>
                   </div>
-                  <h5 className="fw-bold mb-2" style={{ color: "var(--heading-color)", fontSize: "19px" }}>{s.title}</h5>
-                  <p className="sm muted mb-3" style={{ fontSize: "14px", lineHeight: "1.6", minHeight: "65px" }}>{s.desc}</p>
-                  <div className="d-flex align-items-center gap-1 fw-bold" style={{ color: s.color, fontSize: "14px" }}>
+                  <h5 className="fw-bold mb-2 home-category-title">{s.title}</h5>
+                  <p className="sm muted mb-3 fs-14 home-category-desc">{s.desc}</p>
+                  <div className="d-flex align-items-center gap-1 fw-bold fs-14" style={{ color: s.color }}>
                     <span>{t('submitDetails')}</span>
                     <i className="bi bi-arrow-right"></i>
                   </div>
@@ -259,12 +226,12 @@ function Index() {
       </section>
 
 
-      {/* ================= JOURNEY / PROGRESS SECTION ================= */}
-      <section style={{ padding: "var(--s7) 0", backgroundColor: "var(--surface)" }}>
+      {/* Journey / Progress Section */}
+      <section className="home-journey">
         <div className="container">
           <div className="text-center mb-4">
-            <h2 style={{ fontWeight: "700", fontSize: "var(--fs-h2)", color: "var(--heading-color)" }}>{t('whatHappensTitle')}</h2>
-            <p className="muted" style={{ fontSize: "var(--fs-md)" }}>{t('whatHappensSubtitle')}</p>
+            <h2 className="fw-bold fs-h2 text-heading">{t('whatHappensTitle')}</h2>
+            <p className="muted fs-md">{t('whatHappensSubtitle')}</p>
           </div>
 
           <div className="journey-line">
@@ -272,8 +239,7 @@ function Index() {
             {journeyNotes.map((item, idx) => (
               <div
                 key={idx}
-                className={`journey-stop ${idx <= activeStep ? "on" : ""}`}
-                style={{ cursor: "pointer" }}
+                className={`journey-stop ${idx <= activeStep ? "on" : ""} cursor-pointer`}
                 onClick={() => setActiveStep(idx)}
               >
                 <h4>{item.title}</h4>
@@ -285,34 +251,18 @@ function Index() {
       </section>
 
 
-      {/* ================= ABOUT US SECTION ================= */}
-      <section style={{
-        backgroundColor: "var(--bg)",
-        padding: "var(--s8) 0"
-      }}>
+      {/* About us Section */}
+      <section className="home-about">
         <div className="container">
           <div className="row align-items-center g-5">
 
-            {/* LEFT: TEXT CONTENT */}
+            {/* Left: Text content */}
             <div className="col-lg-6">
-              <h2 style={{
-                fontWeight: "bold",
-                marginBottom: "20px",
-                color: "var(--heading-color)",
-                display: "flex",
-                alignItems: "center",
-                flexWrap: "wrap",
-                fontSize: "var(--fs-h2)"
-              }}>
-                About <img src="/purvankaraimg.png" alt="Puravankara" style={{ height: "55px", objectFit: "contain", margin: "0 10px" }} />
-                <span style={{ color: "var(--accent)", fontSize: "2.5rem", fontWeight: "900" }}>GRM</span>
+              <h2 className="fw-bold text-heading d-flex align-items-center flex-wrap fs-h2 home-about-title">
+                About <img className="object-fit-contain home-about-logo" src="/purvankaraimg.png" alt="Puravankara" />
+                <span className="text-accent home-about-mark">GRM</span>
               </h2>
-              <p style={{
-                color: "var(--muted)",
-                fontSize: "var(--fs-md)",
-                lineHeight: "1.8",
-                marginBottom: "30px"
-              }}>
+              <p className="fs-md home-about-text">
                 {t('aboutSectionDesc')}
               </p>
 
@@ -325,13 +275,12 @@ function Index() {
                 ].map((item, idx) => (
                   <div key={idx} className="col-sm-6">
                     <div className="d-flex align-items-start gap-3 p-2">
-                      <div className="text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0"
-                        style={{ width: "38px", height: "38px", backgroundColor: "var(--accent)" }}>
-                        <i className={`bi ${item.icon}`} style={{ fontSize: "1rem" }}></i>
+                      <div className="text-white rounded-circle p-2 d-flex align-items-center justify-content-center flex-shrink-0 home-feature-icon">
+                        <i className={`bi ${item.icon} home-feature-glyph`}></i>
                       </div>
                       <div>
-                        <strong style={{ fontSize: "var(--fs-sm)", display: "block", color: "var(--text)" }}>{item.label}</strong>
-                        <span style={{ fontSize: "var(--fs-xs)", color: "var(--muted)" }}>{item.desc}</span>
+                        <strong className="fs-sm d-block home-feature-label">{item.label}</strong>
+                        <span className="fs-xs home-feature-desc">{item.desc}</span>
                       </div>
                     </div>
                   </div>
@@ -339,35 +288,17 @@ function Index() {
               </div>
             </div>
 
-            {/* RIGHT: IMAGE */}
+            {/* Right: Image */}
             <div className="col-lg-6 text-center position-relative">
-              <div style={{ display: "inline-block", position: "relative" }}>
+              <div className="d-inline-block position-relative">
                 <img
+                  className="w-100 home-about-img"
                   src="/puravankara_building.png"
                   alt="Puravankara Building"
-                  style={{
-                    width: "100%",
-                    maxWidth: "520px",
-                    height: "auto",
-                    borderRadius: "var(--r-lg)",
-                    boxShadow: "var(--sh-2)",
-                    border: "4px solid var(--surface)"
-                  }}
                 />
-                <div style={{
-                  position: "absolute",
-                  bottom: "-20px",
-                  left: "20px",
-                  backgroundColor: "var(--surface)",
-                  color: "var(--text)",
-                  padding: "16px 24px",
-                  borderRadius: "var(--r-md)",
-                  boxShadow: "var(--sh-2)",
-                  borderLeft: "5px solid var(--accent)",
-                  textAlign: "left"
-                }}>
-                  <h4 style={{ fontWeight: "800", margin: 0, fontSize: "28px", color: "var(--heading-color)" }}>98%</h4>
-                  <p style={{ color: "var(--muted)", margin: 0, fontSize: "var(--fs-xs)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <div className="position-absolute text-start home-stat-card">
+                  <h4 className="fw-extrabold m-0 text-heading home-stat-value">98%</h4>
+                  <p className="m-0 fs-xs fw-bold text-uppercase ls-half home-stat-label">
                     Resolution Rate
                   </p>
                 </div>

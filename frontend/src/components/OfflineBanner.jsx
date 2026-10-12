@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 
+import "./OfflineBanner.css";
 /**
  * OfflineBanner — shows a subtle, animated banner when the user loses internet.
  * It also listens for the "online" event and auto-flushes any queued complaints.
@@ -18,7 +19,7 @@ const OfflineBanner = () => {
         const { flushQueue } = await import("../services/offlineQueue.js");
         const synced = await flushQueue();
         if (synced > 0) {
-          setSyncMessage(`✅ ${synced} offline complaint${synced > 1 ? "s" : ""} synced successfully!`);
+          setSyncMessage(`${synced} offline complaint${synced > 1 ? "s" : ""} synced successfully!`);
           setTimeout(() => setSyncMessage(null), 5000);
         }
       } catch (err) {
@@ -40,25 +41,7 @@ const OfflineBanner = () => {
       {/* Offline Banner */}
       {isOffline && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999,
-            background: "linear-gradient(135deg, #ff6b35 0%, #f7931e 100%)",
-            color: "#fff",
-            textAlign: "center",
-            padding: "10px 16px",
-            fontSize: "14px",
-            fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "8px",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
-            animation: "slideDown 0.3s ease-out",
-          }}
+          className="position-fixed text-white text-center fs-14 fw-semibold d-flex align-items-center justify-content-center gap-2 offline-banner"
         >
           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="1" y1="1" x2="23" y2="23"></line>
@@ -76,35 +59,12 @@ const OfflineBanner = () => {
       {/* Sync Success Toast */}
       {syncMessage && (
         <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            zIndex: 9999,
-            background: "linear-gradient(135deg, #28a745 0%, #20c997 100%)",
-            color: "#fff",
-            padding: "14px 24px",
-            borderRadius: "12px",
-            fontSize: "14px",
-            fontWeight: 600,
-            boxShadow: "0 4px 20px rgba(40,167,69,0.3)",
-            animation: "slideUp 0.3s ease-out",
-          }}
+          className="position-fixed text-white fs-14 fw-semibold sync-toast"
         >
           {syncMessage}
         </div>
       )}
 
-      <style>{`
-        @keyframes slideDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
     </>
   );
 };

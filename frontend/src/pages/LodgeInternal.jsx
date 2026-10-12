@@ -6,6 +6,7 @@ import { supabase } from "../services/supabaseClient";
 import { apiClient } from "../services/api";
 import FileUpload from "../components/FileUpload";
 import { saveToQueue } from "../services/offlineQueue";
+import "./Lodge.css";
 
 function LodgeInternal() {
   const navigate = useNavigate();
@@ -134,46 +135,35 @@ function LodgeInternal() {
       <div className="row justify-content-center">
         <div className="col-md-9">
 
-          <div className="card shadow-lg p-5 border-0" style={{ borderRadius: "16px" }}>
+          <div className="card shadow-lg p-5 border-0 rounded-4">
 
             {!submittedId ? (
               <>
-                <h3 className="mb-4 fw-bold pb-2 border-bottom" style={{ color: "var(--text-color)" }}>{t("lodgeInternal")}</h3>
+                <h3 className="mb-4 fw-bold pb-2 border-bottom">{t("lodgeInternal")}</h3>
 
                 {/* Query / Low / Medium Redirect Banner */}
                 {queryRedirect && (
-                  <div className="alert d-flex align-items-start gap-3 mb-4" style={{
-                    backgroundColor: queryRedirect.type === "low" ? "#d1ecf1" : queryRedirect.type === "medium" ? "#d4edda" : "#fff3cd",
-                    border: `1px solid ${queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107"}`,
-                    borderRadius: "12px",
-                    color: queryRedirect.type === "low" ? "#0c5460" : queryRedirect.type === "medium" ? "#155724" : "#856404"
-                  }}>
-                    <span style={{ fontSize: "1.5rem" }}>
-                      {queryRedirect.type === "low" ? "💡" : queryRedirect.type === "medium" ? "✅" : "💬"}
-                    </span>
+                  <div className={`alert d-flex align-items-start gap-3 mb-4 lodge-redirect-alert is-${queryRedirect.type}`}>
                     <div className="flex-grow-1">
                       <strong>
                         {queryRedirect.type === "low" ? "This looks like a low-priority concern."
                           : queryRedirect.type === "medium" ? "Complaint logged! Policy Assistant is here to help."
                           : "This looks like a general query."}
                       </strong>
-                      <p className="mb-1 mt-1" style={{ fontSize: "14px" }}>
+                      <p className="mb-1 mt-1 fs-14">
                         {queryRedirect.type === "low"
                           ? "Our Policy Assistant can resolve this quickly. Check the chatbot in the bottom-right corner."
                           : queryRedirect.type === "medium"
                           ? "Your complaint has been submitted and assigned. The Policy Assistant is open for additional guidance."
                           : "We've redirected you to the Policy Assistant. Check the chatbot in the bottom-right corner."}
                       </p>
-                      <button className="btn btn-sm fw-bold" style={{
-                        backgroundColor: queryRedirect.type === "low" ? "#bee5eb" : queryRedirect.type === "medium" ? "#c3e6cb" : "#ffc107",
-                        fontSize: "12px"
-                      }} onClick={() => setQueryRedirect(null)}>Dismiss</button>
+                      <button className="btn btn-sm fw-bold fs-12" onClick={() => setQueryRedirect(null)}>Dismiss</button>
                     </div>
                   </div>
                 )}
 
                 {user && (
-                  <div className="alert py-2 mb-4" style={{ fontSize: "14px", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "var(--text-color)" }}>
+                  <div className="alert py-2 mb-4 fs-14 text-theme lodge-filing-note">
                     Filing as: <strong>Internal Employee</strong>
                   </div>
                 )}
@@ -229,7 +219,7 @@ function LodgeInternal() {
                     </label>
                   </div>
 
-                  <button type="submit" disabled={isSubmitting} className="btn w-100 py-3 fw-bold shadow-sm text-white" style={{ backgroundColor: "var(--navy)", fontSize: "1.1rem" }}>
+                  <button type="submit" disabled={isSubmitting} className="btn w-100 py-3 fw-bold shadow-sm text-white bg-navy lodge-submit-btn">
                     {isSubmitting ? "Submitting..." : t("submitGrievance")}
                   </button>
 
@@ -237,20 +227,20 @@ function LodgeInternal() {
               </>
             ) : submittedId === "offline-queued" ? (
               <div className="text-center py-5">
-                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#fff3cd", color: "#f7931e" }}>
+                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle lodge-result-icon-warn">
                   <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="1" y1="1" x2="23" y2="23"></line>
                     <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
                     <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>Saved Offline</h3>
+                <h3 className="fw-bold mb-3">Saved Offline</h3>
                 <p className="text-muted mb-4 fs-6 px-3">
                   Your complaint has been saved locally on this device. It will be <strong>automatically submitted</strong> when your internet connection is restored.
                 </p>
                 <div className="bg-light p-4 rounded mb-5 d-inline-block border shadow-sm">
-                  <span className="text-muted d-block mb-1 text-uppercase" style={{ fontSize: "14px", letterSpacing: "1px" }}>Status</span>
-                  <h4 className="fw-bold mb-0" style={{ color: "#f7931e" }}>⏳ Queued for Sync</h4>
+                  <span className="text-muted d-block mb-1 text-uppercase fs-14 ls-1">Status</span>
+                  <h4 className="fw-bold mb-0 lodge-sync-title">Queued for Sync</h4>
                 </div>
                 <div className="d-flex justify-content-center gap-3">
                   <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
@@ -260,24 +250,24 @@ function LodgeInternal() {
               </div>
             ) : (
               <div className="text-center py-5">
-                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle" style={{ width: "80px", height: "80px", backgroundColor: "#d4edda", color: "#28a745" }}>
+                <div className="mx-auto mb-4 d-flex justify-content-center align-items-center rounded-circle lodge-result-icon-ok">
                   <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </div>
-                <h3 className="fw-bold mb-3" style={{ color: "var(--text-color)" }}>{t("grievanceSuccess")}</h3>
+                <h3 className="fw-bold mb-3">{t("grievanceSuccess")}</h3>
                 <p className="text-muted mb-4 fs-6 px-3">
                   {t("grievanceSuccessMsg")}
                 </p>
                 <div className="bg-light p-4 rounded mb-5 d-inline-block border shadow-sm">
-                  <span className="text-muted d-block mb-1 text-uppercase" style={{ fontSize: "14px", letterSpacing: "1px" }}>{t("trackingId")}</span>
-                  <h2 className="fw-bold mb-0 text-danger" style={{ letterSpacing: "2px" }}>{submittedId}</h2>
+                  <span className="text-muted d-block mb-1 text-uppercase fs-14 ls-1">{t("trackingId")}</span>
+                  <h2 className="fw-bold mb-0 text-danger ls-2">{submittedId}</h2>
                 </div>
                 <div className="d-flex justify-content-center gap-3">
                   <button onClick={() => setSubmittedId(null)} className="btn btn-outline-secondary px-4 py-2 fw-bold">
                     {t("submitAnother")}
                   </button>
-                  <button onClick={() => navigate("/track", { state: { trackingId: submittedId } })} className="btn px-4 py-2 fw-bold shadow-sm text-white" style={{ backgroundColor: "var(--accent)" }}>
+                  <button onClick={() => navigate("/track", { state: { trackingId: submittedId } })} className="btn px-4 py-2 fw-bold shadow-sm text-white lodge-track-btn">
                     {t("trackStatus")}
                   </button>
                 </div>

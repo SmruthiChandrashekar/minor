@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { ThemeContext } from "../context/ThemeContext";
+import "./ThemeToggle.css";
 
 const ThemeToggle = () => {
   const { theme, toggleTheme } = useContext(ThemeContext);
@@ -7,46 +8,17 @@ const ThemeToggle = () => {
 
   return (
     <button
+      className="d-inline-flex align-items-center position-relative cursor-pointer theme-switch"
       type="button"
       role="switch"
       aria-checked={isDark}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       onClick={toggleTheme}
       title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
-      style={{
-        width: "46px",
-        height: "24px",
-        borderRadius: "9999px",
-        padding: "2px",
-        border: isDark ? "1px solid #334155" : "1px solid #cbd5e1",
-        background: isDark ? "#0f172a" : "#f1f5f9",
-        display: "inline-flex",
-        alignItems: "center",
-        position: "relative",
-        cursor: "pointer",
-        outline: "none",
-        transition: "background-color 0.25s ease, border-color 0.25s ease",
-        boxShadow: isDark
-          ? "inset 0 1px 2px rgba(0, 0, 0, 0.4)"
-          : "inset 0 1px 2px rgba(0, 0, 0, 0.06)",
-      }}
     >
       {/* Sliding White Knob */}
       <div
-        style={{
-          width: "18px",
-          height: "18px",
-          borderRadius: "50%",
-          transform: isDark ? "translateX(22px)" : "translateX(1px)",
-          background: "#ffffff",
-          boxShadow: isDark
-            ? "0 1px 3px rgba(0, 0, 0, 0.5)"
-            : "0 1px 3px rgba(0, 0, 0, 0.18), 0 1px 2px rgba(0, 0, 0, 0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        }}
+        className="rounded-circle d-flex align-items-center justify-content-center theme-switch-knob"
       >
         {isDark ? (
           /* ONLY the Moon icon is colored Dark Blue */

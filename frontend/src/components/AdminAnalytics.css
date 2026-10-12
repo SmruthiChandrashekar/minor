@@ -1,0 +1,51 @@
+.analytics-filter-card {
+  border-radius: 12px;
+}
+
+.analytics-count {
+  font-size: 0.85rem;
+}
+
+.analytics-stat-label {
+  font-size: 0.75rem;
+}
+
+.analytics-star {
+  font-size: 1.5rem;
+}
+
+.analytics-chart-lg {
+  height: 250px;
+}
+
+.analytics-chart-sm {
+  height: 200px;
+}
+
+.analytics-title-icon {
+  color: var(--brand-blue);
+}
+
+[data-theme="dark"] .analytics-title-icon {
+  color: #e4e4e7;
+}
+
+/* Stat cards: coloured left edge and value */
+.card.analytics-stat {
+  border-left: 4px solid var(--stat-color) !important;
+}
+
+.analytics-stat .analytics-stat-value {
+  color: var(--stat-value-color, var(--stat-color));
+}
+
+.analytics-stat.is-total { --stat-color: #001a4d; }
+.analytics-stat.is-resolution { --stat-color: #f59e0b; }
+.analytics-stat.is-satisfaction { --stat-color: #2e7d32; }
+.analytics-stat.is-risk { --stat-color: #c62828; }
+.analytics-stat.is-pending { --stat-color: #0c7cd5; }
+
+[data-theme="dark"] .analytics-stat.is-total { --stat-color: #e4e4e7; --stat-value-color: #fafafa; }
+[data-theme="dark"] .analytics-stat.is-satisfaction { --stat-color: #34d399; }
+[data-theme="dark"] .analytics-stat.is-risk { --stat-color: #f87171; }
+[data-theme="dark"] .analytics-stat.is-pending { --stat-color: #a1a1aa; --stat-value-color: #d4d4d8; }

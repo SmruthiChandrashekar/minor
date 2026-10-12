@@ -1,0 +1,71 @@
+.lodge-redirect-alert {
+  border-radius: 12px;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  color: #856404;
+}
+
+.lodge-redirect-alert.is-low {
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+  color: #0c5460;
+}
+
+.lodge-redirect-alert.is-medium {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+/* Dismiss button picks up the banner's border tone */
+.lodge-redirect-alert .btn {
+  --bs-btn-bg: #ffc107;
+  --bs-btn-hover-bg: #ffc107;
+  --bs-btn-active-bg: #ffc107;
+}
+
+.lodge-redirect-alert.is-low .btn {
+  --bs-btn-bg: #bee5eb;
+  --bs-btn-hover-bg: #bee5eb;
+  --bs-btn-active-bg: #bee5eb;
+}
+
+.lodge-redirect-alert.is-medium .btn {
+  --bs-btn-bg: #c3e6cb;
+  --bs-btn-hover-bg: #c3e6cb;
+  --bs-btn-active-bg: #c3e6cb;
+}
+
+.lodge-filing-note {
+  background-color: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.lodge-result-icon-warn {
+  width: 80px;
+  height: 80px;
+  background-color: #fff3cd;
+  color: #f7931e;
+}
+
+.lodge-result-icon-ok {
+  width: 80px;
+  height: 80px;
+  background-color: #d4edda;
+  color: #28a745;
+}
+
+.lodge-submit-btn {
+  font-size: 1.1rem;
+}
+
+.btn.lodge-track-btn {
+  --bs-btn-bg: var(--accent);
+  --bs-btn-hover-bg: var(--accent);
+  --bs-btn-active-bg: var(--accent);
+  --bs-btn-disabled-bg: var(--accent);
+}
+
+h4.lodge-sync-title {
+  color: #f7931e;
+}

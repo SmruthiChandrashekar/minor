@@ -1,0 +1,47 @@
+.site-footer {
+  color: #b3c2dc;
+  padding: var(--s7) 0 var(--s5);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.footer-logo {
+  height: 45px;
+  filter: brightness(1.1);
+}
+
+.footer-brand-mark {
+  font-size: 1.5rem;
+  font-family: var(--font-d);
+}
+
+.footer-desc {
+  color: #9aa9c8;
+  max-width: 36ch;
+  line-height: 1.7;
+}
+
+.footer-heading {
+  font-family: var(--font-d);
+  font-size: 16px;
+}
+
+.footer-link {
+  color: #b3c2dc;
+}
+
+.footer-address {
+  color: #9aa9c8;
+}
+
+.footer-divider {
+  border-color: rgba(255, 255, 255, 0.12);
+  margin: var(--s4) 0;
+}
+
+.footer-tagline {
+  color: #c4d2ec;
+}
+
+.footer-bottom {
+  color: #8a9ab8;
+}

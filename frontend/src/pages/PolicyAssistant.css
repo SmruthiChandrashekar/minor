@@ -1,0 +1,71 @@
+img.pa-msg-avatar-img {
+  width: 32px;
+  height: 32px;
+}
+
+.pa-advisory {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--navy);
+}
+
+.pa-advisory.is-guidance {
+  border-color: #fed7aa;
+  border-left-color: #f97316;
+}
+
+.pa-advisory.is-unresolved {
+  border-left-color: #475569;
+}
+
+.pa-escalate-btn {
+  padding: 7px 14px;
+}
+
+.pa-guidance-badge {
+  font-size: 10.5px;
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.pa-guidance-text {
+  font-size: 12.5px;
+}
+
+.pa-followup-btn {
+  padding: 6px 14px;
+  font-size: 12.5px;
+}
+
+.pa-rec-spacer {
+  flex: 1;
+}
+
+/* Source of a low-severity answer: an official policy or general guidance */
+.pa-routing-badge.is-policy {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.pa-routing-badge.is-general {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}
+
+.pa-routing-badge.is-policy .pa-routing-dot {
+  background-color: #2563eb;
+}
+
+.pa-routing-badge.is-general .pa-routing-dot {
+  background-color: #10b981;
+}
+
+.pa-severity-badge {
+  background-color: #d97706;
+}
+
+.pa-severity-badge.is-high {
+  background-color: var(--accent);
+}

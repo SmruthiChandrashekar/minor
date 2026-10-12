@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../services/supabaseClient";
+import "./FileUpload.css";
 
 const FileUpload = ({ onUploadComplete, onUploading, maxFiles = 3 }) => {
   const [files, setFiles] = useState([]);
@@ -72,18 +73,10 @@ const FileUpload = ({ onUploadComplete, onUploading, maxFiles = 3 }) => {
 
   return (
     <div className="mb-4">
-      <label className="form-label fw-semibold" style={{ color: "var(--text-color)" }}>
+      <label className="form-label fw-semibold text-theme">
         Attach Evidence (Optional)
       </label>
-      <div 
-        className="p-4 border rounded text-center" 
-        style={{ 
-          borderStyle: "dashed !important", 
-          backgroundColor: "#f8f9fa",
-          borderColor: "#ced4da"
-        }}
-      >
-        <div className="mb-2" style={{ fontSize: "2rem" }}>☁️</div>
+      <div className="p-4 rounded text-center upload-dropzone">
         <p className="text-muted mb-2">Drag & drop files here, or click to browse</p>
         <p className="small text-muted mb-3">Supported formats: JPG, PNG, PDF, MP4 (Max 10MB)</p>
         
@@ -110,16 +103,17 @@ const FileUpload = ({ onUploadComplete, onUploading, maxFiles = 3 }) => {
           <ul className="list-group">
             {files.map((file, idx) => (
               <li key={idx} className="list-group-item d-flex justify-content-between align-items-center py-2 bg-light">
-                <span className="small text-truncate" style={{ maxWidth: "80%" }}>
-                  📄 {file.name}
+                <span className="small text-truncate upload-file-name">
+                  {file.name}
                 </span>
                 <button 
                   type="button" 
                   className="btn btn-sm btn-link text-danger p-0 text-decoration-none" 
                   onClick={() => removeFile(idx)}
                   disabled={uploading}
+                  aria-label={`Remove ${file.name}`}
                 >
-                  ❌
+                  Remove
                 </button>
               </li>
             ))}

@@ -1,0 +1,37 @@
+.lodge-select-page {
+  min-height: 75vh;
+}
+
+.lodge-select-lead {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.lodge-select-icon {
+  width: 70px;
+  height: 70px;
+  background-color: var(--surface-2);
+  color: var(--navy-2);
+}
+
+.lodge-select-icon-ok {
+  width: 70px;
+  height: 70px;
+  background-color: color-mix(in srgb, var(--ok) 12%, transparent);
+  color: var(--ok);
+}
+
+.lodge-select-icon-accent {
+  width: 70px;
+  height: 70px;
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* Category cards: coloured top edge */
+.card.lodge-select-card {
+  border-top: 4px solid var(--card-accent) !important;
+}
+
+.lodge-select-card.is-internal { --card-accent: var(--navy-2); }
+.lodge-select-card.is-contract { --card-accent: var(--ok); }
+.lodge-select-card.is-external { --card-accent: var(--accent); }

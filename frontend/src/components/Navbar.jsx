@@ -3,6 +3,7 @@ import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import ThemeToggle from "./ThemeToggle";
 import NotificationDropdown from "./NotificationDropdown";
+import "./Navbar.css";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -21,13 +22,13 @@ function Navbar() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg shadow-sm" style={{ backgroundColor: "var(--navbar-bg)" }}>
+    <nav className="navbar navbar-expand-lg shadow-sm site-navbar">
       <div className="container">
 
         {/* LOGO */}
         <Link className="navbar-brand d-flex align-items-center text-decoration-none" to="/">
-          <img src="/purvankaraimg.png" alt="Puravankara" className="navbar-brand-logo" style={{ height: "55px", objectFit: "contain", marginRight: "6px" }} />
-          <span style={{ color: "var(--accent)", fontWeight: "800", fontSize: "1.6rem", letterSpacing: "1px", fontFamily: "Arial Black, sans-serif" }}>GRM</span>
+          <img src="/purvankaraimg.png" alt="Puravankara" className="navbar-brand-logo object-fit-contain" />
+          <span className="text-accent fw-extrabold ls-1 brand-mark">GRM</span>
         </Link>
 
         {/* NAV LINKS */}
@@ -35,37 +36,14 @@ function Navbar() {
 
           <Link 
             to="/assistant" 
-            className="me-4 text-decoration-none d-flex align-items-center gap-2"
-            style={{ 
-              color: location.pathname === '/assistant' ? 'var(--brand-navy)' : 'var(--text-color)',
-              fontWeight: location.pathname === '/assistant' ? '700' : '600',
-              opacity: location.pathname === '/assistant' ? 1 : 0.85,
-              transition: 'all 0.2s',
-              fontSize: '14.5px'
-            }}
+            className={`me-4 text-decoration-none d-flex align-items-center gap-2 nav-assistant-link${location.pathname === "/assistant" ? " is-active" : ""}`}
           >
             {/* Purva mini avatar */}
-            <span className="purva-nav-avatar" style={{
-              display: 'inline-flex',
-              width: '26px',
-              height: '26px',
-              borderRadius: '50%',
-              overflow: 'hidden',
-              flexShrink: 0,
-              border: location.pathname === '/assistant' ? '1.5px solid #a78bfa' : '1.5px solid rgba(167, 139, 250, 0.4)',
-              boxShadow: location.pathname === '/assistant' ? '0 0 8px rgba(167, 139, 250, 0.5)' : 'none',
-              transition: 'all 0.2s',
-            }}>
-              <img src="/purva-logo.svg" alt="Purva" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+            <span className="purva-nav-avatar d-inline-flex rounded-circle overflow-hidden flex-shrink-0">
+              <img className="w-100 h-100 object-fit-contain" src="/purva-logo.svg" alt="Purva" />
             </span>
             <span>Purva</span>
-            <span style={{ 
-              display: 'inline-block',
-              width: '6px', height: '6px', 
-              borderRadius: '50%', 
-              background: '#22c55e',
-              animation: 'pa-pulse-dot 2s ease-in-out infinite'
-            }}></span>
+            <span className="d-inline-block rounded-circle nav-live-dot"></span>
           </Link>
 
           <Link to="/" className="me-4 text-decoration-none nav-link-custom">
@@ -83,15 +61,14 @@ function Navbar() {
           {user && (
             <Link 
               to="/profile" 
-              className="me-4 text-decoration-none nav-link-custom"
-              style={{ fontWeight: location.pathname === '/profile' ? '700' : 'normal' }}
+              className={`me-4 text-decoration-none nav-link-custom ${location.pathname === "/profile" ? "fw-bold" : "fw-normal"}`}
             >
               Profile
             </Link>
           )}
 
           {isSuperAdmin && (
-            <Link to="/admin/portal" className="me-4 text-decoration-none nav-link-custom" style={{ color: "#d32f2f", fontWeight: "bold" }}>
+            <Link to="/admin/portal" className="me-4 text-decoration-none nav-link-custom fw-bold nav-link-portal">
               <i className="bi bi-shield-lock me-1"></i>Staff & Security
             </Link>
           )}
@@ -110,8 +87,7 @@ function Navbar() {
 
           {/* LANGUAGE DROPDOWN */}
           <select
-            className="form-select form-select-sm me-4 shadow-none"
-            style={{ width: "auto", cursor: "pointer" }}
+            className="form-select form-select-sm me-4 shadow-none cursor-pointer nav-lang-select"
             aria-label="Language Selection"
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
@@ -127,30 +103,27 @@ function Navbar() {
             <div className="d-flex align-items-center">
               <Link 
                 to="/profile" 
-                className="me-3 d-flex align-items-center text-decoration-none p-1 rounded-pill"
-                style={{ transition: "all 0.2s" }}
+                className="me-3 d-flex align-items-center text-decoration-none p-1 rounded-pill nav-profile-link"
                 title="View Admin Profile"
               >
                 {userDetails?.avatar_url ? (
                   <img
                     src={userDetails.avatar_url}
                     alt={userDetails.name || "Admin"}
-                    className="rounded-circle me-2 shadow-sm"
-                    style={{ width: "34px", height: "34px", objectFit: "cover", border: "2px solid var(--brand-navy)" }}
+                    className="rounded-circle me-2 shadow-sm object-fit-cover nav-avatar-admin"
                   />
                 ) : (
                   <div
-                    className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
-                    style={{ width: "34px", height: "34px", backgroundColor: "var(--brand-navy)", fontWeight: "bold" }}
+                    className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm fw-bold nav-avatar-admin-fallback"
                   >
                     {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "A"}
                   </div>
                 )}
-                <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>
-                  <span style={{ color: "var(--heading-color)", fontWeight: "bold" }}>{userDetails?.name || "Admin"}</span>
+                <span className="fs-14 text-theme-muted">
+                  <span className="text-heading fw-bold">{userDetails?.name || "Admin"}</span>
                 </span>
               </Link>
-              <button onClick={handleAdminLogout} className="btn btn-outline-danger px-3 fw-semibold" style={{ fontSize: "14px" }}>
+              <button onClick={handleAdminLogout} className="btn btn-outline-danger px-3 fw-semibold fs-14">
                 {t("logout")}
               </button>
             </div>
@@ -159,27 +132,24 @@ function Navbar() {
             <div className="d-flex align-items-center">
               <Link 
                 to="/profile" 
-                className="me-3 d-flex align-items-center text-decoration-none p-1 rounded-pill"
-                style={{ transition: "all 0.2s" }}
+                className="me-3 d-flex align-items-center text-decoration-none p-1 rounded-pill nav-profile-link"
                 title="View My Profile"
               >
                 {userDetails?.avatar_url ? (
                   <img
                     src={userDetails.avatar_url}
                     alt={userDetails.name || "User"}
-                    className="rounded-circle me-2 shadow-sm"
-                    style={{ width: "34px", height: "34px", objectFit: "cover", border: "2px solid #00838f" }}
+                    className="rounded-circle me-2 shadow-sm object-fit-cover nav-avatar-user"
                   />
                 ) : (
                   <div
-                    className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm"
-                    style={{ width: "34px", height: "34px", backgroundColor: "#ff5722", fontWeight: "bold" }}
+                    className="rounded-circle d-flex align-items-center justify-content-center text-white me-2 shadow-sm fw-bold nav-avatar-user-fallback"
                   >
                     {userDetails?.name ? userDetails.name.charAt(0).toUpperCase() : "U"}
                   </div>
                 )}
-                <span style={{ fontSize: "15px", color: "var(--text-muted)" }}>
-                  <i style={{ opacity: 0.8 }}>{t("hi")}</i> <span style={{ color: "var(--heading-color)", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "0.5px" }}>{userDetails?.name || "User"}</span>
+                <span className="text-theme-muted nav-greeting">
+                  <i className="nav-greeting-hi">{t("hi")}</i> <span className="text-heading fw-bold text-uppercase ls-half">{userDetails?.name || "User"}</span>
                 </span>
               </Link>
               <button onClick={handleLogout} className="btn btn-danger">
