@@ -1287,7 +1287,40 @@ ${ragRecommendation.compliance_notes || ""}`;
                           ? <span className="spinner-border spinner-border-sm text-secondary" role="status" />
                           : g.description}
                       </td>
-                      <td>{getTierBadge(g.assigned_tier)}</td>
+                      <td>
+                        <div className="d-flex flex-column align-items-start gap-1">
+                          {getTierBadge(g.assigned_tier)}
+                          {(() => {
+                            const esc = (g.escalation_history || []).filter(h => h.reason || h.from_tier);
+                            if (esc.length === 0) return null;
+                            const last = esc[esc.length - 1];
+                            const isBreach = last.reason === "SLA_BREACH";
+                            const reasonText = isBreach ? "SLA Breach" : (last.reason || "Escalated");
+                            return (
+                              <span
+                                className="badge rounded-pill fw-semibold text-truncate d-inline-block"
+                                style={{
+                                  backgroundColor: isBreach
+                                    ? (isDark ? "rgba(239, 68, 68, 0.18)" : "#fee2e2")
+                                    : (isDark ? "rgba(245, 158, 11, 0.18)" : "#fef3c7"),
+                                  color: isBreach
+                                    ? (isDark ? "#fca5a5" : "#b91c1c")
+                                    : (isDark ? "#fde047" : "#b45309"),
+                                  border: isBreach
+                                    ? (isDark ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #fecaca")
+                                    : (isDark ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid #fde68a"),
+                                  fontSize: "10px",
+                                  maxWidth: "125px",
+                                  cursor: "help"
+                                }}
+                                title={`Escalated from ${last.from_tier || "Prior Tier"}: ${reasonText}${last.notes ? `\nNotes: "${last.notes}"` : ""}${last.handler ? `\nBy: ${last.handler}` : ""}`}
+                              >
+                                ↗ {reasonText}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      </td>
                       <td>
                         {(() => {
                           const sla = getSlaStatus(g);
@@ -1375,6 +1408,77 @@ ${ragRecommendation.compliance_notes || ""}`;
                       ))}
                     </div>
 
+                    {/* TIER ESCALATION HANDOFF CALLOUT (Prominently displayed to receiving tier admins) */}
+                    {(() => {
+                      const escEvents = (selectedTicket.escalation_history || []).filter(
+                        (h) => h.reason || h.from_tier || h.to_tier || h.action?.toLowerCase().includes("escalat")
+                      );
+                      if (escEvents.length === 0) return null;
+                      const latest = escEvents[escEvents.length - 1];
+                      const isBreach = latest.reason === "SLA_BREACH";
+                      const reasonText = isBreach ? "SLA Deadline Expired (Automated Escalation)" : (latest.reason || "Manual Tier Escalation");
+
+                      return (
+                        <div
+                          className="p-3 mb-3 rounded-3"
+                          style={{
+                            backgroundColor: isBreach
+                              ? (isDark ? "rgba(239, 68, 68, 0.12)" : "#fef2f2")
+                              : (isDark ? "rgba(245, 158, 11, 0.12)" : "#fffbeb"),
+                            border: isBreach
+                              ? (isDark ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #fecaca")
+                              : (isDark ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid #fde68a"),
+                            borderLeft: isBreach ? "4px solid #ef4444" : "4px solid #f59e0b"
+                          }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <span
+                              className="fw-bold fs-11 text-uppercase d-flex align-items-center gap-1"
+                              style={{
+                                color: isBreach ? (isDark ? "#fca5a5" : "#b91c1c") : (isDark ? "#fde047" : "#b45309"),
+                                letterSpacing: "0.5px"
+                              }}
+                            >
+                              <i className="bi bi-arrow-up-right-circle-fill me-1" />
+                              {latest.from_tier ? `Escalated from ${latest.from_tier} → ${latest.to_tier || selectedTicket.assigned_tier}` : `Escalated to ${selectedTicket.assigned_tier}`}
+                            </span>
+                            <span className="fs-11 text-muted">
+                              {new Date(latest.timestamp || latest.escalated_at || latest.at || selectedTicket.updated_at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
+                            </span>
+                          </div>
+
+                          {/* REASON FOR ESCALATION */}
+                          <div className="mb-2">
+                            <span className="text-muted fs-10 fw-bold text-uppercase d-block mb-1" style={{ letterSpacing: "0.5px" }}>
+                              Reason for Escalation
+                            </span>
+                            <div className="fw-bold fs-13" style={{ color: "var(--heading-color)" }}>
+                              {reasonText}
+                            </div>
+                          </div>
+
+                          {/* HANDOFF NOTES */}
+                          {latest.notes && (
+                            <div className="mt-2 pt-2 border-top" style={{ borderColor: isBreach ? "rgba(239,68,68,0.2)" : "rgba(245,158,11,0.2)" }}>
+                              <span className="text-muted fs-10 fw-bold text-uppercase d-block mb-1" style={{ letterSpacing: "0.5px" }}>
+                                Handoff Notes & Actions Taken So Far
+                              </span>
+                              <div className="small fst-italic p-2 rounded" style={{ backgroundColor: isDark ? "rgba(0,0,0,0.2)" : "#ffffff", color: "var(--text-color)", border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)" }}>
+                                “{latest.notes}”
+                              </div>
+                            </div>
+                          )}
+
+                          {/* HANDLER AUDIT */}
+                          {latest.handler && (
+                            <div className="fs-11 text-muted mt-2 pt-1">
+                              Escalated by: <strong style={{ color: "var(--heading-color)" }}>{latest.handler}</strong> {latest.tier ? `(${latest.tier})` : ""}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Divider */}
                     <div className="mb-3 admin-divider" />
 
@@ -1418,7 +1522,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                       {selectedTicket.escalation_history && selectedTicket.escalation_history.length > 0 ? (
                         <div className="d-flex flex-column gap-2 overflow-y-auto pe-1 admin-trail-list">
                           {selectedTicket.escalation_history.map((item, idx) => (
-                            <div key={idx} className="admin-trail-item">
+                            <div key={idx} className="admin-trail-item p-2 rounded mb-1" style={{ backgroundColor: "var(--surface)", border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid #e2e8f0" }}>
                               <div className="d-flex justify-content-between align-items-center mb-1">
                                 <span className="fw-bold fs-11 admin-trail-tier">
                                   {item.tier ? `[${item.tier}]` : (item.from_tier ? `${item.from_tier} → ${item.to_tier}` : "System")}
@@ -1428,9 +1532,19 @@ ${ragRecommendation.compliance_notes || ""}`;
                                   {new Date(item.timestamp || item.escalated_at || item.at).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" })}
                                 </span>
                               </div>
-                              <div className="text-theme fw-medium fs-12">
-                                {item.action || (item.reason === "SLA_BREACH" ? `Auto-escalated: SLA Breach (${item.from_tier} → ${item.to_tier})` : (item.reason ? `Escalated: ${item.reason}` : "Action logged"))}
+                              <div className="text-theme fw-semibold fs-12">
+                                {item.action || (item.from_tier ? `Escalated from ${item.from_tier} to ${item.to_tier}` : "Action logged")}
                               </div>
+                              {/* EXPLICIT REASON DISPLAY */}
+                              {item.reason && (
+                                <div className="fs-12 mt-1">
+                                  <span className="text-muted fw-bold fs-11 text-uppercase me-1">Reason:</span>
+                                  <span className="fw-semibold" style={{ color: item.reason === "SLA_BREACH" ? (isDark ? "#fca5a5" : "#b91c1c") : (isDark ? "#fde047" : "#b45309") }}>
+                                    {item.reason === "SLA_BREACH" ? "SLA Deadline Breach (Automated)" : item.reason}
+                                  </span>
+                                </div>
+                              )}
+                              {/* HANDOFF NOTES */}
                               {item.notes && (
                                 <div className="admin-trail-notes mt-1 p-2 rounded small fst-italic">
                                   “{item.notes}”
