@@ -49,9 +49,10 @@ const AdminAnalytics = ({ adminDepartment }) => {
     ? ["#e4e4e7", "#fbbf24", "#34d399", "#f87171"]
     : ["#0c7cd5", "#f59e0b", "#2e7d32", "#c62828"];
 
-  const statusData = Object.keys(insights.status_distribution).map(key => ({
+  const statusDistribution = insights?.status_distribution || {};
+  const statusData = Object.keys(statusDistribution).map(key => ({
     name: key.charAt(0).toUpperCase() + key.slice(1),
-    value: insights.status_distribution[key]
+    value: statusDistribution[key]
   }));
 
   return (
@@ -115,7 +116,7 @@ const AdminAnalytics = ({ adminDepartment }) => {
           <div className="card shadow-sm border-0 p-3 h-100" style={{ borderLeft: `4px solid ${isDark ? "#a1a1aa" : "#0c7cd5"}` }}>
             <div className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Pending Cases</div>
             <h3 className="fw-bold mb-0" style={{ color: isDark ? "#d4d4d8" : "#0c7cd5" }}>
-              {(insights.status_distribution.open || 0) + (insights.status_distribution.investigating || 0)}
+              {((insights?.status_distribution?.open || 0) + (insights?.status_distribution?.investigating || 0))}
             </h3>
           </div>
         </div>

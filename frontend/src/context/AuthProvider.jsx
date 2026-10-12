@@ -80,7 +80,7 @@ export function AuthProvider({ children }) {
       refreshUserDetails,
       updateUserDetailsLocally
     }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

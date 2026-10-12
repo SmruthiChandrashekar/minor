@@ -787,7 +787,7 @@ const Chatbot = () => {
                   }}
                 >
                   {msg.isGreeting ? (
-                    t('chatbotGreeting') || "Hi! I'm the AI Policy Assistant. How can I help you today?"
+                    t('chatbotGreeting') || "Hi! I'm the Policy Assistant. How can I help you today?"
                   ) : msg.isBot ? (
                     <>
                       <div dangerouslySetInnerHTML={formatBotMessage(msg.text)} />

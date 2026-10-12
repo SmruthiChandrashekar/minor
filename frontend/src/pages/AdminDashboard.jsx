@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
@@ -48,6 +48,9 @@ const AdminDashboard = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [viewingAttachments, setViewingAttachments] = useState(null);
   const [tierFilter, setTierFilter] = useState("ALL");
+  const [departmentFilter, setDepartmentFilter] = useState("ALL");
+  const [severityFilter, setSeverityFilter] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [downloadingReportId, setDownloadingReportId] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null); // slide-out panel
 
@@ -80,6 +83,43 @@ const AdminDashboard = () => {
   const [loadingRag, setLoadingRag] = useState(false);
   const [copiedRecommendation, setCopiedRecommendation] = useState(false);
 
+  // --- LEGACY DEPARTMENT NORMALIZER ---
+  // Maps legacy database labels (e.g. Safety, POSH) to the 6 canonical enterprise departments:
+  // HR, CRM, CSD, ESG, IC, Investors
+  const normalizeTicket = (t) => {
+    if (!t) return t;
+    const rawDept = (t.department || "").trim().toUpperCase();
+    const desc = (t.description || "").toLowerCase();
+    let normDept = t.department || "CRM";
+    let normCat = t.category || "General";
+
+    if (rawDept === "SAFETY") {
+      if (desc.includes("apartment") || desc.includes("flat") || desc.includes("electrical fault") || desc.includes("foundation") || desc.includes("materials")) {
+        normDept = "CSD";
+        normCat = "Building Snag";
+      } else {
+        normDept = "ESG";
+        normCat = "Worker Safety";
+      }
+    } else if (rawDept === "POSH") {
+      normDept = "IC";
+      normCat = "POSH Policy";
+    } else if (rawDept === "CHILD LABOUR") {
+      normDept = "ESG";
+      normCat = "Worker Safety";
+    } else if (rawDept === "COMPLIANCE" || rawDept === "EXTERNAL RELATIONS" || rawDept === "-") {
+      normDept = "CRM";
+    } else if (rawDept === "INVESTOR" || rawDept === "INVESTORS") {
+      normDept = "Investors";
+    }
+
+    return {
+      ...t,
+      department: normDept,
+      category: normCat,
+    };
+  };
+
   // --- FETCH GRIEVANCES ---
   const fetchGrievances = async () => {
     try {
@@ -89,7 +129,7 @@ const AdminDashboard = () => {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setGrievances(data || []);
+      setGrievances((data || []).map(normalizeTicket));
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
@@ -117,11 +157,11 @@ const AdminDashboard = () => {
     const channel = supabase
       .channel("grievances-realtime")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "grievances" },
-        (payload) => setGrievances((prev) => [payload.new, ...prev])
+        (payload) => setGrievances((prev) => [normalizeTicket(payload.new), ...prev])
       )
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "grievances" },
         (payload) => setGrievances((prev) =>
-          prev.map((g) => g.grievance_id === payload.new.grievance_id ? payload.new : g)
+          prev.map((g) => g.grievance_id === payload.new.grievance_id ? normalizeTicket(payload.new) : g)
         )
       )
       .subscribe();
@@ -141,7 +181,33 @@ const AdminDashboard = () => {
     return () => { cancelled = true; };
   }, [grievances, language]);
 
-  // --- FILTER BY ADMIN DEPARTMENT & TIER ---
+  // --- CANONICAL ENTERPRISE DEPARTMENTS & SYSTEM STATUS STATS ---
+  const ALLOWED_DEPARTMENTS = ["HR", "CRM", "CSD", "ESG", "IC", "Investors"];
+  const availableDepartments = ALLOWED_DEPARTMENTS;
+
+  const systemStatusStats = useMemo(() => {
+    const totalCount = grievances.length;
+    const openCount = grievances.filter((g) => g.status === "Open" || g.status === "CHATBOT_HANDLING").length;
+    const investigatingCount = grievances.filter((g) => g.status === "Investigating" || g.status === "HUMAN_HANDLING").length;
+    const resolvedCount = grievances.filter((g) => g.status === "Resolved").length;
+    const closedCount = grievances.filter((g) => g.status === "Closed" || g.status === "Rejected").length;
+
+    const calcPct = (cnt) => (totalCount > 0 ? Math.round((cnt / totalCount) * 100) : 0);
+
+    return {
+      total: totalCount,
+      open: openCount,
+      openPct: calcPct(openCount),
+      investigating: investigatingCount,
+      investigatingPct: calcPct(investigatingCount),
+      resolved: resolvedCount,
+      resolvedPct: calcPct(resolvedCount),
+      closed: closedCount,
+      closedPct: calcPct(closedCount),
+    };
+  }, [grievances]);
+
+  // --- FILTER BY ADMIN DEPARTMENT, TIER, SEVERITY & STATUS ---
   const isTierLocked = Boolean(admin?.admin_tier && ["L1", "L2", "L3"].includes(admin.admin_tier));
   const effectiveTier = isTierLocked ? admin.admin_tier : tierFilter;
 
@@ -152,8 +218,33 @@ const AdminDashboard = () => {
     : [];
 
   const filtered = departmentGrievances.filter((g) => {
-    if (effectiveTier === "ALL") return true;
-    return g.assigned_tier === effectiveTier;
+    // Super admin department filter
+    if (isSuperAdmin && departmentFilter !== "ALL") {
+      const gDept = g.department?.trim().toLowerCase();
+      const targetDept = departmentFilter.trim().toLowerCase();
+      if (gDept !== targetDept) return false;
+    }
+    // Severity filter
+    if (severityFilter !== "ALL" && g.severity !== severityFilter) {
+      return false;
+    }
+    // Status filter
+    if (statusFilter !== "ALL") {
+      if (statusFilter === "Closed") {
+        if (g.status !== "Closed" && g.status !== "Rejected") return false;
+      } else if (statusFilter === "Open") {
+        if (g.status !== "Open" && g.status !== "CHATBOT_HANDLING") return false;
+      } else if (statusFilter === "Investigating") {
+        if (g.status !== "Investigating" && g.status !== "HUMAN_HANDLING") return false;
+      } else if (g.status !== statusFilter) {
+        return false;
+      }
+    }
+    // Tier filter
+    if (effectiveTier !== "ALL" && g.assigned_tier !== effectiveTier) {
+      return false;
+    }
+    return true;
   });
 
   // --- STATUS UPDATE ---
@@ -583,7 +674,16 @@ ${ragRecommendation.compliance_notes || ""}`;
     }
   };
 
-  if (!admin) return null;
+  if (!admin) {
+    return (
+      <div className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
+        <div className="spinner-border text-primary mb-3" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="text-muted fw-semibold" style={{ fontSize: "14px" }}>Loading Dashboard...</p>
+      </div>
+    );
+  }
 
   const total        = filtered.length;
   const open         = filtered.filter((g) => g.status === "Open").length;
@@ -608,7 +708,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                 color: isDark ? "#e4e4e7" : "#0c7cd5",
                 border: isDark ? "1px solid rgba(255, 255, 255, 0.14)" : "none"
               }}>
-              {admin.department}
+              {admin?.department || (isSuperAdmin ? "Super Admin" : "General")}
             </span>{" "}
             {admin.admin_tier ? (
               <span className="badge px-2 py-1 rounded-pill ms-1"
@@ -664,13 +764,15 @@ ${ragRecommendation.compliance_notes || ""}`;
       {/* ADVANCED ANALYTICS & FILTERS */}
       <AdminAnalytics adminDepartment={isSuperAdmin ? "" : (admin?.department || "")} />
 
-      {/* DEPARTMENT-WISE GRIEVANCE PIE CHART — super admin only */}
+      {/* SUPER ADMIN OVERVIEW: DEPT PIE CHART + SEPARATE STATUS OVERVIEW CARD */}
       {isSuperAdmin && (() => {
-        // Build dept → { category: count } map
+        // Build dept → { category: count } map (only ALLOWED_DEPARTMENTS)
         const deptMap = {};
         deptDist.forEach(({ department, category, count }) => {
-          if (!deptMap[department]) deptMap[department] = {};
-          deptMap[department][category] = (deptMap[department][category] || 0) + count;
+          const canonical = ALLOWED_DEPARTMENTS.find(d => d.toLowerCase() === department?.trim().toLowerCase());
+          if (!canonical) return;
+          if (!deptMap[canonical]) deptMap[canonical] = {};
+          deptMap[canonical][category] = (deptMap[canonical][category] || 0) + count;
         });
         const deptTotals = Object.entries(deptMap).map(([name, cats], i) => ({
           name, value: Object.values(cats).reduce((a, b) => a + b, 0), index: i
@@ -681,180 +783,527 @@ ${ragRecommendation.compliance_notes || ""}`;
           : null;
 
         return (
-          <div className="card shadow-sm border-0 mb-4 p-4" style={{ borderRadius: 14 }}>
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h6 className="fw-bold mb-0" style={{ color: "var(--heading-color)" }}>
-                <i className="bi bi-pie-chart-fill me-2" style={{ color: isDark ? "#e4e4e7" : "#0c7cd5" }} />
-                Grievance Distribution by Department
-              </h6>
-              {selectedDept && (
-                <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedDept(null)}>
-                  ← All Departments
-                </button>
-              )}
-            </div>
-
-            {deptDistLoading ? (
-              <div className="text-center py-4">
-                <div className="spinner-border spinner-border-sm text-primary" />
-              </div>
-            ) : deptTotals.length === 0 ? (
-              <div className="text-muted text-center py-3">No data available.</div>
-            ) : (
-              <div className="row g-4 align-items-center">
-                {/* Pie */}
-                <div className="col-md-5">
-                  <ResponsiveContainer width="100%" height={260}>
-                    <PieChart>
-                      <Pie
-                        data={activeDept || deptTotals}
-                        cx="50%" cy="48%"
-                        innerRadius={65} outerRadius={105}
-                        paddingAngle={4}
-                        dataKey="value"
-                        onClick={(entry) => { if (!activeDept) setSelectedDept(entry.name); }}
-                        style={{ cursor: activeDept ? "default" : "pointer" }}
+          <div className="row g-4 mb-4">
+            {/* CARD 1: DEPARTMENT PIE CHART */}
+            <div className="col-xl-7 col-lg-7">
+              <div className="card shadow-sm border-0 h-100 p-4" style={{ borderRadius: 14 }}>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h6 className="fw-bold mb-0" style={{ color: "var(--heading-color)" }}>
+                      <i className="bi bi-pie-chart-fill me-2" style={{ color: isDark ? "#e4e4e7" : "#0c7cd5" }} />
+                      Grievance Distribution by Department
+                    </h6>
+                    <small className="text-muted" style={{ fontSize: "12px" }}>
+                      {activeDept ? `Drilldown for ${selectedDept}` : "Click a slice or row to view category breakdown"}
+                    </small>
+                  </div>
+                  {selectedDept && (
+                    <div className="d-flex gap-2">
+                      <button
+                        className="btn btn-sm btn-primary"
+                        onClick={() => setDepartmentFilter(selectedDept)}
+                        title="Filter complaints table below"
+                        style={{ fontSize: "12px" }}
                       >
-                        {(activeDept || deptTotals).map((_, i) => (
-                          <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<DeptPieTooltip />} />
-                      <Legend iconType="circle" iconSize={10}
-                        wrapperStyle={{ fontSize: 12, color: isDark ? "#a1a1aa" : "#64748b" }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  {!activeDept && (
-                    <div className="text-center" style={{ fontSize: 11, color: "#94a3b8", marginTop: -8 }}>
-                      Click a slice to drill into its categories
+                        <i className="bi bi-funnel me-1"></i> Filter Table
+                      </button>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedDept(null)} style={{ fontSize: "12px" }}>
+                        ← All Departments
+                      </button>
                     </div>
                   )}
                 </div>
 
-                {/* Table */}
-                <div className="col-md-7">
-                  <div className="table-responsive">
-                    <table className="table table-hover align-middle mb-0" style={{ fontSize: 13 }}>
-                      <thead className="table-light">
-                        <tr>
-                          <th className="px-3 py-2">{activeDept ? "Category" : "Department"}</th>
-                          <th className="py-2 text-center">Count</th>
-                          <th className="py-2">Share</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(activeDept || deptTotals)
-                          .sort((a, b) => b.value - a.value)
-                          .map((row, i) => {
-                            const pct = Math.round((row.value / (activeDept ? deptMap[selectedDept] && Object.values(deptMap[selectedDept]).reduce((a, b) => a + b, 0) : totalAll)) * 100);
-                            return (
-                              <tr key={row.name}
-                                style={{ cursor: activeDept ? "default" : "pointer" }}
-                                onClick={() => { if (!activeDept) setSelectedDept(row.name); }}
-                              >
-                                <td className="px-3 fw-semibold">
-                                  <span style={{
-                                    width: 10, height: 10, borderRadius: "50%",
-                                    backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length],
-                                    display: "inline-block", marginRight: 8
-                                  }} />
-                                  {row.name}
-                                </td>
-                                <td className="text-center fw-bold">{row.value}</td>
-                                <td>
-                                  <div className="d-flex align-items-center gap-2">
-                                    <div className="progress flex-grow-1" style={{ height: 6, borderRadius: 4 }}>
-                                      <div className="progress-bar" role="progressbar"
-                                        style={{ width: `${pct}%`, backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length] }} />
-                                    </div>
-                                    <span style={{ fontSize: 11, minWidth: 28, color: "#64748b" }}>{pct}%</span>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                {deptDistLoading ? (
+                  <div className="text-center py-5">
+                    <div className="spinner-border spinner-border-sm text-primary" />
+                  </div>
+                ) : deptTotals.length === 0 ? (
+                  <div className="text-muted text-center py-5">No department data available.</div>
+                ) : (
+                  <div className="row g-3 align-items-center">
+                    {/* Pie */}
+                    <div className="col-md-5 text-center">
+                      <ResponsiveContainer width="100%" height={230}>
+                        <PieChart>
+                          <Pie
+                            data={activeDept || deptTotals}
+                            cx="50%" cy="50%"
+                            innerRadius={55} outerRadius={90}
+                            paddingAngle={3}
+                            dataKey="value"
+                            onClick={(entry) => { if (!activeDept) setSelectedDept(entry.name); }}
+                            style={{ cursor: activeDept ? "default" : "pointer" }}
+                          >
+                            {(activeDept || deptTotals).map((_, i) => (
+                              <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip content={<DeptPieTooltip />} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      {!activeDept && (
+                        <div className="text-center" style={{ fontSize: "11px", color: "#94a3b8" }}>
+                          Click slice to drill down
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Table */}
+                    <div className="col-md-7">
+                      <div className="table-responsive" style={{ maxHeight: "230px", overflowY: "auto" }}>
+                        <table className="table table-hover align-middle mb-0" style={{ fontSize: 12 }}>
+                          <thead className="table-light sticky-top">
+                            <tr>
+                              <th className="px-2 py-2">{activeDept ? "Category" : "Department"}</th>
+                              <th className="py-2 text-center">Count</th>
+                              <th className="py-2">Share</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(activeDept || deptTotals)
+                              .sort((a, b) => b.value - a.value)
+                              .map((row, i) => {
+                                const totalBase = activeDept
+                                  ? (deptMap[selectedDept] ? Object.values(deptMap[selectedDept]).reduce((a, b) => a + b, 0) : totalAll)
+                                  : totalAll;
+                                const pct = totalBase > 0 ? Math.round((row.value / totalBase) * 100) : 0;
+                                return (
+                                  <tr
+                                    key={row.name}
+                                    style={{ cursor: activeDept ? "default" : "pointer" }}
+                                    onClick={() => { if (!activeDept) setSelectedDept(row.name); }}
+                                  >
+                                    <td className="px-2 fw-semibold">
+                                      <span style={{
+                                        width: 8, height: 8, borderRadius: "50%",
+                                        backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length],
+                                        display: "inline-block", marginRight: 6
+                                      }} />
+                                      {row.name}
+                                    </td>
+                                    <td className="text-center fw-bold">{row.value}</td>
+                                    <td>
+                                      <div className="d-flex align-items-center gap-1">
+                                        <div className="progress flex-grow-1" style={{ height: 5, borderRadius: 4 }}>
+                                          <div
+                                            className="progress-bar"
+                                            role="progressbar"
+                                            style={{ width: `${pct}%`, backgroundColor: DEPT_COLORS[i % DEPT_COLORS.length] }}
+                                          />
+                                        </div>
+                                        <span style={{ fontSize: 10, minWidth: 26, color: "#64748b" }}>{pct}%</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* CARD 2: SEPARATE STATUS OF ALL GRIEVANCES CARD IN NUMBERS */}
+            <div className="col-xl-5 col-lg-5">
+              <div className="card shadow-sm border-0 h-100 p-4" style={{ borderRadius: 14 }}>
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h6 className="fw-bold mb-0" style={{ color: "var(--heading-color)" }}>
+                      <i className="bi bi-card-checklist me-2" style={{ color: isDark ? "#38bdf8" : "#0284c7" }} />
+                      All Grievances Status
+                    </h6>
+                    <small className="text-muted" style={{ fontSize: "12px" }}>
+                      Live breakdown of all system grievances by stage
+                    </small>
+                  </div>
+                  <span className="badge px-3 py-2 rounded-pill fw-bold" style={{
+                    backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#001a4d",
+                    color: "#ffffff",
+                    fontSize: "12px"
+                  }}>
+                    {systemStatusStats.total} Total
+                  </span>
+                </div>
+
+                {/* 2x2 STATUS METRIC TILES FOLLOWING GRIEVANCE STATUS COLOR CODE */}
+                <div className="row g-3">
+                  {[
+                    {
+                      statusKey: "Open",
+                      label: t("pending") || "Pending",
+                      subLabel: "Awaiting initial triage",
+                      count: systemStatusStats.open,
+                      pct: systemStatusStats.openPct,
+                      icon: "bi-clock-history",
+                      barColor: "#64748b",
+                      // EXACT COLOR CODE FROM getStatusBadge
+                      light: {
+                        bg: "#f1f5f9",
+                        border: "#cbd5e1",
+                        activeBorder: "#475569",
+                        text: "#334155",
+                        badgeBg: "#e2e8f0",
+                        badgeText: "#334155",
+                        iconColor: "#64748b"
+                      },
+                      dark: {
+                        bg: "rgba(255, 255, 255, 0.05)",
+                        border: "rgba(255, 255, 255, 0.14)",
+                        activeBorder: "#e4e4e7",
+                        text: "#f4f4f5",
+                        badgeBg: "rgba(255, 255, 255, 0.12)",
+                        badgeText: "#e4e4e7",
+                        iconColor: "#a1a1aa"
+                      }
+                    },
+                    {
+                      statusKey: "Investigating",
+                      label: t("inProgress") || "In Progress",
+                      subLabel: "Under active investigation",
+                      count: systemStatusStats.investigating,
+                      pct: systemStatusStats.investigatingPct,
+                      icon: "bi-search",
+                      barColor: "#f59e0b",
+                      // EXACT COLOR CODE FROM getStatusBadge
+                      light: {
+                        bg: "#fff8e1",
+                        border: "#fde68a",
+                        activeBorder: "#f59e0b",
+                        text: "#b45309",
+                        badgeBg: "#fef3c7",
+                        badgeText: "#b45309",
+                        iconColor: "#f59e0b"
+                      },
+                      dark: {
+                        bg: "rgba(245, 158, 11, 0.10)",
+                        border: "rgba(245, 158, 11, 0.28)",
+                        activeBorder: "#f59e0b",
+                        text: "#fde047",
+                        badgeBg: "rgba(245, 158, 11, 0.22)",
+                        badgeText: "#fbbf24",
+                        iconColor: "#fbbf24"
+                      }
+                    },
+                    {
+                      statusKey: "Resolved",
+                      label: t("resolved") || "Resolved",
+                      subLabel: "Satisfactorily resolved",
+                      count: systemStatusStats.resolved,
+                      pct: systemStatusStats.resolvedPct,
+                      icon: "bi-check-circle-fill",
+                      barColor: "#10b981",
+                      // EXACT COLOR CODE FROM getStatusBadge
+                      light: {
+                        bg: "#ecfdf5",
+                        border: "#a7f3d0",
+                        activeBorder: "#10b981",
+                        text: "#065f46",
+                        badgeBg: "#d1fae5",
+                        badgeText: "#065f46",
+                        iconColor: "#10b981"
+                      },
+                      dark: {
+                        bg: "rgba(16, 185, 129, 0.10)",
+                        border: "rgba(16, 185, 129, 0.28)",
+                        activeBorder: "#10b981",
+                        text: "#34d399",
+                        badgeBg: "rgba(16, 185, 129, 0.22)",
+                        badgeText: "#34d399",
+                        iconColor: "#34d399"
+                      }
+                    },
+                    {
+                      statusKey: "Closed",
+                      label: t("rejected") || "Closed",
+                      subLabel: "Closed or rejected",
+                      count: systemStatusStats.closed,
+                      pct: systemStatusStats.closedPct,
+                      icon: "bi-x-circle-fill",
+                      barColor: "#f43f5e",
+                      // EXACT COLOR CODE FROM getStatusBadge
+                      light: {
+                        bg: "#fef2f2",
+                        border: "#fecaca",
+                        activeBorder: "#dc2626",
+                        text: "#991b1b",
+                        badgeBg: "#fee2e2",
+                        badgeText: "#991b1b",
+                        iconColor: "#dc2626"
+                      },
+                      dark: {
+                        bg: "rgba(244, 63, 94, 0.10)",
+                        border: "rgba(244, 63, 94, 0.28)",
+                        activeBorder: "#f43f5e",
+                        text: "#fda4af",
+                        badgeBg: "rgba(244, 63, 94, 0.22)",
+                        badgeText: "#fb7185",
+                        iconColor: "#fb7185"
+                      }
+                    }
+                  ].map((cfg) => {
+                    const themeObj = isDark ? cfg.dark : cfg.light;
+                    const isActive = statusFilter === cfg.statusKey;
+                    return (
+                      <div key={cfg.statusKey} className="col-6">
+                        <div
+                          onClick={() => setStatusFilter(statusFilter === cfg.statusKey ? "ALL" : cfg.statusKey)}
+                          className="p-3 rounded-3 h-100 position-relative"
+                          style={{
+                            backgroundColor: themeObj.bg,
+                            border: isActive
+                              ? `2px solid ${themeObj.activeBorder}`
+                              : `1px solid ${themeObj.border}`,
+                            boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+                          onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+                        >
+                          <div className="d-flex justify-content-between align-items-center mb-1">
+                            <span className="fw-semibold" style={{ fontSize: "11px", textTransform: "uppercase", color: themeObj.text }}>
+                              {cfg.label}
+                            </span>
+                            <i className={cfg.icon} style={{ color: themeObj.iconColor, fontSize: "14px" }} />
+                          </div>
+                          <div className="d-flex align-items-baseline gap-2">
+                            <h3 className="fw-bold mb-0" style={{ color: themeObj.text }}>
+                              {cfg.count}
+                            </h3>
+                            <span className="badge rounded-pill" style={{
+                              backgroundColor: themeObj.badgeBg,
+                              color: themeObj.badgeText,
+                              fontSize: "10px"
+                            }}>
+                              {cfg.pct}%
+                            </span>
+                          </div>
+                          <div className="text-muted mt-1" style={{ fontSize: "11px" }}>
+                            {cfg.subLabel}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* DISTRIBUTION PROGRESS BAR USING STATUS COLOR CODES */}
+                <div className="mt-3 pt-2">
+                  <div className="d-flex justify-content-between align-items-center mb-1" style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    <span>Resolution Ratio</span>
+                    <span className="fw-semibold text-success">{systemStatusStats.resolvedPct}% Success</span>
+                  </div>
+                  <div className="progress" style={{ height: "8px", borderRadius: "6px", backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0" }}>
+                    <div className="progress-bar" style={{ width: `${systemStatusStats.openPct}%`, backgroundColor: "#64748b" }} title={`Pending: ${systemStatusStats.open}`} />
+                    <div className="progress-bar" style={{ width: `${systemStatusStats.investigatingPct}%`, backgroundColor: "#f59e0b" }} title={`In Progress: ${systemStatusStats.investigating}`} />
+                    <div className="progress-bar" style={{ width: `${systemStatusStats.resolvedPct}%`, backgroundColor: "#10b981" }} title={`Resolved: ${systemStatusStats.resolved}`} />
+                    <div className="progress-bar" style={{ width: `${systemStatusStats.closedPct}%`, backgroundColor: "#ef4444" }} title={`Closed: ${systemStatusStats.closed}`} />
                   </div>
                 </div>
+
+                {statusFilter !== "ALL" && (
+                  <div className="d-flex align-items-center justify-content-between mt-2 pt-2 border-top" style={{ fontSize: "12px" }}>
+                    <span className="fw-semibold d-flex align-items-center gap-2">
+                      <i className="bi bi-funnel-fill text-muted" />
+                      <span>Filter active:</span>
+                      {getStatusBadge(statusFilter)}
+                    </span>
+                    <button
+                      className="btn btn-link btn-sm p-0 text-decoration-none text-muted"
+                      onClick={() => setStatusFilter("ALL")}
+                    >
+                      Clear filter
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         );
       })()}
 
-      {/* TIER QUEUE SELECTOR / SCOPE INDICATOR */}
-      {isTierLocked ? (
-        <div className="d-flex align-items-center justify-content-between p-3 mb-3 rounded shadow-sm"
-          style={{
-            backgroundColor: isDark ? "rgba(255, 255, 255, 0.04)" : "#eff6ff",
-            border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid #bfdbfe"
-          }}>
-          <div className="d-flex align-items-center gap-2">
+      {/* COMPLAINTS FILTER CONTROLS */}
+      <div className="card shadow-sm border-0 mb-3 p-3" style={{ borderRadius: 12 }}>
+        <div className="row g-3 align-items-end">
+          {/* Department Filter (For Super Admin) */}
+          {isSuperAdmin && (
+            <div className="col-lg-3 col-md-4 col-sm-6">
+              <label className="form-label mb-1 fw-bold text-muted d-flex align-items-center gap-1" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <i className="bi bi-building"></i> Department
+              </label>
+              <select
+                className="form-select form-select-sm"
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+                style={{
+                  borderRadius: 8,
+                  fontSize: "13px",
+                  borderColor: departmentFilter !== "ALL" ? (isDark ? "#38bdf8" : "#0284c7") : undefined
+                }}
+              >
+                <option value="ALL">All Departments ({grievances.length})</option>
+                {ALLOWED_DEPARTMENTS.map((dept) => {
+                  const count = grievances.filter((g) => g.department && g.department.trim().toLowerCase() === dept.toLowerCase()).length;
+                  return (
+                    <option key={dept} value={dept}>
+                      {dept} ({count})
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )}
+
+          {/* Severity Filter */}
+          <div className="col-lg-3 col-md-4 col-sm-6">
+            <label className="form-label mb-1 fw-bold text-muted d-flex align-items-center gap-1" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <i className="bi bi-exclamation-triangle"></i> Severity
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value)}
+              style={{
+                borderRadius: 8,
+                fontSize: "13px",
+                borderColor: severityFilter !== "ALL" ? (isDark ? "#f59e0b" : "#d97706") : undefined
+              }}
+            >
+              <option value="ALL">All Severities</option>
+              {["Critical", "High", "Medium", "Low"].map((sev) => {
+                const count = departmentGrievances.filter((g) => g.severity === sev).length;
+                return (
+                  <option key={sev} value={sev}>
+                    {sev} ({count})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="col-lg-3 col-md-4 col-sm-6">
+            <label className="form-label mb-1 fw-bold text-muted d-flex align-items-center gap-1" style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <i className="bi bi-funnel"></i> Status
+            </label>
+            <select
+              className="form-select form-select-sm"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                borderRadius: 8,
+                fontSize: "13px",
+                borderColor: statusFilter !== "ALL" ? (isDark ? "#10b981" : "#059669") : undefined
+              }}
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="Open">Pending / Open</option>
+              <option value="Investigating">Investigating</option>
+              <option value="Resolved">Resolved</option>
+              <option value="Closed">Closed / Rejected</option>
+            </select>
+          </div>
+
+          {/* Results Summary & Clear Button */}
+          <div className="col-lg-3 col-md-12 col-sm-6 ms-auto d-flex align-items-center justify-content-between justify-content-lg-end gap-2">
+            <span className="text-muted" style={{ fontSize: "13px" }}>
+              Showing <strong>{filtered.length}</strong> of {departmentGrievances.length}
+            </span>
+            {(departmentFilter !== "ALL" || severityFilter !== "ALL" || statusFilter !== "ALL" || tierFilter !== "ALL") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDepartmentFilter("ALL");
+                  setSeverityFilter("ALL");
+                  setStatusFilter("ALL");
+                  setTierFilter("ALL");
+                }}
+                className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
+                style={{ borderRadius: 8, fontSize: "12px", whiteSpace: "nowrap" }}
+              >
+                <i className="bi bi-x-circle"></i> Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* TIER QUEUE SELECTOR / SCOPE INDICATOR */}
+        {isTierLocked ? (
+          <div className="d-flex align-items-center justify-content-between p-3 mt-3 rounded shadow-sm"
+            style={{
+              backgroundColor: isDark ? "rgba(255, 255, 255, 0.04)" : "#eff6ff",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid #bfdbfe"
+            }}>
+            <div className="d-flex align-items-center gap-2">
+              <span className="badge px-3 py-2 rounded-pill fw-bold"
+                style={{
+                  fontSize: "12px",
+                  backgroundColor: isDark ? "#27272a" : "#001a4d",
+                  color: "#ffffff",
+                  border: isDark ? "1px solid rgba(255, 255, 255, 0.15)" : "none"
+                }}>
+                {admin.admin_tier} QUEUE
+              </span>
+              <span style={{ fontSize: "14px", color: "var(--text-color)" }}>
+                Viewing tickets assigned to <strong>{admin?.department || "All"} {admin?.admin_tier || ""}</strong> handling.
+              </span>
+            </div>
             <span className="badge px-3 py-2 rounded-pill fw-bold"
               style={{
-                fontSize: "12px",
-                backgroundColor: isDark ? "#27272a" : "#001a4d",
-                color: "#ffffff",
-                border: isDark ? "1px solid rgba(255, 255, 255, 0.15)" : "none"
+                backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#fff",
+                color: isDark ? "#f4f4f5" : "#0d6efd",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.16)" : "1px solid #0d6efd"
               }}>
-              {admin.admin_tier} QUEUE
-            </span>
-            <span style={{ fontSize: "14px", color: "var(--text-color)" }}>
-              Viewing tickets assigned to <strong>{admin.department} {admin.admin_tier}</strong> handling.
+              {filtered.length} ticket{filtered.length === 1 ? "" : "s"}
             </span>
           </div>
-          <span className="badge px-3 py-2 rounded-pill fw-bold"
-            style={{
-              backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#fff",
-              color: isDark ? "#f4f4f5" : "#0d6efd",
-              border: isDark ? "1px solid rgba(255, 255, 255, 0.16)" : "1px solid #0d6efd"
-            }}>
-            {filtered.length} ticket{filtered.length === 1 ? "" : "s"}
-          </span>
-        </div>
-      ) : (
-        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-          <div className="d-flex gap-2 align-items-center flex-wrap">
-            <span className="text-muted fw-bold me-1" style={{ fontSize: "13px" }}>Queue:</span>
-            {["ALL", "L1", "L2", "L3", "HEAD"].map((t) => {
-              const count = departmentGrievances.filter((g) => t === "ALL" || g.assigned_tier === t).length;
-              const isActive = tierFilter === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTierFilter(t)}
-                  className={`btn btn-sm rounded-pill fw-semibold ${isActive ? "shadow-sm" : "btn-outline-secondary"}`}
-                  style={{
-                    fontSize: "12px",
-                    padding: "5px 14px",
-                    backgroundColor: isActive ? (isDark ? "#27272a" : "#001a4d") : undefined,
-                    borderColor: isActive ? (isDark ? "rgba(255, 255, 255, 0.22)" : "#001a4d") : undefined,
-                    color: isActive ? "#ffffff" : undefined
-                  }}
-                >
-                  {t === "ALL" ? "All Tiers" : t === "HEAD" ? "HEAD (Escalations)" : `${t} Queue`}
-                  <span className={`badge ms-2 rounded-pill ${isActive ? (isDark ? "bg-black text-light border border-secondary" : "bg-light text-dark") : (isDark ? "bg-secondary-subtle text-light" : "bg-secondary text-light")}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+        ) : (
+          <div className="pt-3 mt-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div className="d-flex gap-2 align-items-center flex-wrap">
+              <span className="text-muted fw-bold me-1" style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Queue:</span>
+              {["ALL", "L1", "L2", "L3", "HEAD"].map((t) => {
+                const count = departmentGrievances.filter((g) => t === "ALL" || g.assigned_tier === t).length;
+                const isActive = tierFilter === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTierFilter(t)}
+                    className={`btn btn-sm rounded-pill fw-semibold ${isActive ? "shadow-sm" : "btn-outline-secondary"}`}
+                    style={{
+                      fontSize: "12px",
+                      padding: "4px 12px",
+                      backgroundColor: isActive ? (isDark ? "#27272a" : "#001a4d") : undefined,
+                      borderColor: isActive ? (isDark ? "rgba(255, 255, 255, 0.22)" : "#001a4d") : undefined,
+                      color: isActive ? "#ffffff" : undefined
+                    }}
+                  >
+                    {t === "ALL" ? "All Tiers" : t === "HEAD" ? "HEAD (Escalations)" : `${t} Queue`}
+                    <span className={`badge ms-2 rounded-pill ${isActive ? (isDark ? "bg-black text-light border border-secondary" : "bg-light text-dark") : (isDark ? "bg-secondary-subtle text-light" : "bg-secondary text-light")}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {admin.admin_tier === "HEAD" && (
+              <span className="badge px-3 py-2 rounded-pill fw-semibold"
+                style={{
+                  backgroundColor: isDark ? "rgba(239, 68, 68, 0.15)" : "#fee2e2",
+                  color: isDark ? "#fca5a5" : "#b91c1c",
+                  border: isDark ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #fecaca",
+                  fontSize: "12px"
+                }}>
+                Department Head View
+              </span>
+            )}
           </div>
-          {admin.admin_tier === "HEAD" && (
-            <span className="badge px-3 py-2 rounded-pill fw-semibold"
-              style={{
-                backgroundColor: isDark ? "rgba(239, 68, 68, 0.15)" : "#fee2e2",
-                color: isDark ? "#fca5a5" : "#b91c1c",
-                border: isDark ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid #fecaca",
-                fontSize: "12px"
-              }}>
-              Department Head View
-            </span>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* TABLE */}
       <div className="card shadow-sm border-0">
@@ -870,7 +1319,7 @@ ${ragRecommendation.compliance_notes || ""}`;
             <div className="text-center py-5 text-muted">
               <h5 className="fw-bold mb-1">No complaints assigned</h5>
               <p className="mb-0" style={{ fontSize: "14px" }}>
-                Grievances matching your <strong>{admin.department}</strong> {isTierLocked ? `${admin.admin_tier} queue` : "department"} will appear here in real-time.
+                Grievances matching your <strong>{admin?.department || "assigned"}</strong> {isTierLocked ? `${admin?.admin_tier || ""} queue` : "department"} will appear here in real-time.
               </p>
             </div>
           ) : (
@@ -879,6 +1328,9 @@ ${ragRecommendation.compliance_notes || ""}`;
                 <thead className="table-light">
                   <tr>
                     <th className="text-muted py-3 ps-4" style={{ fontSize: "12px" }}>ID</th>
+                    {isSuperAdmin && (
+                      <th className="text-muted py-3" style={{ fontSize: "12px" }}>Department</th>
+                    )}
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>{t("category")}</th>
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>Severity</th>
                     <th className="text-muted py-3" style={{ fontSize: "12px" }}>Description</th>
@@ -899,6 +1351,18 @@ ${ragRecommendation.compliance_notes || ""}`;
                       <td className="fw-bold ps-4 admin-ticket-id">
                         #{g.grievance_id.substring(0, 8)}
                       </td>
+                      {isSuperAdmin && (
+                        <td>
+                          <span className="badge rounded-pill fw-semibold" style={{
+                            backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "#f1f5f9",
+                            color: isDark ? "#e4e4e7" : "#1e293b",
+                            border: isDark ? "1px solid rgba(255, 255, 255, 0.12)" : "1px solid #cbd5e1",
+                            fontSize: "11px"
+                          }}>
+                            {g.department || "General"}
+                          </span>
+                        </td>
+                      )}
                       <td className="fw-semibold" style={{ fontSize: "13px", color: "var(--heading-color)" }}>{g.category}</td>
                       <td>{getSeverityBadge(g.severity)}</td>
                       <td
@@ -1330,7 +1794,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                   </svg>
                 </div>
                 <div>
-                  <h5 className="modal-title fw-bold mb-0 text-white">AI Policy & Resolution Advisory</h5>
+                  <h5 className="modal-title fw-bold mb-0 text-white">Policy & Resolution Advisory</h5>
                   <p className="small mb-0 opacity-75 text-white">
                     Grounded recommendations from Puravankara policy documents for Ticket #{selectedRagTicket?.grievance_id?.substring(0, 8)}
                   </p>

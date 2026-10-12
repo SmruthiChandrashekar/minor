@@ -576,7 +576,7 @@ function PolicyAssistant() {
             </div>
             <div>
               <h5 className="mb-0 fw-bold pa-topbar-title text-white">Purva</h5>
-              <small className="pa-topbar-subtitle text-white-50">Your AI Grievance Companion</small>
+              <small className="pa-topbar-subtitle text-white-50">Your Policy & Grievance Companion</small>
             </div>
           </div>
           <div className="d-flex align-items-center gap-2">
@@ -594,7 +594,7 @@ function PolicyAssistant() {
                 <img src="/purva-logo.svg" alt="Purva" className="purva-welcome-svg" style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "contain" }} />
               </div>
               <h4 className="fw-bold mb-2">Hi, I'm <span style={{ background: 'linear-gradient(135deg, #a78bfa, #f472b6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Purva</span></h4>
-              <p className="text-muted mb-4">Your AI companion for company policies, grievance procedures, POSH compliance, and filing complaints — I'm here to help!</p>
+              <p className="text-muted mb-4">Your companion for company policies, grievance procedures, POSH compliance, and filing complaints — I'm here to help!</p>
               <div className="pa-prompts-grid">
                 {suggestedPrompts.map((prompt, idx) => (
                   <button

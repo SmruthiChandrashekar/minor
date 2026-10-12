@@ -4,7 +4,7 @@ export default function PurvaAvatar({ size = 42, className = "", style = {} }) {
   return (
     <img
       src="/purva-logo.svg"
-      alt="Purva AI"
+      alt="Purva"
       className={className}
       style={{
         width: typeof size === "number" ? `${size}px` : size,
