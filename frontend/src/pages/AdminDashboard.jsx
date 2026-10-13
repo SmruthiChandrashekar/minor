@@ -7,6 +7,7 @@ import { supabase } from "../services/supabaseClient";
 import { translateList } from "../services/translationService";
 import { apiClient } from "../services/api";
 import AdminAnalytics from "../components/AdminAnalytics";
+import InsightsPanel, { isSlaBreached } from "../components/InsightsPanel";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "./AdminDashboard.css";
 
@@ -49,6 +50,9 @@ const AdminDashboard = () => {
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [dateFilter, setDateFilter] = useState("ALL"); // YYYY-MM-DD
+  const [slaFilter, setSlaFilter] = useState("ALL"); // ALL | BREACHED
   const [downloadingReportId, setDownloadingReportId] = useState(null);
   const [selectedTicket, setSelectedTicket] = useState(null); // slide-out panel
 
@@ -223,7 +227,18 @@ const AdminDashboard = () => {
       if (gDept !== targetDept) return false;
     }
     // Severity filter
-    if (severityFilter !== "ALL" && g.severity !== severityFilter) {
+    if (severityFilter === "HIGH_CRITICAL") {
+      if (g.severity !== "High" && g.severity !== "Critical") return false;
+    } else if (severityFilter !== "ALL" && g.severity !== severityFilter) {
+      return false;
+    }
+    // Category filter (from department drill-down)
+    if (categoryFilter !== "ALL" && g.category?.trim().toLowerCase() !== categoryFilter.trim().toLowerCase()) {
+      return false;
+    }
+    if (slaFilter === "BREACHED" && !isSlaBreached(g)) return false;
+    // Date filter (from trend chart)
+    if (dateFilter !== "ALL" && String(g.created_at || "").slice(0, 10) !== dateFilter) {
       return false;
     }
     // Status filter
@@ -232,6 +247,8 @@ const AdminDashboard = () => {
         if (g.status !== "Closed" && g.status !== "Rejected") return false;
       } else if (statusFilter === "Open") {
         if (g.status !== "Open" && g.status !== "CHATBOT_HANDLING") return false;
+      } else if (statusFilter === "PENDING") {
+        if (!["Open", "CHATBOT_HANDLING", "Investigating", "HUMAN_HANDLING"].includes(g.status)) return false;
       } else if (statusFilter === "Investigating") {
         if (g.status !== "Investigating" && g.status !== "HUMAN_HANDLING") return false;
       } else if (g.status !== statusFilter) {
@@ -244,6 +261,30 @@ const AdminDashboard = () => {
     }
     return true;
   });
+
+  // Apply a filter from a dashboard element and jump to the grievance table
+  const applyDashboardFilter = (changes) => {
+    if ("status" in changes) setStatusFilter(changes.status);
+    if ("severity" in changes) setSeverityFilter(changes.severity);
+    if ("category" in changes) setCategoryFilter(changes.category);
+    if ("date" in changes) setDateFilter(changes.date);
+    if ("sla" in changes) setSlaFilter(changes.sla);
+    if ("tier" in changes) setTierFilter(changes.tier);
+    if ("department" in changes && isSuperAdmin) setDepartmentFilter(changes.department);
+    setTimeout(() => {
+      document.getElementById("grievance-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
+  const resetAllFilters = () => {
+    setDepartmentFilter("ALL");
+    setSeverityFilter("ALL");
+    setStatusFilter("ALL");
+    setTierFilter("ALL");
+    setCategoryFilter("ALL");
+    setDateFilter("ALL");
+    setSlaFilter("ALL");
+  };
 
   // Status update
   const handleStatusChange = async (grievanceId, newStatus) => {
@@ -319,12 +360,12 @@ const AdminDashboard = () => {
         };
       case "Investigating":
         return {
-          title: "Move to investigating",
+          title: "Move to in progress",
           tone: "primary",
-          label: "Investigation scope",
-          placeholder: "Describe what will be inspected or investigated…",
+          label: "Work plan",
+          placeholder: "Describe what will be looked into or done…",
           btnText: "Update status",
-          description: "Record why this ticket is moving into active investigation.",
+          description: "Record why this ticket is moving into progress.",
         };
       case "Open":
         return {
@@ -668,7 +709,10 @@ ${ragRecommendation.compliance_notes || ""}`;
       </div>
 
       {/* ADVANCED ANALYTICS & FILTERS */}
-      <AdminAnalytics adminDepartment={isSuperAdmin ? "" : (admin?.department || "")} />
+      <AdminAnalytics adminDepartment={isSuperAdmin ? "" : (admin?.department || "")} onFilter={applyDashboardFilter} />
+
+      {/* DERIVED PERFORMANCE INSIGHTS */}
+      <InsightsPanel grievances={departmentGrievances} onFilter={applyDashboardFilter} />
 
       {/* SUPER ADMIN OVERVIEW: DEPT PIE CHART + SEPARATE STATUS OVERVIEW CARD */}
       {isSuperAdmin && (() => {
@@ -700,20 +744,12 @@ ${ragRecommendation.compliance_notes || ""}`;
                       Grievance Distribution by Department
                     </h6>
                     <small className="text-muted" style={{ fontSize: "12px" }}>
-                      {activeDept ? `Drilldown for ${selectedDept}` : "Click a slice or row to view category breakdown"}
+                      {activeDept ? `Drilldown for ${selectedDept}` : "Click a slice or row to drill down and filter the table"}
                     </small>
                   </div>
                   {selectedDept && (
                     <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-sm btn-primary"
-                        onClick={() => setDepartmentFilter(selectedDept)}
-                        title="Filter complaints table below"
-                        style={{ fontSize: "12px" }}
-                      >
-                        <i className="bi bi-funnel me-1"></i> Filter Table
-                      </button>
-                      <button className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedDept(null)} style={{ fontSize: "12px" }}>
+                      <button className="btn btn-sm btn-outline-secondary" onClick={() => { setSelectedDept(null); setDepartmentFilter("ALL"); setCategoryFilter("ALL"); }} style={{ fontSize: "12px" }}>
                         ← All Departments
                       </button>
                     </div>
@@ -738,8 +774,11 @@ ${ragRecommendation.compliance_notes || ""}`;
                             innerRadius={55} outerRadius={90}
                             paddingAngle={3}
                             dataKey="value"
-                            onClick={(entry) => { if (!activeDept) setSelectedDept(entry.name); }}
-                            style={{ cursor: activeDept ? "default" : "pointer" }}
+                            onClick={(entry) => {
+                              if (!activeDept) { setSelectedDept(entry.name); applyDashboardFilter({ department: entry.name, category: "ALL" }); }
+                              else applyDashboardFilter({ category: entry.name });
+                            }}
+                            style={{ cursor: "pointer" }}
                           >
                             {(activeDept || deptTotals).map((_, i) => (
                               <Cell key={i} fill={DEPT_COLORS[i % DEPT_COLORS.length]} />
@@ -748,11 +787,9 @@ ${ragRecommendation.compliance_notes || ""}`;
                           <Tooltip content={<DeptPieTooltip />} />
                         </PieChart>
                       </ResponsiveContainer>
-                      {!activeDept && (
-                        <div className="text-center" style={{ fontSize: "11px", color: "#94a3b8" }}>
-                          Click slice to drill down
-                        </div>
-                      )}
+                      <div className="text-center" style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        {activeDept ? "Click slice to filter by category" : "Click slice to drill down & filter"}
+                      </div>
                     </div>
 
                     {/* Table */}
@@ -777,8 +814,11 @@ ${ragRecommendation.compliance_notes || ""}`;
                                 return (
                                   <tr
                                     key={row.name}
-                                    style={{ cursor: activeDept ? "default" : "pointer" }}
-                                    onClick={() => { if (!activeDept) setSelectedDept(row.name); }}
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => {
+                                      if (!activeDept) { setSelectedDept(row.name); applyDashboardFilter({ department: row.name, category: "ALL" }); }
+                                      else applyDashboardFilter({ category: row.name });
+                                    }}
                                   >
                                     <td className="px-2 fw-semibold">
                                       <span style={{
@@ -869,7 +909,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                     {
                       statusKey: "Investigating",
                       label: t("inProgress") || "In Progress",
-                      subLabel: "Under active investigation",
+                      subLabel: "Being actively worked on",
                       count: systemStatusStats.investigating,
                       pct: systemStatusStats.investigatingPct,
                       icon: "bi-search",
@@ -951,19 +991,21 @@ ${ragRecommendation.compliance_notes || ""}`;
                       }
                     }
                   ].map((cfg) => {
-                    const themeObj = isDark ? cfg.dark : cfg.light;
+                    const themeObj = {
+                      text: isDark ? "#f4f4f5" : "#0f172a",
+                      iconColor: isDark ? "#a1a1aa" : "#64748b",
+                    };
                     const isActive = statusFilter === cfg.statusKey;
                     return (
                       <div key={cfg.statusKey} className="col-6">
                         <div
-                          onClick={() => setStatusFilter(statusFilter === cfg.statusKey ? "ALL" : cfg.statusKey)}
-                          className="p-3 rounded-3 h-100 position-relative"
+                          onClick={() => applyDashboardFilter({ status: statusFilter === cfg.statusKey ? "ALL" : cfg.statusKey })}
+                          className="card shadow-sm border-0 p-3 h-100 position-relative"
+                          role="button"
                           style={{
-                            backgroundColor: themeObj.bg,
-                            border: isActive
-                              ? `2px solid ${themeObj.activeBorder}`
-                              : `1px solid ${themeObj.border}`,
-                            boxShadow: isActive ? "0 2px 8px rgba(0,0,0,0.08)" : "none",
+                            borderRadius: 14,
+                            outline: isActive ? `2px solid ${cfg.barColor}` : "none",
+                            outlineOffset: -2,
                             cursor: "pointer",
                             transition: "all 0.2s ease"
                           }}
@@ -971,18 +1013,17 @@ ${ragRecommendation.compliance_notes || ""}`;
                           onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
                         >
                           <div className="d-flex justify-content-between align-items-center mb-1">
-                            <span className="fw-semibold" style={{ fontSize: "11px", textTransform: "uppercase", color: themeObj.text }}>
+                            <span className="text-muted fw-semibold" style={{ fontSize: "11px", textTransform: "uppercase" }}>
                               {cfg.label}
                             </span>
                             <i className={cfg.icon} style={{ color: themeObj.iconColor, fontSize: "14px" }} />
                           </div>
                           <div className="d-flex align-items-baseline gap-2">
-                            <h3 className="fw-bold mb-0" style={{ color: themeObj.text }}>
+                            <h3 className="fw-bold mb-0" style={{ color: cfg.barColor }}>
                               {cfg.count}
                             </h3>
-                            <span className="badge rounded-pill" style={{
-                              backgroundColor: themeObj.badgeBg,
-                              color: themeObj.badgeText,
+                            <span className="badge rounded-pill text-muted" style={{
+                              backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#f1f5f9",
                               fontSize: "10px"
                             }}>
                               {cfg.pct}%
@@ -1004,10 +1045,10 @@ ${ragRecommendation.compliance_notes || ""}`;
                     <span className="fw-semibold text-success">{systemStatusStats.resolvedPct}% Success</span>
                   </div>
                   <div className="progress" style={{ height: "8px", borderRadius: "6px", backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#e2e8f0" }}>
-                    <div className="progress-bar" style={{ width: `${systemStatusStats.openPct}%`, backgroundColor: "#64748b" }} title={`Pending: ${systemStatusStats.open}`} />
-                    <div className="progress-bar" style={{ width: `${systemStatusStats.investigatingPct}%`, backgroundColor: "#f59e0b" }} title={`In Progress: ${systemStatusStats.investigating}`} />
-                    <div className="progress-bar" style={{ width: `${systemStatusStats.resolvedPct}%`, backgroundColor: "#10b981" }} title={`Resolved: ${systemStatusStats.resolved}`} />
-                    <div className="progress-bar" style={{ width: `${systemStatusStats.closedPct}%`, backgroundColor: "#ef4444" }} title={`Closed: ${systemStatusStats.closed}`} />
+                    <div className="progress-bar" role="button" onClick={() => applyDashboardFilter({ status: "Open" })} style={{ cursor: "pointer", width: `${systemStatusStats.openPct}%`, backgroundColor: "#64748b" }} title={`Pending: ${systemStatusStats.open}`} />
+                    <div className="progress-bar" role="button" onClick={() => applyDashboardFilter({ status: "Investigating" })} style={{ cursor: "pointer", width: `${systemStatusStats.investigatingPct}%`, backgroundColor: "#f59e0b" }} title={`In Progress: ${systemStatusStats.investigating}`} />
+                    <div className="progress-bar" role="button" onClick={() => applyDashboardFilter({ status: "Resolved" })} style={{ cursor: "pointer", width: `${systemStatusStats.resolvedPct}%`, backgroundColor: "#10b981" }} title={`Resolved: ${systemStatusStats.resolved}`} />
+                    <div className="progress-bar" role="button" onClick={() => applyDashboardFilter({ status: "Closed" })} style={{ cursor: "pointer", width: `${systemStatusStats.closedPct}%`, backgroundColor: "#ef4444" }} title={`Closed: ${systemStatusStats.closed}`} />
                   </div>
                 </div>
 
@@ -1080,6 +1121,7 @@ ${ragRecommendation.compliance_notes || ""}`;
               }}
             >
               <option value="ALL">All Severities</option>
+              <option value="HIGH_CRITICAL">High + Critical</option>
               {["Critical", "High", "Medium", "Low"].map((sev) => {
                 const count = departmentGrievances.filter((g) => g.severity === sev).length;
                 return (
@@ -1107,8 +1149,9 @@ ${ragRecommendation.compliance_notes || ""}`;
               }}
             >
               <option value="ALL">All Statuses</option>
+              <option value="PENDING">Pending + In Progress</option>
               <option value="Open">Pending / Open</option>
-              <option value="Investigating">Investigating</option>
+              <option value="Investigating">In Progress</option>
               <option value="Resolved">Resolved</option>
               <option value="Closed">Closed / Rejected</option>
             </select>
@@ -1119,15 +1162,10 @@ ${ragRecommendation.compliance_notes || ""}`;
             <span className="text-muted" style={{ fontSize: "13px" }}>
               Showing <strong>{filtered.length}</strong> of {departmentGrievances.length}
             </span>
-            {(departmentFilter !== "ALL" || severityFilter !== "ALL" || statusFilter !== "ALL" || tierFilter !== "ALL") && (
+            {(departmentFilter !== "ALL" || severityFilter !== "ALL" || statusFilter !== "ALL" || tierFilter !== "ALL" || categoryFilter !== "ALL" || dateFilter !== "ALL" || slaFilter !== "ALL") && (
               <button
                 type="button"
-                onClick={() => {
-                  setDepartmentFilter("ALL");
-                  setSeverityFilter("ALL");
-                  setStatusFilter("ALL");
-                  setTierFilter("ALL");
-                }}
+                onClick={resetAllFilters}
                 className="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-1"
                 style={{ borderRadius: 8, fontSize: "12px", whiteSpace: "nowrap" }}
               >
@@ -1211,8 +1249,32 @@ ${ragRecommendation.compliance_notes || ""}`;
         )}
       </div>
 
+      {/* ACTIVE DASHBOARD FILTER CHIPS */}
+      {(categoryFilter !== "ALL" || dateFilter !== "ALL" || slaFilter !== "ALL") && (
+        <div className="d-flex flex-wrap gap-2 mb-3">
+          {categoryFilter !== "ALL" && (
+            <span className="badge rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2" style={{ fontSize: 12, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#e0f2fe", color: isDark ? "#e4e4e7" : "#075985" }}>
+              Category: {categoryFilter}
+              <i className="bi bi-x-lg" role="button" onClick={() => setCategoryFilter("ALL")} />
+            </span>
+          )}
+          {slaFilter !== "ALL" && (
+            <span className="badge rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2" style={{ fontSize: 12, backgroundColor: isDark ? "rgba(239,68,68,0.15)" : "#fee2e2", color: isDark ? "#fca5a5" : "#b91c1c" }}>
+              SLA breached
+              <i className="bi bi-x-lg" role="button" onClick={() => setSlaFilter("ALL")} />
+            </span>
+          )}
+          {dateFilter !== "ALL" && (
+            <span className="badge rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2" style={{ fontSize: 12, backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#e0f2fe", color: isDark ? "#e4e4e7" : "#075985" }}>
+              Date: {dateFilter}
+              <i className="bi bi-x-lg" role="button" onClick={() => setDateFilter("ALL")} />
+            </span>
+          )}
+        </div>
+      )}
+
       {/* TABLE */}
-      <div className="card shadow-sm border-0">
+      <div id="grievance-table" className="card shadow-sm border-0" style={{ scrollMarginTop: 16 }}>
         <div className="card-body p-0">
           {loading ? (
             <div className="text-center py-5">
@@ -1508,7 +1570,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                           {/* System-assigned statuses (e.g. HUMAN_HANDLING) aren't manual choices */}
                           <option value="" disabled hidden>Change status…</option>
                           <option value="Open">Pending</option>
-                          <option value="Investigating">Investigating</option>
+                          <option value="Investigating">In Progress</option>
                           <option value="Resolved">Resolve</option>
                           <option value="Rejected">Reject</option>
                         </select>

@@ -7,7 +7,11 @@
 }
 
 .analytics-stat-label {
-  font-size: 0.75rem;
+  font-size: 11px;
+}
+
+.analytics-stat-sub {
+  font-size: 11px;
 }
 
 .analytics-star {
@@ -32,10 +36,11 @@
 
 /* Stat cards: coloured left edge and value */
 .card.analytics-stat {
-  border-left: 4px solid var(--stat-color) !important;
+  border-radius: 14px;
 }
 
 .analytics-stat .analytics-stat-value {
+  font-size: 24px;
   color: var(--stat-value-color, var(--stat-color));
 }
 
