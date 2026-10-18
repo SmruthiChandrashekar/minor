@@ -48,12 +48,3 @@ td.dash-cell {
   border-color: #ffcdd2;
 }
 
-/* Stat cards: coloured left edge (border-0 would otherwise remove it) */
-.card.dash-stat-card {
-  border-left: 4px solid var(--stat-color) !important;
-}
-
-.dash-stat-card.is-total { --stat-color: #6c757d; }
-.dash-stat-card.is-progress { --stat-color: #ffc107; }
-.dash-stat-card.is-resolved { --stat-color: #198754; }
-.dash-stat-card.is-rejected { --stat-color: #dc3545; }

@@ -21,15 +21,21 @@ logger = logging.getLogger("sla_monitor")
 CHECK_INTERVAL_SECONDS = 300  # 5 minutes
 
 
+_client = None
+
+
 def _get_supabase():
-    """Get Supabase client."""
-    import os
-    from supabase import create_client
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_KEY")
-    if not url or not key:
-        raise RuntimeError("Missing Supabase environment variables")
-    return create_client(url, key)
+    """Get the shared Supabase client (created once, then reused)."""
+    global _client
+    if _client is None:
+        import os
+        from supabase import create_client
+        url = os.environ.get("SUPABASE_URL")
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
+        if not url or not key:
+            raise RuntimeError("Missing Supabase environment variables")
+        _client = create_client(url, key)
+    return _client
 
 
 def check_and_escalate():

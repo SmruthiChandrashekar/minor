@@ -1,23 +1,30 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { LanguageProvider } from "../context/LanguageContext";
 import { AuthProvider, useAuth } from "../context/AuthProvider";
 import Layout from "../layout/Layout";
 import ProtectedRoute from "./ProtectedRoute";
 
-import Index from "../pages/Index";
-import Track from "../pages/Track";
-import Help from "../pages/Help";
-import Auth from "../pages/Auth";
-import LodgeSelection from "../pages/LodgeSelection";
-import LodgeInternal from "../pages/LodgeInternal";
-import LodgeContract from "../pages/LodgeContract";
-import LodgeExternal from "../pages/LodgeExternal";
-import Dashboard from "../pages/Dashboard";
-import AdminLogin from "../pages/AdminLogin";
-import AdminDashboard from "../pages/AdminDashboard";
-import SuperAdminPortal from "../pages/SuperAdminPortal";
-import PolicyAssistant from "../pages/PolicyAssistant";
-import Profile from "../pages/Profile";
+const Index = lazy(() => import("../pages/Index"));
+const Track = lazy(() => import("../pages/Track"));
+const Help = lazy(() => import("../pages/Help"));
+const Auth = lazy(() => import("../pages/Auth"));
+const LodgeSelection = lazy(() => import("../pages/LodgeSelection"));
+const LodgeInternal = lazy(() => import("../pages/LodgeInternal"));
+const LodgeContract = lazy(() => import("../pages/LodgeContract"));
+const LodgeExternal = lazy(() => import("../pages/LodgeExternal"));
+const Dashboard = lazy(() => import("../pages/Dashboard"));
+const AdminLogin = lazy(() => import("../pages/AdminLogin"));
+const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
+const SuperAdminPortal = lazy(() => import("../pages/SuperAdminPortal"));
+const PolicyAssistant = lazy(() => import("../pages/PolicyAssistant"));
+const Profile = lazy(() => import("../pages/Profile"));
+
+const PageLoader = () => (
+  <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
+    <div className="spinner-border text-primary" role="status"></div>
+  </div>
+);
 
 const MainRoutes = () => {
   const { user, isAdmin, isSuperAdmin, loading } = useAuth();
@@ -40,6 +47,7 @@ const MainRoutes = () => {
 
   return (
     <Layout>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={getRootElement()} />
         
@@ -65,6 +73,7 @@ const MainRoutes = () => {
         <Route path="/admin/dashboard" element={isAdmin ? <AdminDashboard /> : <Navigate to="/admin/login" replace />} />
         <Route path="/admin/portal" element={isSuperAdmin ? <SuperAdminPortal /> : (isAdmin ? <Navigate to="/admin/dashboard" replace /> : <Navigate to="/admin/login" replace />)} />
       </Routes>
+      </Suspense>
     </Layout>
   );
 };

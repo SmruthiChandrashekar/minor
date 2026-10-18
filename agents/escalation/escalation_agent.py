@@ -40,7 +40,7 @@ class EscalationAgent:
 
         # Initialize Supabase client for dynamic admin lookups
         SUPABASE_URL = os.environ["SUPABASE_URL"]
-        SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+        SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
         self.supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
         logger.info("[ESCALATION] Agent initialized successfully.")
 

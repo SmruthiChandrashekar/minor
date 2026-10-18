@@ -13,8 +13,9 @@ const SuperAdminPortal = () => {
     name: "",
     email: "",
     password: "",
-    role: "hr",
-    department: "HR"
+    role: "admin",
+    department: "HR",
+    admin_tier: "L1"
   });
 
   const fetchData = async () => {
@@ -143,7 +144,7 @@ const SuperAdminPortal = () => {
                           {u.role.replace('_', ' ').toUpperCase()}
                         </span>
                       </td>
-                      <td>{u.department}</td>
+                      <td>{u.department || "-"}{u.admin_tier ? ` · ${u.admin_tier}` : ""}</td>
                       <td className="text-center">
                         {u.is_active ? (
                           <span className="badge bg-success bg-opacity-10 text-success border border-success">Active</span>
@@ -230,22 +231,34 @@ const SuperAdminPortal = () => {
                       <label className="form-label fw-semibold">Role</label>
                       <select className="form-select" value={inviteData.role} onChange={e => setInviteData({...inviteData, role: e.target.value})}>
                         <option value="super_admin">Super Admin</option>
-                        <option value="admin">Admin</option>
-                        <option value="staff">Staff</option>
+                        <option value="admin">Department staff (L1 / L2 / L3 / Head)</option>
                       </select>
                     </div>
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label fw-semibold">Department</label>
-                      <select className="form-select" value={inviteData.department} onChange={e => setInviteData({...inviteData, department: e.target.value})} required>
-                        <option value="">Select Department</option>
-                        <option value="ESG">ESG</option>
-                        <option value="IC">IC</option>
-                        <option value="HR">HR</option>
-                        <option value="CSD">CSD</option>
-                        <option value="CRM">CRM</option>
-                        <option value="Investors">Investors</option>
-                      </select>
-                    </div>
+                    {inviteData.role === "admin" && (
+                      <>
+                        <div className="col-md-3 mb-3">
+                          <label className="form-label fw-semibold">Department</label>
+                          <select className="form-select" value={inviteData.department} onChange={e => setInviteData({...inviteData, department: e.target.value})} required>
+                            <option value="">Select</option>
+                            <option value="ESG">ESG</option>
+                            <option value="IC">IC</option>
+                            <option value="HR">HR</option>
+                            <option value="CSD">CSD</option>
+                            <option value="CRM">CRM</option>
+                            <option value="Investors">Investors</option>
+                          </select>
+                        </div>
+                        <div className="col-md-3 mb-3">
+                          <label className="form-label fw-semibold">Tier</label>
+                          <select className="form-select" value={inviteData.admin_tier} onChange={e => setInviteData({...inviteData, admin_tier: e.target.value})} required>
+                            <option value="L1">L1</option>
+                            <option value="L2">L2</option>
+                            <option value="L3">L3</option>
+                            <option value="HEAD">Head</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <div className="mt-4 d-flex justify-content-end">
                     <button type="button" className="btn btn-light me-2" onClick={() => setShowInviteModal(false)}>Cancel</button>

@@ -113,7 +113,10 @@ def migrate_existing_admins():
 
 def setup_super_admin():
     email = os.environ.get("SUPER_ADMIN_EMAIL", "superadmin@puravankara.com")
-    password = os.environ.get("SUPER_ADMIN_PASSWORD", "ChangeMeImmediately!123")
+    password = os.environ.get("SUPER_ADMIN_PASSWORD")
+    if not password:
+        print("Error: SUPER_ADMIN_PASSWORD must be set in backend/.env (no default is used).")
+        sys.exit(1)
     
     print(f"\nSetting up Super Admin: {email}")
     
@@ -159,31 +162,24 @@ def setup_super_admin():
 
 def seed_department_admins():
     """
-    Seed admin accounts for all 6 departments, including general department admins
-    and distinct tier admins (L1, L2, L3, HEAD) for Option B.
+    Seed one account per department per tier (L1, L2, L3, HEAD) for all 6 departments.
 
-    Uses SEED_ADMIN_PASSWORD env var (default: development-only password).
+    Requires the SEED_ADMIN_PASSWORD env var (no default).
     Each admin gets:
       - A Supabase Auth account
       - A row in the users table with role='admin', department, and admin_tier
     """
-    password = os.environ.get("SEED_ADMIN_PASSWORD", "DeptAdmin!Dev123")
+    password = os.environ.get("SEED_ADMIN_PASSWORD")
+    if not password:
+        print("Error: SEED_ADMIN_PASSWORD must be set in backend/.env (no default is used).")
+        sys.exit(1)
 
     depts = ["CRM", "CSD", "ESG", "HR", "Investors", "IC"]
     tiers = ["L1", "L2", "L3", "HEAD"]
 
     accounts_to_seed = []
 
-    # 1. General Department Admins (all-tier overview)
-    for dept in depts:
-        accounts_to_seed.append({
-            "department": dept,
-            "admin_tier": None,
-            "name": f"{dept} Admin",
-            "email": f"{dept.lower()}_admin@puravankara.com",
-        })
-
-    # 2. Distinct Tier Admins (Option B)
+    # One account per department per tier (L1, L2, L3, HEAD). No tier-less 'general' admins.
     for dept in depts:
         for tier in tiers:
             name_label = f"{dept} Department Head" if tier == "HEAD" else f"{dept} {tier} Admin"

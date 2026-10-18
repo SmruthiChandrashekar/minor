@@ -22,4 +22,6 @@ tqdm
 langgraph
 langchain-groq
 ragas
-
+deep_translator
+reportlab
+python-multipart

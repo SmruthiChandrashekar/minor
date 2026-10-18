@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
-import { supabase } from "../services/supabaseClient";
+import { API_BASE_URL } from "../services/supabaseClient";
 import { useAuth } from "../context/AuthProvider";
 import { apiClient } from "../services/api";
 import "./Track.css";
@@ -29,50 +29,15 @@ function Track() {
     setTrackedData(null);
 
     try {
+      // Lookup goes through the backend so the browser never reads the grievances table directly.
       let data = null;
       let fetchError = null;
-
-      const isFullUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanedId);
-
-      if (isFullUUID) {
-        const result = await supabase
-          .from("grievances")
-          .select("*")
-          .eq("grievance_id", cleanedId)
-          .single();
-
-        data = result.data;
-        fetchError = result.error;
-      } else {
-        // Try direct ILIKE prefix search first
-        const prefixRes = await supabase
-          .from("grievances")
-          .select("*")
-          .ilike("grievance_id", `${cleanedId}%`)
-          .limit(1);
-
-        if (prefixRes.data && prefixRes.data.length > 0) {
-          data = prefixRes.data[0];
-        } else {
-          const result = await supabase
-            .from("grievances")
-            .select("*")
-            .order("created_at", { ascending: false })
-            .limit(100);
-
-          if (result.data) {
-            const match = result.data.find((g) =>
-              g.grievance_id.toLowerCase().startsWith(cleanedId.toLowerCase())
-            );
-            if (match) {
-              data = match;
-            } else {
-              fetchError = { message: "Not found" };
-            }
-          } else {
-            fetchError = result.error || { message: "Not found" };
-          }
-        }
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/track/${encodeURIComponent(cleanedId)}`);
+        if (res.ok) data = await res.json();
+        else fetchError = { message: "Not found" };
+      } catch (e) {
+        fetchError = e;
       }
 
       if (fetchError || !data) {
@@ -94,6 +59,7 @@ function Track() {
           assigned_to: data.assigned_to,
           resolution_reason: data.resolution_reason,
           report_url: data.report_url,
+          documents: data.documents || [],
           date: new Date(data.created_at).toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "short",
@@ -479,6 +445,22 @@ function Track() {
                       >
                         {trackedData.resolution_reason}
                       </div>
+                    </div>
+                  )}
+                  {trackedData.documents?.length > 0 && (
+                    <div className="col-12 mt-2">
+                      <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
+                        DOCUMENTS FROM THE TEAM
+                      </span>
+                      <ul className="list-unstyled mb-0 fs-14">
+                        {trackedData.documents.map((f) => (
+                          <li key={f.url}>
+                            <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                              <i className="bi bi-paperclip me-1" />{f.name}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>

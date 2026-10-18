@@ -105,10 +105,10 @@ trainer.train()
 
 # Evaluate
 results = trainer.evaluate()
-print("📊 Evaluation Results:", results)
+print("Evaluation Results:", results)
 
 # Save model
 model.save_pretrained("model")
 tokenizer.save_pretrained("model")
 
-print("✅ Training complete")
+print("Training complete")

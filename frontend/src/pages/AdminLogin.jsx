@@ -36,7 +36,7 @@ const AdminLogin = () => {
         .eq("user_id", authData.user.id)
         .single();
 
-      const allowedRoles = ["super_admin", "admin", "hr", "safety", "compliance"];
+      const allowedRoles = ["super_admin", "admin"];
       if (userError || !allowedRoles.includes(userData?.role)) {
         await supabase.auth.signOut();
         setError("Access denied. This portal is for administrators only.");
@@ -83,7 +83,7 @@ const AdminLogin = () => {
                   className="form-control bg-light"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="admin@puravankara.com"
+                  placeholder="name@puravankara.com"
                   required
                 />
               </div>

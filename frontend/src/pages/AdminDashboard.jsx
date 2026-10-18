@@ -7,6 +7,7 @@ import { supabase } from "../services/supabaseClient";
 import { translateList } from "../services/translationService";
 import { apiClient } from "../services/api";
 import AdminAnalytics from "../components/AdminAnalytics";
+import AdminAttachmentPicker from "../components/AdminAttachmentPicker";
 import InsightsPanel, { isSlaBreached } from "../components/InsightsPanel";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import "./AdminDashboard.css";
@@ -44,6 +45,9 @@ const AdminDashboard = () => {
   const [deptDistLoading, setDeptDistLoading] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
   const [translating, setTranslating] = useState(false);
+  // The table renders this many rows at a time (keeps big lists fast)
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [updatingId, setUpdatingId] = useState(null);
   const [viewingAttachments, setViewingAttachments] = useState(null);
   const [tierFilter, setTierFilter] = useState("ALL");
@@ -59,6 +63,9 @@ const AdminDashboard = () => {
   // Resolution reason modal state
   const [pendingStatusChange, setPendingStatusChange] = useState(null); // { grievanceId, newStatus }
   const [resolutionReason, setResolutionReason] = useState("");
+  const [statusAttachments, setStatusAttachments] = useState([]);
+  const [escalationAttachments, setEscalationAttachments] = useState([]);
+  const [attachmentsUploading, setAttachmentsUploading] = useState(false);
   const [submittingStatus, setSubmittingStatus] = useState(false);
 
   // Manual escalation state
@@ -174,6 +181,9 @@ const AdminDashboard = () => {
   // Translate descriptions when grievances or language changes
   useEffect(() => {
     if (grievances.length === 0) { setTranslatedGrievances([]); return; }
+    // Show the untranslated list straight away; swap in translations as they arrive.
+    setTranslatedGrievances(grievances);
+    if (language === "English") { setTranslating(false); return; }
     let cancelled = false;
     setTranslating(true);
     // Only translate 'description' — category/status/severity are fixed labels
@@ -213,13 +223,14 @@ const AdminDashboard = () => {
   const isTierLocked = Boolean(admin?.admin_tier && ["L1", "L2", "L3"].includes(admin.admin_tier));
   const effectiveTier = isTierLocked ? admin.admin_tier : tierFilter;
 
-  const departmentGrievances = admin
-    ? translatedGrievances.filter(
-        (g) => isSuperAdmin || g.department === admin.department
-      )
-    : [];
+  const departmentGrievances = useMemo(
+    () => (admin
+      ? translatedGrievances.filter((g) => isSuperAdmin || g.department === admin.department)
+      : []),
+    [admin, isSuperAdmin, translatedGrievances]
+  );
 
-  const filtered = departmentGrievances.filter((g) => {
+  const filtered = useMemo(() => departmentGrievances.filter((g) => {
     // Super admin department filter
     if (isSuperAdmin && departmentFilter !== "ALL") {
       const gDept = g.department?.trim().toLowerCase();
@@ -260,7 +271,11 @@ const AdminDashboard = () => {
       return false;
     }
     return true;
-  });
+  }), [departmentGrievances, isSuperAdmin, departmentFilter, severityFilter, categoryFilter,
+       slaFilter, dateFilter, statusFilter, effectiveTier]);
+
+  // Go back to the first page whenever the filters change
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [departmentFilter, severityFilter, categoryFilter, slaFilter, dateFilter, statusFilter, effectiveTier]);
 
   // Apply a filter from a dashboard element and jump to the grievance table
   const applyDashboardFilter = (changes) => {
@@ -298,9 +313,10 @@ const AdminDashboard = () => {
       currentStatus: ticket?.status || "Open",
     });
     setResolutionReason("");
+    setStatusAttachments([]);
   };
 
-  const _submitStatusUpdate = async (grievanceId, newStatus, reason) => {
+  const _submitStatusUpdate = async (grievanceId, newStatus, reason, attachments = []) => {
     setUpdatingId(grievanceId);
     setSubmittingStatus(true);
     try {
@@ -310,6 +326,7 @@ const AdminDashboard = () => {
           grievance_id: grievanceId,
           status: newStatus,
           resolution_reason: reason || undefined,
+          attachments,
         }),
       });
       if (!res.ok) {
@@ -330,6 +347,7 @@ const AdminDashboard = () => {
       );
       setPendingStatusChange(null);
       setResolutionReason("");
+      setStatusAttachments([]);
     } catch (err) {
       alert("Failed to update status: " + err.message);
     } finally {
@@ -393,7 +411,8 @@ const AdminDashboard = () => {
     _submitStatusUpdate(
       pendingStatusChange.grievanceId,
       pendingStatusChange.newStatus,
-      resolutionReason.trim()
+      resolutionReason.trim(),
+      statusAttachments
     );
   };
 
@@ -407,6 +426,7 @@ const AdminDashboard = () => {
           grievance_id: escalatingTicket.grievance_id,
           reason: escalationReason.trim() || "Manual Escalation",
           notes: escalationNotes.trim() || undefined,
+          attachments: escalationAttachments,
         }),
       });
       if (!res.ok) {
@@ -424,6 +444,7 @@ const AdminDashboard = () => {
       setEscalatingTicket(null);
       setEscalationReason("");
       setEscalationNotes("");
+      setEscalationAttachments([]);
       alert(`Grievance successfully escalated to ${updated.assigned_tier}!`);
     } catch (err) {
       alert("Failed to escalate: " + err.message);
@@ -462,12 +483,11 @@ const AdminDashboard = () => {
 
     try {
       setUpdatingId(grievanceId);
-      const { error } = await supabase
-        .from("grievances")
-        .delete()
-        .eq("grievance_id", grievanceId);
-
-      if (error) throw error;
+      const res = await apiClient(`/api/admin/grievances/${grievanceId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || "Delete failed");
+      }
       
       setGrievances((prev) => prev.filter((g) => g.grievance_id !== grievanceId));
     } catch (err) {
@@ -1310,7 +1330,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                   </tr>
                 </thead>
                 <tbody>
-                 {filtered.map((g) => (
+                 {filtered.slice(0, visibleCount).map((g) => (
                     <tr
                       key={g.grievance_id}
                       onClick={() => setSelectedTicket(g)}
@@ -1398,6 +1418,17 @@ ${ragRecommendation.compliance_notes || ""}`;
                   ))}
                 </tbody>
               </table>
+              {filtered.length > visibleCount && (
+                <div className="text-center py-3">
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary btn-sm rounded-pill px-4"
+                    onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                  >
+                    Show more ({filtered.length - visibleCount} remaining)
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1526,6 +1557,15 @@ ${ragRecommendation.compliance_notes || ""}`;
                               {item.notes && (
                                 <div className="fs-13 text-theme mt-1 ticket-timeline-note">{item.notes}</div>
                               )}
+                              {Array.isArray(item.attachments) && item.attachments.length > 0 && (
+                                <div className="fs-12 mt-1 d-flex flex-wrap gap-2">
+                                  {item.attachments.map((f) => (
+                                    <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="text-decoration-none">
+                                      <i className="bi bi-paperclip me-1" />{f.name}
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
                             </li>
                           ))}
                         </ol>
@@ -1596,6 +1636,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                           className="btn admin-action"
                           onClick={() => {
                             setEscalatingTicket(selectedTicket);
+                            setEscalationAttachments([]);
                             setEscalationReason("");
                             setEscalationNotes("");
                           }}
@@ -1630,6 +1671,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                       )}
                     </div>
 
+                    {isSuperAdmin && (
                     <button
                       type="button"
                       className="btn btn-link btn-sm px-0 mt-4 text-decoration-none ticket-delete"
@@ -1639,6 +1681,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                       <i className="bi bi-trash3 me-2" />
                       Delete grievance
                     </button>
+                    )}
                   </div>
 
                 </div>
@@ -1931,6 +1974,15 @@ ${ragRecommendation.compliance_notes || ""}`;
                     onChange={(e) => setResolutionReason(e.target.value)}
                   />
                   <div className="fs-12 text-theme-muted mt-2">Required for every status change.</div>
+                  <div className="mt-3">
+                    <AdminAttachmentPicker
+                      value={statusAttachments}
+                      onChange={setStatusAttachments}
+                      onUploadingChange={setAttachmentsUploading}
+                      label="Attach documents"
+                      hint="Shared with the complainant — they can open these from the tracking page and the report."
+                    />
+                  </div>
                 </div>
 
                 <div className="modal-footer px-4 py-3 gap-2 admin-rag-footer">
@@ -1944,7 +1996,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                   <button
                     type="button"
                     className={`btn btn-sm rounded-pill px-4 ${cfg.tone === "danger" ? "btn-danger" : cfg.tone === "ok" ? "btn-primary btn-confirm-ok" : "btn-primary"}`}
-                    disabled={!resolutionReason.trim() || submittingStatus}
+                    disabled={!resolutionReason.trim() || submittingStatus || attachmentsUploading}
                     onClick={handleResolutionSubmit}
                   >
                     {submittingStatus ? (
@@ -2018,6 +2070,16 @@ ${ragRecommendation.compliance_notes || ""}`;
                     onChange={(e) => setEscalationNotes(e.target.value)}
                   />
                 </div>
+
+                <div>
+                  <AdminAttachmentPicker
+                    value={escalationAttachments}
+                    onChange={setEscalationAttachments}
+                    onUploadingChange={setAttachmentsUploading}
+                    label="Supporting documents"
+                    hint="Visible to the admins handling this ticket, not to the complainant."
+                  />
+                </div>
               </div>
 
               <div className="modal-footer px-4 py-3 gap-2 admin-rag-footer">
@@ -2031,7 +2093,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                 <button
                   type="button"
                   className="btn btn-primary btn-sm rounded-pill px-4"
-                  disabled={!escalationReason.trim() || submittingEscalation}
+                  disabled={!escalationReason.trim() || submittingEscalation || attachmentsUploading}
                   onClick={handleEscalateSubmit}
                 >
                   {submittingEscalation ? (

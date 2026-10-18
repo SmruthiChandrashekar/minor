@@ -16,6 +16,9 @@ const LANG_CODES = {
 
 // In-memory cache: key = "text|targetLangCode"
 const cache = new Map();
+// Requests already on their way, so the same text is never fetched twice at once
+const inflight = new Map();
+const MAX_PARALLEL = 4;
 
 /**
  * Translate a single string to the target language.
@@ -31,21 +34,29 @@ export async function translateText(text, targetLanguage) {
   const cacheKey = `${text}|${targetCode}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey);
 
-  try {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetCode}`;
-    const response = await fetch(url);
-    const data = await response.json();
+  if (inflight.has(cacheKey)) return inflight.get(cacheKey);
 
-    const translated =
-      data?.responseStatus === 200
-        ? data.responseData.translatedText
-        : text;
+  const request = (async () => {
+    try {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${targetCode}`;
+      const response = await fetch(url);
+      const data = await response.json();
 
-    cache.set(cacheKey, translated);
-    return translated;
-  } catch {
-    return text; // graceful fallback on network error
-  }
+      const translated =
+        data?.responseStatus === 200
+          ? data.responseData.translatedText
+          : text;
+
+      cache.set(cacheKey, translated);
+      return translated;
+    } catch {
+      return text; // graceful fallback on network error
+    } finally {
+      inflight.delete(cacheKey);
+    }
+  })();
+  inflight.set(cacheKey, request);
+  return request;
 }
 
 /**
@@ -74,5 +85,15 @@ export async function translateFields(obj, fields, targetLanguage) {
  */
 export async function translateList(items, fields, targetLanguage) {
   if (targetLanguage === "English") return items;
-  return Promise.all(items.map((item) => translateFields(item, fields, targetLanguage)));
+  // Only a few requests at a time, so a long list doesn't flood the translation API.
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await translateFields(items[i], fields, targetLanguage);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(MAX_PARALLEL, items.length) }, worker));
+  return results;
 }

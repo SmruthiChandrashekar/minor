@@ -258,6 +258,20 @@ def _sla_status(sla_deadline, resolved_at, is_closed=True):
 
 # ── PUBLIC API ───────────────────────────────────────────────────────────────
 
+def _complainant_documents(grievance: dict) -> list:
+    """Documents admins shared with the complainant via status updates (deduplicated)."""
+    docs, seen = [], set()
+    for entry in grievance.get("escalation_history") or []:
+        if not isinstance(entry, dict) or not entry.get("visible_to_complainant"):
+            continue
+        for att in entry.get("attachments") or []:
+            url = (att or {}).get("url")
+            if url and url not in seen:
+                seen.add(url)
+                docs.append({"name": att.get("name") or "Document", "url": url})
+    return docs
+
+
 def generate_employee_report(grievance: dict) -> bytes:
     """
     Sanitized PDF report for the grievance complainant.
@@ -316,6 +330,21 @@ def generate_employee_report(grievance: dict) -> bytes:
     reason_bg = colors.HexColor("#e8f5e9") if status == "Resolved" else colors.HexColor("#fce4ec")
     story.append(_box([_safe_p(reason, styles["body"])], bg=reason_bg))
     story.append(Spacer(1, 0.3 * cm))
+
+    # ── Supporting documents shared by the admin ─────────────────────────
+    docs = _complainant_documents(grievance)
+    if docs:
+        story.append(Paragraph("Supporting Documents", styles["section_heading"]))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=GREY_BORDER, spaceAfter=6))
+        links = [
+            Paragraph(
+                f'• <link href="{html.escape(d["url"], quote=True)}" color="blue">{_safe_text(d["name"], False)}</link>',
+                styles["body"],
+            )
+            for d in docs
+        ]
+        story.append(_box(links))
+        story.append(Spacer(1, 0.3 * cm))
 
     # ── Section 3: Relevant Policy Reference ────────────────────────────
     rag = grievance.get("rag_recommendation")

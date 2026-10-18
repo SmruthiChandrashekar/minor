@@ -66,3 +66,14 @@ Thumbs.db
 *.pt
 *.bin
 *.pth
+
+# --- CLAUDE-GENERATED NOTES ---
+CHANGES_SUMMARY.md
+SECURITY_FIXES_LOG.md
+SECURITY_ISSUES.txt
+PERFORMANCE_ISSUES.txt
+
+# PWA dev build output
+frontend/dev-dist/
+PERFORMANCE_FIXES_LOG.md
+PROJECT_STATUS.md

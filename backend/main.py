@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import json
 
@@ -64,7 +65,9 @@ logging.basicConfig(
 
 # --- SUPABASE SETUP ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+# Backend uses the service-role key so it keeps working once Row-Level Security is on.
+# NEVER expose this key to the frontend.
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Missing Supabase environment variables! Ensure backend/.env is correctly configured.")
@@ -201,12 +204,17 @@ class ChatRequest(BaseModel):
 class ClassifyRequest(BaseModel):
     text: str
 
+INVITABLE_ROLES = {"admin", "super_admin"}   # "admin" = department staff; their level is admin_tier
+DEPARTMENTS = {"CRM", "CSD", "ESG", "HR", "Investors", "IC"}
+ADMIN_TIERS = {"L1", "L2", "L3", "HEAD"}
+
 class InviteRequest(BaseModel):
     email: str
     password: str
     role: str
     name: str
-    department: str
+    department: Optional[str] = None
+    admin_tier: Optional[str] = None
 
 class StatusUpdateRequest(BaseModel):
     is_active: bool
@@ -239,11 +247,28 @@ class UpdateStatusRequest(BaseModel):
     status: str
     resolution_reason: Optional[str] = None
     notes: Optional[str] = None
+    attachments: list[dict] = []
 
 class EscalateGrievanceRequest(BaseModel):
     grievance_id: str
     reason: Optional[str] = "Manual Escalation"
     notes: Optional[str] = None
+    attachments: list[dict] = []
+
+
+def _clean_admin_attachments(items) -> list[dict]:
+    """Keep only {name, url} pairs that point at our own admin storage folder; cap at 5 files."""
+    allowed_prefix = f"{(SUPABASE_URL or '').rstrip('/')}/storage/v1/object/public/attachments/admin/"
+    cleaned = []
+    for item in (items or [])[:5]:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if not url.startswith(allowed_prefix):
+            continue
+        name = str(item.get("name") or "Document").strip()[:120] or "Document"
+        cleaned.append({"name": name, "url": url})
+    return cleaned
 
 class FeedbackRequest(BaseModel):
     grievance_id: str
@@ -253,7 +278,7 @@ class FeedbackRequest(BaseModel):
 # --- ROUTES ---
 
 @app.post("/api/feedback")
-async def submit_feedback(request: FeedbackRequest, user: dict = Depends(get_current_user)):
+def submit_feedback(request: FeedbackRequest, user: dict = Depends(get_current_user)):
     try:
         # Verify the grievance belongs to the user
         grievance = supabase.table("grievances").select("user_id, status").eq("grievance_id", request.grievance_id).execute()
@@ -279,22 +304,54 @@ async def submit_feedback(request: FeedbackRequest, user: dict = Depends(get_cur
             raise e
         raise HTTPException(status_code=500, detail=str(e))
 
+TIER_RANK = {"L1": 1, "L2": 2, "L3": 3, "HEAD": 4}
+
+
+def _authorize_ticket_action(user: dict, grievance: dict, action: str = "act on", check_tier: bool = True):
+    """Raise 403 unless `user` may act on `grievance`.
+    super_admin: always. Department staff: same department AND tier >= the ticket's current tier.
+    Staff with no department or no valid tier are denied (no implicit HEAD)."""
+    if user.get("role") == "super_admin":
+        return
+    user_dept = (user.get("department") or "").strip().lower()
+    ticket_dept = (grievance.get("department") or grievance.get("category") or "").strip().lower()
+    if not user_dept or user_dept != ticket_dept:
+        raise HTTPException(status_code=403, detail=f"You can only {action} tickets in your own department")
+    if not check_tier:
+        return
+    user_rank = TIER_RANK.get(user.get("admin_tier"))
+    if user_rank is None:
+        raise HTTPException(status_code=403, detail="Your account has no valid tier (L1/L2/L3/HEAD)")
+    ticket_rank = TIER_RANK.get(grievance.get("assigned_tier"), 1)
+    if user_rank < ticket_rank:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tier {user.get('admin_tier')} cannot {action} a ticket currently at {grievance.get('assigned_tier')}",
+        )
+
+
 # --- ADMIN ANALYTICS ROUTES ---
 @app.get("/api/admin/complaints")
-async def get_admin_complaints(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
+def get_admin_complaints(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
     try:
         query = supabase.table("grievances").select("*").order("created_at", desc=True)
+        if user.get("role") != "super_admin":
+            if not user.get("department"):
+                raise HTTPException(status_code=403, detail="Your account has no department")
+            query = query.ilike("department", user["department"])
         if category:
             query = query.eq("category", category)
         if severity:
             query = query.eq("severity", severity)
         result = query.execute()
         return result.data
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/export")
-async def export_admin_data(
+def export_admin_data(
     format: str,
     category: Optional[str] = None, 
     severity: Optional[str] = None, 
@@ -307,9 +364,14 @@ async def export_admin_data(
             query = query.eq("category", category)
         if severity:
             query = query.eq("severity", severity)
-        if department:
+        if user.get("role") != "super_admin":
+            # Staff are always limited to their own department, whatever the client sends.
+            if not user.get("department"):
+                raise HTTPException(status_code=403, detail="Your account has no department")
+            query = query.ilike("department", user["department"])
+        elif department:
             query = query.eq("department", department)
-            
+
         result = query.execute()
         data = result.data
         
@@ -390,7 +452,7 @@ async def export_admin_data(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/trends")
-async def get_admin_trends(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
+def get_admin_trends(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
     try:
         args = {}
         if category: args["p_category"] = category
@@ -401,7 +463,7 @@ async def get_admin_trends(category: Optional[str] = None, severity: Optional[st
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/metrics")
-async def get_admin_metrics(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
+def get_admin_metrics(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
     try:
         args = {}
         if category: args["p_category"] = category
@@ -442,7 +504,7 @@ async def get_admin_metrics(category: Optional[str] = None, severity: Optional[s
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/insights")
-async def get_admin_insights(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
+def get_admin_insights(category: Optional[str] = None, severity: Optional[str] = None, user: dict = Depends(require_admin)):
     try:
         args = {}
         if category: args["p_category"] = category
@@ -478,18 +540,63 @@ async def get_admin_insights(category: Optional[str] = None, severity: Optional[
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/track/{tracking_id}")
+async def track_grievance(tracking_id: str):
+    """Public complaint lookup for the Track page. Returns only complainant-safe fields
+    (no internal escalation notes, handler emails or contact details)."""
+    tid = tracking_id.strip()
+    hex_part = tid.replace("-", "")
+    if not re.fullmatch(r"[0-9a-fA-F-]{8,36}", tid) or not (8 <= len(hex_part) <= 32):
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        # grievance_id is a uuid column (no ILIKE on uuid), so a short ID is matched as a range:
+        # "34c83bc2" -> between 34c83bc2-0000-... and 34c83bc2-ffff-...
+        def _as_uuid(h: str) -> str:
+            h = h.ljust(32, "0")
+            return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
+        low = _as_uuid(hex_part.lower())
+        high = _as_uuid(hex_part.lower().ljust(32, "f"))
+        res = await asyncio.to_thread(
+            lambda: supabase.table("grievances").select("*")
+            .gte("grievance_id", low).lte("grievance_id", high).limit(1).execute()
+        )
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Not found")
+        g = res.data[0]
+        docs, seen = [], set()
+        for h in g.get("escalation_history") or []:
+            if isinstance(h, dict) and h.get("visible_to_complainant"):
+                for a in h.get("attachments") or []:
+                    url = (a or {}).get("url")
+                    if url and url not in seen:
+                        seen.add(url)
+                        docs.append({"name": a.get("name") or "Document", "url": url})
+        keys = ["grievance_id", "category", "severity", "status", "department", "description",
+                "assigned_tier", "assigned_queue", "sla_hours", "sla_deadline", "initial_handler",
+                "assigned_to", "resolution_reason", "report_url", "created_at"]
+        out = {k: g.get(k) for k in keys}
+        out["documents"] = docs
+        return out
+    except HTTPException:
+        raise
+    except Exception:
+        logging.exception("track_grievance failed")
+        raise HTTPException(status_code=500, detail="Could not look up this complaint")
+
 @app.delete("/api/admin/grievances/{grievance_id}")
-async def delete_grievance(grievance_id: str, user: dict = Depends(require_admin)):
+def delete_grievance(grievance_id: str, user: dict = Depends(require_super_admin)):
     try:
         result = supabase.table("grievances").delete().eq("grievance_id", grievance_id).execute()
         if not result.data:
             raise HTTPException(status_code=404, detail="Grievance not found")
         return {"status": "success", "message": "Grievance deleted"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/users")
-async def get_admin_users(user: dict = Depends(require_super_admin)):
+def get_admin_users(user: dict = Depends(require_super_admin)):
     try:
         result = supabase.table("users").select("*").in_("role", ["super_admin", "admin"]).order("created_at", desc=True).execute()
         return result.data
@@ -497,9 +604,19 @@ async def get_admin_users(user: dict = Depends(require_super_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/admin/users/invite")
-async def invite_admin_user(request: InviteRequest, user: dict = Depends(require_super_admin)):
+def invite_admin_user(request: InviteRequest, user: dict = Depends(require_super_admin)):
+    if request.role not in INVITABLE_ROLES:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {sorted(INVITABLE_ROLES)}")
+    if request.role == "admin":
+        if request.department not in DEPARTMENTS:
+            raise HTTPException(status_code=400, detail=f"Department is required. Must be one of: {sorted(DEPARTMENTS)}")
+        if request.admin_tier not in ADMIN_TIERS:
+            raise HTTPException(status_code=400, detail=f"Tier is required. Must be one of: {sorted(ADMIN_TIERS)}")
+        invite_dept, invite_tier = request.department, request.admin_tier
+    else:  # super_admin is not tied to a department or tier
+        invite_dept, invite_tier = None, None
     try:
-        service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", SUPABASE_KEY)
+        service_key = SUPABASE_KEY
         admin_supabase = create_client(SUPABASE_URL, service_key)
         
         auth_res = admin_supabase.auth.admin.create_user({
@@ -515,33 +632,34 @@ async def invite_admin_user(request: InviteRequest, user: dict = Depends(require
             "email": request.email,
             "role": request.role,
             "name": request.name,
-            "department": request.department,
+            "department": invite_dept,
+            "admin_tier": invite_tier,
             "user_type": "Internal",
             "is_active": True
         }
         supabase.table("users").insert(user_data).execute()
         
-        log_audit(action="INVITE_USER", actor_id=user["user_id"], actor_name=user["name"], actor_role=user["role"], target_email=request.email, details={"role": request.role})
+        log_audit(supabase, "INVITE_USER", user, new_user_id, None, request.role, {"email": request.email})
         
         return {"status": "success", "user_id": new_user_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/admin/users/{target_id}/status")
-async def update_user_status(target_id: str, request: StatusUpdateRequest, user: dict = Depends(require_super_admin)):
+def update_user_status(target_id: str, request: StatusUpdateRequest, user: dict = Depends(require_super_admin)):
     try:
         result = supabase.table("users").update({"is_active": request.is_active}).eq("user_id", target_id).execute()
         
         status_text = "ACTIVATED" if request.is_active else "DEACTIVATED"
         target_email = result.data[0]["email"] if result.data else target_id
-        log_audit(action=f"{status_text}_USER", actor_id=user["user_id"], actor_name=user["name"], actor_role=user["role"], target_email=target_email, details={"user_id": target_id})
+        log_audit(supabase, f"{status_text}_USER", user, target_id, None, str(request.is_active), {"email": target_email})
         
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/audit-logs")
-async def get_audit_logs(user: dict = Depends(require_super_admin)):
+def get_audit_logs(user: dict = Depends(require_super_admin)):
     try:
         result = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(100).execute()
         return result.data
@@ -549,7 +667,7 @@ async def get_audit_logs(user: dict = Depends(require_super_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/admin/dept-category-distribution")
-async def get_dept_category_distribution(user: dict = Depends(require_super_admin)):
+def get_dept_category_distribution(user: dict = Depends(require_super_admin)):
     """Returns grievance counts grouped by department and category for the Super Admin pie chart."""
     VALID_DEPTS = {"ESG", "IC", "HR", "CSD", "CRM", "Investors"}
     try:
@@ -584,7 +702,7 @@ async def root():
 
 
 @app.post("/api/agents/classify")
-async def classify_complaint(request: ClassifyRequest, user: dict = Depends(get_current_user)):
+def classify_complaint(request: ClassifyRequest, user: dict = Depends(get_current_user)):
     try:
         text = request.text   # 👈 already exists or add
 
@@ -923,7 +1041,7 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
 
 # 📋 ADMIN DASHBOARD — Get assigned grievances
 @app.get("/api/admin/grievances")
-async def get_admin_grievances(admin_id: str):
+def get_admin_grievances(admin_id: str):
     try:
         # Verify the user is an admin
         admin_check = supabase.table("users").select("role").eq("user_id", admin_id).single().execute()
@@ -954,6 +1072,14 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
         if not reason_text:
             raise HTTPException(status_code=400, detail="A reason or justification is required for every status change.")
 
+        status_attachments = _clean_admin_attachments(request.attachments)
+
+        target = supabase.table("grievances").select("department, category, assigned_tier") \
+            .eq("grievance_id", request.grievance_id).limit(1).execute()
+        if not target.data:
+            raise HTTPException(status_code=404, detail="Grievance not found")
+        _authorize_ticket_action(user, target.data[0], "update")
+
         # Update status, reason, and timestamp
         from datetime import datetime
         now_iso = datetime.now().isoformat()
@@ -976,6 +1102,9 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
                 "notes": reason_text,
                 "timestamp": now_iso
             })
+            if status_attachments:
+                history[-1]["attachments"] = status_attachments
+                history[-1]["visible_to_complainant"] = True
             update_payload["escalation_history"] = history
         except Exception as hist_err:
             logging.warning("Could not append status update to escalation_history: %s", hist_err)
@@ -987,13 +1116,18 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
 
         updated_grievance = result.data[0]
         contact_email = updated_grievance.get("contact_email")
+        attachments_text = ""
+        if status_attachments:
+            attachments_text = "\nDocuments shared by the admin:\n" + "\n".join(
+                f"- {a['name']}: {a['url']}" for a in status_attachments
+            ) + "\n"
         if contact_email:
             asyncio.create_task(
                 asyncio.to_thread(
                     notifier.send_email,
                     contact_email,
                     "Puravankara GRM - Status Update",
-                    f"Dear {updated_grievance.get('submitter_name') or 'User'},\n\nThe status of your grievance ({request.grievance_id}) has been updated to: {request.status}.\nRemarks / Reason: {reason_text}\n\nThank you,\nPuravankara GRM Team"
+                    f"Dear {updated_grievance.get('submitter_name') or 'User'},\n\nThe status of your grievance ({request.grievance_id}) has been updated to: {request.status}.\nRemarks / Reason: {reason_text}\n{attachments_text}\nThank you,\nPuravankara GRM Team"
                 )
             )
 
@@ -1060,7 +1194,7 @@ def _generate_and_store_employee_report(grievance_id: str):
 # ── REPORT DOWNLOAD ENDPOINTS ─────────────────────────────────────────────
 
 @app.get("/api/grievances/{grievance_id}/report")
-async def download_employee_report(grievance_id: str, user: dict = Depends(get_current_user)):
+def download_employee_report(grievance_id: str, user: dict = Depends(get_current_user)):
     """Employee downloads their own grievance resolution report."""
     try:
         res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
@@ -1070,11 +1204,15 @@ async def download_employee_report(grievance_id: str, user: dict = Depends(get_c
 
         # Security check: owner, anonymous submission with tracking access, or staff/admin
         is_owner = bool(grievance.get("user_id")) and grievance.get("user_id") == user.get("user_id")
-        is_anonymous = bool(grievance.get("is_anonymous")) or not grievance.get("user_id")
-        is_staff_or_admin = user.get("role") in ("admin", "super_admin", "hr", "safety", "compliance", "crm", "csd", "esg", "investors", "ic") or bool(user.get("admin_tier"))
+        # Only tickets with no owner at all (filed without an account) are reachable by the full tracking ID.
+        # A ticket filed anonymously by a logged-in user is still tied to that user.
+        is_ownerless = not grievance.get("user_id")
+        is_staff_or_admin = user.get("role") in ("admin", "super_admin")
 
-        if not is_owner and not is_anonymous and not is_staff_or_admin:
+        if not is_owner and not is_ownerless and not is_staff_or_admin:
             raise HTTPException(status_code=403, detail="Not authorised to access this report")
+        if is_staff_or_admin and not is_owner:
+            _authorize_ticket_action(user, grievance, "download the report for", check_tier=False)
 
         if grievance.get("status") not in ("Resolved", "Rejected", "Closed"):
             raise HTTPException(status_code=400, detail="Report is only available after the grievance is resolved or rejected")
@@ -1093,7 +1231,7 @@ async def download_employee_report(grievance_id: str, user: dict = Depends(get_c
 
 
 @app.post("/api/admin/grievances/{grievance_id}/escalate")
-async def manual_escalate_grievance(
+def manual_escalate_grievance(
     grievance_id: str,
     request: EscalateGrievanceRequest,
     user: dict = Depends(require_admin)
@@ -1140,6 +1278,9 @@ async def manual_escalate_grievance(
             "escalated_at": now.isoformat(),
             "timestamp": now.isoformat(),
         }
+        escalation_attachments = _clean_admin_attachments(request.attachments)
+        if escalation_attachments:
+            escalation_event["attachments"] = escalation_attachments
         history.append(escalation_event)
 
         update_data = {
@@ -1166,7 +1307,7 @@ async def manual_escalate_grievance(
 
 
 @app.get("/api/admin/grievances/{grievance_id}/report")
-async def download_admin_report(grievance_id: str, user: dict = Depends(require_admin)):
+def download_admin_report(grievance_id: str, user: dict = Depends(require_admin)):
     """Admin downloads full case/admin report for a grievance.
     Accessible to:
     - super_admin (all tickets)
@@ -1217,7 +1358,7 @@ async def download_admin_report(grievance_id: str, user: dict = Depends(require_
 
 # 🤖 RAG POLICY RESOLUTION RECOMMENDATIONS FOR ADMINS
 @app.get("/api/admin/grievances/{grievance_id}/recommendation")
-async def get_grievance_rag_recommendation(grievance_id: str, user: dict = Depends(get_current_user)):
+async def get_grievance_rag_recommendation(grievance_id: str, user: dict = Depends(require_admin)):
     try:
         # Fetch grievance
         res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
@@ -1225,6 +1366,7 @@ async def get_grievance_rag_recommendation(grievance_id: str, user: dict = Depen
             raise HTTPException(status_code=404, detail="Grievance not found")
 
         grievance = res.data
+        _authorize_ticket_action(user, grievance, "view the recommendation for", check_tier=False)
         existing_rec = grievance.get("rag_recommendation")
 
         # If recommendation already exists, return it
@@ -1267,7 +1409,7 @@ async def get_grievance_rag_recommendation(grievance_id: str, user: dict = Depen
 
 
 @app.post("/api/admin/grievances/{grievance_id}/recommendation")
-async def regenerate_grievance_rag_recommendation(grievance_id: str, user: dict = Depends(get_current_user)):
+async def regenerate_grievance_rag_recommendation(grievance_id: str, user: dict = Depends(require_admin)):
     try:
         # Fetch grievance
         res = supabase.table("grievances").select("*").eq("grievance_id", grievance_id).single().execute()
@@ -1275,6 +1417,7 @@ async def regenerate_grievance_rag_recommendation(grievance_id: str, user: dict 
             raise HTTPException(status_code=404, detail="Grievance not found")
 
         grievance = res.data
+        _authorize_ticket_action(user, grievance, "regenerate the recommendation for")
 
         # Force re-query Chroma & Groq
         recommendation = await asyncio.to_thread(
@@ -1307,17 +1450,10 @@ async def regenerate_grievance_rag_recommendation(grievance_id: str, user: dict 
 
 
 
-# 🛠 DEBUG
-@app.get("/api/debug/users")
-async def get_all_users():
-    response = supabase.table("users").select("*").execute()
-    return {"data": response.data}
-
-
 # ─── NOTIFICATION ENDPOINTS ───────────────────────────────────────────
 
 @app.get("/api/notifications")
-async def get_notifications(user: dict = Depends(get_current_user)):
+def get_notifications(user: dict = Depends(get_current_user)):
     """Get notifications for the current user."""
     try:
         user_id = user["user_id"]
@@ -1335,7 +1471,7 @@ async def get_notifications(user: dict = Depends(get_current_user)):
 
 
 @app.get("/api/notifications/unread-count")
-async def get_unread_count(user: dict = Depends(get_current_user)):
+def get_unread_count(user: dict = Depends(get_current_user)):
     """Get unread notification count for the current user."""
     try:
         user_id = user["user_id"]
@@ -1352,7 +1488,7 @@ async def get_unread_count(user: dict = Depends(get_current_user)):
 
 
 @app.patch("/api/notifications/{notification_id}/read")
-async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
+def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
     """Mark a single notification as read."""
     try:
         supabase.table("notifications").update({"is_read": True}).eq(
@@ -1364,7 +1500,7 @@ async def mark_notification_read(notification_id: str, user: dict = Depends(get_
 
 
 @app.patch("/api/notifications/read-all")
-async def mark_all_read(user: dict = Depends(get_current_user)):
+def mark_all_read(user: dict = Depends(get_current_user)):
     """Mark all notifications as read for the current user."""
     try:
         supabase.table("notifications").update({"is_read": True}).eq(
@@ -1384,7 +1520,7 @@ class ChatbotHandoffRequest(BaseModel):
 
 
 @app.post("/api/grievances/chatbot-handoff")
-async def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(get_current_user)):
+def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(get_current_user)):
     """Escalate a LOW-severity chatbot conversation to L1 human handling."""
     try:
         route_info = chatbot_handoff_route(request.department)
@@ -1434,86 +1570,9 @@ async def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(g
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))
-# --- SUPER ADMIN: USER MANAGEMENT ---
-@app.get("/api/admin/users")
-async def get_privileged_users(user: dict = Depends(require_admin)):
-    try:
-        res = supabase.table("users").select("*").neq("role", "user").execute()
-        return res.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-class InviteUserReq(BaseModel):
-    email: str
-    name: str
-    role: str
-    department: str
-
-@app.post("/api/admin/users/invite")
-async def invite_privileged_user(req: InviteUserReq, user: dict = Depends(require_admin)):
-    try:
-        auth_res = supabase.auth.admin.create_user({
-            "email": req.email,
-            "password": "TempPass!123",
-            "email_confirm": True
-        })
-        new_uid = auth_res.user.id
-        
-        supabase.table("users").insert({
-            "user_id": new_uid,
-            "email": req.email,
-            "name": req.name,
-            "role": req.role,
-            "department": req.department,
-            "user_type": "Internal"
-        }).execute()
-        
-        log_audit(supabase, "user_invited", user, new_uid, None, req.role, {"email": req.email})
-        return {"status": "success", "message": "User invited"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-class UpdateRoleReq(BaseModel):
-    role: str
-
-@app.patch("/api/admin/users/{target_id}/role")
-async def update_user_role(target_id: str, req: UpdateRoleReq, user: dict = Depends(require_admin)):
-    try:
-        supabase.table("users").update({"role": req.role}).eq("user_id", target_id).execute()
-        log_audit(supabase, "role_changed", user, target_id, None, req.role, None)
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-class UpdateStatusReq(BaseModel):
-    is_active: bool
-
-@app.patch("/api/admin/users/{target_id}/status")
-async def update_user_status(target_id: str, req: UpdateStatusReq, user: dict = Depends(require_admin)):
-    try:
-        supabase.table("users").update({"is_active": req.is_active}).eq("user_id", target_id).execute()
-        log_audit(supabase, "status_changed", user, target_id, None, str(req.is_active), None)
-        return {"status": "success"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# --- AUDIT LOGS ---
-@app.get("/api/admin/audit-logs")
-async def get_audit_logs(grievance_id: Optional[str] = None, user: dict = Depends(require_admin)):
-    try:
-        query = supabase.table("audit_logs").select("*").order("created_at", desc=True)
-        if grievance_id:
-            query = query.eq("target_grievance_id", grievance_id)
-        else:
-            query = query.limit(50)
-        res = query.execute()
-        return res.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 # --- CHAT HISTORY ROUTES ---
 @app.post("/api/chat/session")
-async def create_chat_session(user: dict = Depends(get_current_user)):
+def create_chat_session(user: dict = Depends(get_current_user)):
     try:
         user_id = user["user_id"]
         result = supabase.table("chat_sessions").insert({
@@ -1527,7 +1586,7 @@ async def create_chat_session(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/chat/session/latest")
-async def get_latest_chat_session(user: dict = Depends(get_current_user)):
+def get_latest_chat_session(user: dict = Depends(get_current_user)):
     try:
         user_id = user["user_id"]
         result = supabase.table("chat_sessions").select("*").eq("user_id", user_id).order("updated_at", desc=True).limit(1).execute()
@@ -1538,7 +1597,7 @@ async def get_latest_chat_session(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/chat/sessions")
-async def get_all_chat_sessions(user: dict = Depends(get_current_user)):
+def get_all_chat_sessions(user: dict = Depends(get_current_user)):
     try:
         user_id = user["user_id"]
         result = supabase.table("chat_sessions").select("*").eq("user_id", user_id).order("updated_at", desc=True).execute()
@@ -1547,7 +1606,7 @@ async def get_all_chat_sessions(user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/chat/session/{session_id}")
-async def get_chat_session_messages(session_id: str, user: dict = Depends(get_current_user)):
+def get_chat_session_messages(session_id: str, user: dict = Depends(get_current_user)):
     try:
         result = supabase.table("chat_messages").select("*").eq("session_id", session_id).order("created_at", desc=False).execute()
         cleaned = []
@@ -1575,7 +1634,7 @@ class UpdateSessionRequest(BaseModel):
     title: Optional[str] = None
 
 @app.patch("/api/chat/session/{session_id}")
-async def update_chat_session(session_id: str, payload: UpdateSessionRequest, user: dict = Depends(get_current_user)):
+def update_chat_session(session_id: str, payload: UpdateSessionRequest, user: dict = Depends(get_current_user)):
     try:
         user_id = user["user_id"]
         session = supabase.table("chat_sessions").select("user_id").eq("id", session_id).execute()
@@ -1595,7 +1654,7 @@ async def update_chat_session(session_id: str, payload: UpdateSessionRequest, us
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/chat/session/{session_id}")
-async def delete_chat_session(session_id: str, user: dict = Depends(get_current_user)):
+def delete_chat_session(session_id: str, user: dict = Depends(get_current_user)):
     try:
         user_id = user["user_id"]
         # Ensure the session belongs to the user
@@ -1615,7 +1674,7 @@ class ChatMessageRequest(BaseModel):
     metadata: Optional[dict] = None
 
 @app.post("/api/chat/message")
-async def add_chat_message(req: ChatMessageRequest, user: dict = Depends(get_current_user)):
+def add_chat_message(req: ChatMessageRequest, user: dict = Depends(get_current_user)):
     try:
         raw_message = req.message
         if req.metadata:
@@ -1666,7 +1725,7 @@ class ProfileUpdateRequest(BaseModel):
     preferred_contact_method: Optional[str] = None
 
 @app.get("/api/profile/me")
-async def get_my_profile(current_user: dict = Depends(get_current_user)):
+def get_my_profile(current_user: dict = Depends(get_current_user)):
     """Fetch complete profile details for authenticated user/admin."""
     try:
         user_id = current_user["user_id"]
@@ -1688,7 +1747,7 @@ async def get_my_profile(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/profile/me")
-async def update_my_profile(req: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
+def update_my_profile(req: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
     """Update profile details for current user/admin."""
     try:
         user_id = current_user["user_id"]
@@ -1770,7 +1829,7 @@ async def upload_avatar(
 # ── EVALUATION METRICS ENDPOINT ───────────────────────────────────────────
 
 @app.get("/api/admin/evaluation-metrics")
-async def get_evaluation_metrics(user: dict = Depends(require_super_admin)):
+def get_evaluation_metrics(user: dict = Depends(require_super_admin)):
     """
     Serve the latest comprehensive evaluation metrics report.
     Reads the pre-generated results/full_metrics_report.json file.
