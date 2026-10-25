@@ -124,6 +124,8 @@ function Track() {
       Investigating: { bg: "#fff8e1", color: "#f59e0b", label: t("inProgress") },
       Resolved:      { bg: "#e8f5e9", color: "#2e7d32", label: t("resolved") },
       Closed:        { bg: "#fce4ec", color: "#c62828", label: t("rejected") },
+      Rejected:      { bg: "#fce4ec", color: "#c62828", label: t("rejected") },
+      "Pending Rejection Approval": { bg: "#fff8e1", color: "#b45309", label: "Under Department Review" },
     };
     const s = styles[status] || { bg: "#f5f5f5", color: "#666", label: status };
     return (

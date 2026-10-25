@@ -34,13 +34,13 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
-from rag.query_data import initialize_rag, is_rag_ready, get_rag_response
+from rag.query_data import initialize_rag, is_rag_ready, is_rag_initializing, get_rag_response
 from rag.policy_recommender import generate_policy_recommendation
 from backend.agent.graph import run_agent
 from backend.agent.nodes.classify_severity import classify_severity_node
 from backend.agent.nodes.classify_department import classify_department_node
 from backend.database.grievance_state import load_grievance_state, save_grievance_state
-from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route, escalate, ESCALATION_CHAIN
+from backend.agent.nodes.router import determine_initial_route, chatbot_handoff_route, escalate, ESCALATION_CHAIN, TIER_SLA_HOURS
 from backend.utils.notification_service import (
     notify_user_grievance_received,
     notify_user_tier_assigned,
@@ -52,6 +52,8 @@ from backend.utils.notification_service import (
     notify_admins_tier_assigned,
     notify_admins_chatbot_handoff,
     notify_admins_resolved,
+    notify_admins_rejection_proposed,
+    notify_admins_rejection_overturned,
     create_notification,
 )
 from backend.utils.sla_monitor import sla_monitor_loop
@@ -91,7 +93,8 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     # Run warmup in background to not block server start
-    asyncio.create_task(asyncio.to_thread(initialize_rag))
+    if not is_rag_ready() and not is_rag_initializing():
+        asyncio.create_task(asyncio.to_thread(initialize_rag))
     # Start SLA monitor background task
     asyncio.create_task(sla_monitor_loop())
 
@@ -112,6 +115,8 @@ async def warmup_rag():
     """Endpoint to trigger RAG initialization if not already done."""
     if is_rag_ready():
         return {"status": "ready", "message": "RAG is already warmed up"}
+    if is_rag_initializing():
+        return {"status": "initializing", "message": "Warmup already in progress"}
     
     # Trigger in a separate thread so we don't block the response
     asyncio.create_task(asyncio.to_thread(initialize_rag))
@@ -344,7 +349,16 @@ def get_admin_complaints(category: Optional[str] = None, severity: Optional[str]
         if severity:
             query = query.eq("severity", severity)
         result = query.execute()
-        return result.data
+        rows = result.data or []
+        for r in rows:
+            if r.get("status") == "Investigating" and (
+                str(r.get("resolution_reason") or "").startswith("[PENDING_REJECTION_APPROVAL]")
+                or (isinstance(r.get("escalation_history"), list) and r["escalation_history"] and r["escalation_history"][-1].get("is_rejection_proposal"))
+            ):
+                r["status"] = "Pending Rejection Approval"
+                if str(r.get("resolution_reason") or "").startswith("[PENDING_REJECTION_APPROVAL]"):
+                    r["resolution_reason"] = str(r.get("resolution_reason"))[len("[PENDING_REJECTION_APPROVAL]"):].strip()
+        return rows
     except HTTPException:
         raise
     except Exception as e:
@@ -1063,7 +1077,16 @@ def get_admin_grievances(admin_id: str):
 @app.patch("/api/admin/update-status")
 async def update_grievance_status(request: UpdateStatusRequest, user: dict = Depends(require_admin)):
     try:
-        valid_statuses = ["Open", "Investigating", "Resolved", "Rejected", "Closed", "CHATBOT_HANDLING", "HUMAN_HANDLING"]
+        valid_statuses = [
+            "Open",
+            "Investigating",
+            "Resolved",
+            "Rejected",
+            "Pending Rejection Approval",
+            "Closed",
+            "CHATBOT_HANDLING",
+            "HUMAN_HANDLING",
+        ]
         if request.status not in valid_statuses:
             raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
 
@@ -1074,15 +1097,215 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
 
         status_attachments = _clean_admin_attachments(request.attachments)
 
-        target = supabase.table("grievances").select("department, category, assigned_tier") \
+        target = supabase.table("grievances").select("department, category, assigned_tier, status, escalation_history") \
             .eq("grievance_id", request.grievance_id).limit(1).execute()
         if not target.data:
             raise HTTPException(status_code=404, detail="Grievance not found")
-        _authorize_ticket_action(user, target.data[0], "update")
+        ticket_data = target.data[0]
+        _authorize_ticket_action(user, ticket_data, "update")
 
-        # Update status, reason, and timestamp
-        from datetime import datetime
+        from datetime import datetime, timezone, timedelta
         now_iso = datetime.now().isoformat()
+        now_utc = datetime.now(timezone.utc)
+
+        current_status = ticket_data.get("status")
+        department = ticket_data.get("department") or ticket_data.get("category") or "General"
+        user_tier = user.get("admin_tier") or user.get("role") or "Admin"
+        user_email = user.get("email") or "Admin"
+        user_role = user.get("role")
+        history = list(ticket_data.get("escalation_history") or [])
+
+        is_maker_tier = (user_role != "super_admin") and (user_tier in ("L1", "L2", "L3"))
+        is_checker_tier = (user_role == "super_admin") or (user_tier == "HEAD")
+
+        is_pending_rejection = (
+            current_status == "Pending Rejection Approval"
+            or (
+                current_status == "Investigating"
+                and (
+                    str(ticket_data.get("resolution_reason") or "").startswith("[PENDING_REJECTION_APPROVAL]")
+                    or bool(history and history[-1].get("is_rejection_proposal"))
+                )
+            )
+        )
+
+        # -------------------------------------------------------------
+        # 1. CHECKER ACTION: Acting on a ticket in "Pending Rejection Approval"
+        # -------------------------------------------------------------
+        if is_pending_rejection:
+            if not is_checker_tier:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Only the Head of the Department (HOD) or Super Admin can cross-check rejections for this ticket."
+                )
+
+            if request.status == "Rejected":
+                # Checker confirms rejection -> DB status becomes 'Rejected'
+                update_payload = {
+                    "status": "Rejected",
+                    "updated_at": now_iso,
+                    "resolution_reason": reason_text,
+                }
+                history_item = {
+                    "tier": user_tier,
+                    "handler": user_email,
+                    "action": f"Rejection cross-checked and approved by {user_tier} (Checker)",
+                    "notes": reason_text,
+                    "timestamp": now_iso,
+                }
+                if status_attachments:
+                    history_item["attachments"] = status_attachments
+                    history_item["visible_to_complainant"] = True
+                history.append(history_item)
+                update_payload["escalation_history"] = history
+
+                result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+                if not result.data:
+                    raise HTTPException(status_code=404, detail="Grievance not found.")
+
+                updated_grievance = result.data[0]
+                contact_email = updated_grievance.get("contact_email")
+                if contact_email:
+                    asyncio.create_task(
+                        asyncio.to_thread(
+                            notifier.send_email,
+                            contact_email,
+                            "Puravankara GRM - Grievance Rejected",
+                            f"Dear {updated_grievance.get('submitter_name') or 'User'},\n\nYour grievance ({request.grievance_id}) has been reviewed and rejected following department head cross-check.\nReason: {reason_text}\n\nThank you,\nPuravankara GRM Team"
+                        )
+                    )
+                if updated_grievance.get("user_id"):
+                    notify_user_status_changed(updated_grievance["user_id"], request.grievance_id, "Rejected", reason_text)
+
+                asyncio.create_task(asyncio.to_thread(
+                    _generate_and_store_employee_report,
+                    request.grievance_id
+                ))
+
+                return {
+                    "message": "Rejection cross-checked and approved by Department Head.",
+                    "grievance_id": request.grievance_id,
+                    "new_status": "Rejected",
+                    "maker_checker": {
+                        "action": "APPROVED",
+                        "status": "Rejected",
+                    }
+                }
+
+            elif request.status in ("Investigating", "Open"):
+                # Checker overturns rejection -> returns ticket to maker tier for investigation
+                maker_tier = "L1"
+                for ev in reversed(history):
+                    if ev.get("maker_tier"):
+                        maker_tier = ev["maker_tier"]
+                        break
+                    elif ev.get("tier") in ("L1", "L2", "L3"):
+                        maker_tier = ev["tier"]
+                        break
+
+                maker_sla = TIER_SLA_HOURS.get(maker_tier, 24)
+                sla_deadline = now_utc + timedelta(hours=maker_sla)
+
+                update_payload = {
+                    "status": request.status,
+                    "assigned_tier": maker_tier,
+                    "assigned_queue": f"{department.lower()}_{maker_tier.lower()}_queue",
+                    "sla_hours": maker_sla,
+                    "sla_deadline": sla_deadline.isoformat(),
+                    "updated_at": now_iso,
+                    "resolution_reason": f"Rejection overturned: {reason_text}",
+                }
+                history_item = {
+                    "tier": user_tier,
+                    "handler": user_email,
+                    "action": f"Rejection overturned by {user_tier} (Checker) — returned to {maker_tier} for investigation",
+                    "notes": reason_text,
+                    "timestamp": now_iso,
+                }
+                if status_attachments:
+                    history_item["attachments"] = status_attachments
+                    history_item["visible_to_complainant"] = True
+                history.append(history_item)
+                update_payload["escalation_history"] = history
+
+                result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+                if not result.data:
+                    raise HTTPException(status_code=404, detail="Grievance not found.")
+
+                notify_admins_rejection_overturned(department, request.grievance_id, maker_tier)
+
+                return {
+                    "message": f"Rejection overturned by {user_tier}. Grievance returned to {maker_tier} for further investigation.",
+                    "grievance_id": request.grievance_id,
+                    "new_status": request.status,
+                    "maker_checker": {
+                        "action": "OVERTURNED",
+                        "returned_to_tier": maker_tier,
+                        "status": request.status,
+                    }
+                }
+
+        # -------------------------------------------------------------
+        # 2. MAKER ACTION: L1, L2, or L3 attempts to reject
+        # -------------------------------------------------------------
+        if request.status in ("Rejected", "Pending Rejection Approval") and is_maker_tier:
+            head_sla = TIER_SLA_HOURS.get("HEAD", 4)
+            sla_deadline = now_utc + timedelta(hours=head_sla)
+
+            # Store status="Investigating" in Postgres to satisfy DB check constraint 'grievances_status_check'
+            update_payload = {
+                "status": "Investigating",
+                "assigned_tier": "HEAD",
+                "assigned_queue": f"{department.lower()}_head_queue",
+                "sla_hours": head_sla,
+                "sla_deadline": sla_deadline.isoformat(),
+                "updated_at": now_iso,
+                "resolution_reason": f"[PENDING_REJECTION_APPROVAL] {reason_text}",
+            }
+
+            history_item = {
+                "tier": user_tier,
+                "handler": user_email,
+                "action": f"Rejection proposed by {user_tier} (Maker) — forwarded to HOD for cross-check",
+                "maker_tier": user_tier,
+                "maker_email": user_email,
+                "notes": reason_text,
+                "timestamp": now_iso,
+                "is_rejection_proposal": True,
+            }
+            if status_attachments:
+                history_item["attachments"] = status_attachments
+                history_item["visible_to_complainant"] = False
+            history.append(history_item)
+            update_payload["escalation_history"] = history
+
+            result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+            if not result.data:
+                raise HTTPException(status_code=404, detail="Grievance not found or update failed.")
+
+            # Notify HOD
+            notify_admins_rejection_proposed(department, request.grievance_id, user_tier, user_email)
+
+            return {
+                "message": f"Rejection proposed by {user_tier} (Maker). Ticket forwarded to Department Head (HOD) for cross-checking.",
+                "grievance_id": request.grievance_id,
+                "new_status": "Pending Rejection Approval",
+                "maker_checker": {
+                    "action": "PROPOSED",
+                    "maker_tier": user_tier,
+                    "status": "Pending Rejection Approval",
+                }
+            }
+
+        if request.status == "Pending Rejection Approval":
+            raise HTTPException(
+                status_code=400,
+                detail="Status cannot be directly updated to 'Pending Rejection Approval'. It is initiated when an L1/L2/L3 Maker proposes rejection."
+            )
+
+        # -------------------------------------------------------------
+        # 3. STANDARD STATUS UPDATE (e.g. Open -> Investigating, Resolved, or direct HOD rejection)
+        # -------------------------------------------------------------
         update_payload = {
             "status": request.status,
             "updated_at": now_iso,
@@ -1093,18 +1316,17 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
         try:
             curr_res = supabase.table("grievances").select("escalation_history").eq("grievance_id", request.grievance_id).single().execute()
             history = list((curr_res.data or {}).get("escalation_history") or [])
-            user_tier = user.get("admin_tier") or user.get("role") or "Admin"
-            user_email = user.get("email") or "Admin"
-            history.append({
+            history_item = {
                 "tier": user_tier,
                 "handler": user_email,
                 "action": f"Status updated to {request.status}",
                 "notes": reason_text,
                 "timestamp": now_iso
-            })
+            }
             if status_attachments:
-                history[-1]["attachments"] = status_attachments
-                history[-1]["visible_to_complainant"] = True
+                history_item["attachments"] = status_attachments
+                history_item["visible_to_complainant"] = True
+            history.append(history_item)
             update_payload["escalation_history"] = history
         except Exception as hist_err:
             logging.warning("Could not append status update to escalation_history: %s", hist_err)

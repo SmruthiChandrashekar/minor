@@ -106,9 +106,15 @@ td.admin-cell-desc {
   border-left-color: #f43f5e;
 }
 
+.admin-resolution-note.is-pending-rejection-approval {
+  background: #fff7ed;
+  border-left-color: #ea580c;
+}
+
 [data-theme="dark"] .admin-resolution-note { background: rgba(59, 130, 246, 0.12); }
 [data-theme="dark"] .admin-resolution-note.is-resolved { background: rgba(34, 197, 94, 0.12); }
 [data-theme="dark"] .admin-resolution-note.is-rejected { background: rgba(239, 68, 68, 0.12); }
+[data-theme="dark"] .admin-resolution-note.is-pending-rejection-approval { background: rgba(234, 88, 12, 0.14); }
 
 .admin-attachment-media {
   max-height: 300px;
@@ -127,6 +133,7 @@ td.admin-cell-desc {
 .status-investigating { background-color: #fff8e1; color: #b45309; border-color: #fde68a; }
 .status-resolved { background-color: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
 .status-closed { background-color: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.status-pending-rejection { background-color: #fff7ed; color: #c2410c; border-color: #fdba74; font-weight: 600; }
 .status-chatbot { background-color: #f3e8ff; color: #6b21a8; border-color: #e9d5ff; }
 .status-human { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
 .status-other { background-color: #f1f5f9; color: #475569; border-color: transparent; }
@@ -135,6 +142,7 @@ td.admin-cell-desc {
 [data-theme="dark"] .status-investigating { background-color: rgba(245, 158, 11, 0.14); color: #fde047; border-color: rgba(245, 158, 11, 0.28); }
 [data-theme="dark"] .status-resolved { background-color: rgba(16, 185, 129, 0.14); color: #34d399; border-color: rgba(16, 185, 129, 0.28); }
 [data-theme="dark"] .status-closed { background-color: rgba(244, 63, 94, 0.14); color: #fda4af; border-color: rgba(244, 63, 94, 0.28); }
+[data-theme="dark"] .status-pending-rejection { background-color: rgba(249, 115, 22, 0.16); color: #fdba74; border-color: rgba(249, 115, 22, 0.32); }
 [data-theme="dark"] .status-chatbot { background-color: rgba(168, 85, 247, 0.14); color: #d8b4fe; border-color: rgba(168, 85, 247, 0.28); }
 [data-theme="dark"] .status-human { background-color: rgba(245, 158, 11, 0.14); color: #fde047; border-color: rgba(245, 158, 11, 0.28); }
 [data-theme="dark"] .status-other { background-color: rgba(255, 255, 255, 0.06); color: #d4d4d8; border-color: rgba(255, 255, 255, 0.12); }

@@ -3,10 +3,17 @@
 import os
 import time
 import re
+import threading
+import warnings
 from dotenv import load_dotenv
+import chromadb
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from groq import Groq
+
+# Filter out verbose deprecation warnings
+warnings.filterwarnings("ignore", category=FutureWarning, module="huggingface_hub")
+warnings.filterwarnings("ignore", message=".*LangChainDeprecationWarning.*")
 
 # Load environment variables
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,38 +28,53 @@ client = Groq(api_key=GROQ_API_KEY)
 CHROMA_PATH = os.path.join(BASE_DIR, "chroma_final")
 
 RAG_READY = False
+_RAG_INITIALIZING = False
+_init_lock = threading.Lock()
 embedding_model = None
 db = None
 
 
 def initialize_rag():
-    global embedding_model, db, RAG_READY
+    global embedding_model, db, RAG_READY, _RAG_INITIALIZING
     if RAG_READY:
         return
 
-    print("[INFO] Warming up Policy RAG system...")
-    start_time = time.time()
+    with _init_lock:
+        if RAG_READY:
+            return
+        _RAG_INITIALIZING = True
+        try:
+            print("[INFO] Warming up Policy RAG system...")
+            start_time = time.time()
 
-    embedding_model = HuggingFaceEmbeddings(
-        model_name="all-MiniLM-L6-v2"
-    )
+            if embedding_model is None:
+                embedding_model = HuggingFaceEmbeddings(
+                    model_name="all-MiniLM-L6-v2"
+                )
 
-    db = Chroma(
-        persist_directory=CHROMA_PATH,
-        embedding_function=embedding_model,
-    )
+            persistent_client = chromadb.PersistentClient(path=CHROMA_PATH)
+            db = Chroma(
+                client=persistent_client,
+                embedding_function=embedding_model,
+            )
 
-    try:
-        db.similarity_search("leave policy", k=1)
-    except Exception as e:
-        print("Warmup search error:", e)
+            try:
+                db.similarity_search("leave policy", k=1)
+            except Exception as e:
+                print("Warmup search error:", e)
 
-    RAG_READY = True
-    print(f"[OK] Policy RAG Ready (Initialized in {round(time.time() - start_time, 2)}s)\n")
+            RAG_READY = True
+            print(f"[OK] Policy RAG Ready (Initialized in {round(time.time() - start_time, 2)}s)\n")
+        finally:
+            _RAG_INITIALIZING = False
 
 
 def is_rag_ready():
     return RAG_READY
+
+
+def is_rag_initializing():
+    return _RAG_INITIALIZING
 
 
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "qwen/qwen3.8-27b")

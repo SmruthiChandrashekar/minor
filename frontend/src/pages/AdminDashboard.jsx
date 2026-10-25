@@ -86,6 +86,18 @@ const AdminDashboard = () => {
     return userRank >= ticketRank;
   };
 
+  // Ticket update permission check: user's tier rank must be >= ticket's assigned tier rank
+  const canAdminUpdateTicket = (ticket) => {
+    if (!ticket) return false;
+    if (isSuperAdmin) return true;
+    const userTier = admin?.admin_tier || "HEAD";
+    if (userTier === "HEAD") return true;
+    const TIER_RANK = { "L1": 1, "L2": 2, "L3": 3, "HEAD": 4 };
+    const userRank = TIER_RANK[userTier] || 1;
+    const ticketRank = TIER_RANK[ticket.assigned_tier] || 1;
+    return userRank >= ticketRank;
+  };
+
   // RAG policy advisory state
   const [selectedRagTicket, setSelectedRagTicket] = useState(null);
   const [ragRecommendation, setRagRecommendation] = useState(null);
@@ -122,8 +134,23 @@ const AdminDashboard = () => {
       normDept = "Investors";
     }
 
+    let status = t.status;
+    let resolutionReason = t.resolution_reason || "";
+    if (
+      status === "Investigating" &&
+      (resolutionReason.startsWith("[PENDING_REJECTION_APPROVAL]") ||
+        (Array.isArray(t.escalation_history) && t.escalation_history[t.escalation_history.length - 1]?.is_rejection_proposal))
+    ) {
+      status = "Pending Rejection Approval";
+      if (resolutionReason.startsWith("[PENDING_REJECTION_APPROVAL]")) {
+        resolutionReason = resolutionReason.replace(/^\[PENDING_REJECTION_APPROVAL\]\s*/, "");
+      }
+    }
+
     return {
       ...t,
+      status,
+      resolution_reason: resolutionReason,
       department: normDept,
       category: normCat,
     };
@@ -221,6 +248,8 @@ const AdminDashboard = () => {
 
   // --- FILTER BY ADMIN DEPARTMENT, TIER, SEVERITY & STATUS ---
   const isTierLocked = Boolean(admin?.admin_tier && ["L1", "L2", "L3"].includes(admin.admin_tier));
+  const isMaker = Boolean(admin?.admin_tier && ["L1", "L2", "L3"].includes(admin.admin_tier) && admin?.role !== "super_admin");
+  const isHOD = Boolean(admin?.admin_tier === "HEAD" || admin?.role === "super_admin");
   const effectiveTier = isTierLocked ? admin.admin_tier : tierFilter;
 
   const departmentGrievances = useMemo(
@@ -259,7 +288,7 @@ const AdminDashboard = () => {
       } else if (statusFilter === "Open") {
         if (g.status !== "Open" && g.status !== "CHATBOT_HANDLING") return false;
       } else if (statusFilter === "PENDING") {
-        if (!["Open", "CHATBOT_HANDLING", "Investigating", "HUMAN_HANDLING"].includes(g.status)) return false;
+        if (!["Open", "CHATBOT_HANDLING", "Investigating", "HUMAN_HANDLING", "Pending Rejection Approval"].includes(g.status)) return false;
       } else if (statusFilter === "Investigating") {
         if (g.status !== "Investigating" && g.status !== "HUMAN_HANDLING") return false;
       } else if (g.status !== statusFilter) {
@@ -333,16 +362,32 @@ const AdminDashboard = () => {
         const err = await res.json();
         throw new Error(err.detail || "Failed to update status");
       }
+      const data = await res.json();
+      const resultingStatus = data?.new_status || (newStatus === "Rejected" && isMaker ? "Pending Rejection Approval" : newStatus);
+      const resultingTier = data?.maker_checker?.action === "PROPOSED"
+        ? "HEAD"
+        : (data?.maker_checker?.action === "OVERTURNED" ? data.maker_checker.returned_to_tier : undefined);
+
       setGrievances((prev) =>
         prev.map((g) =>
           g.grievance_id === grievanceId
-            ? { ...g, status: newStatus, resolution_reason: reason }
+            ? {
+                ...g,
+                status: resultingStatus,
+                assigned_tier: resultingTier || g.assigned_tier,
+                resolution_reason: reason,
+              }
             : g
         )
       );
       setSelectedTicket((prev) =>
         prev && prev.grievance_id === grievanceId
-          ? { ...prev, status: newStatus, resolution_reason: reason }
+          ? {
+              ...prev,
+              status: resultingStatus,
+              assigned_tier: resultingTier || prev.assigned_tier,
+              resolution_reason: reason,
+            }
           : prev
       );
       setPendingStatusChange(null);
@@ -368,15 +413,35 @@ const AdminDashboard = () => {
           description: "This summary is saved to the audit trail and shared with the complainant.",
         };
       case "Rejected":
+        if (isMaker) {
+          return {
+            title: "Propose Rejection (Maker)",
+            tone: "danger",
+            label: "Reason for proposed rejection",
+            placeholder: "Explain the policy grounds why this grievance should be rejected…",
+            btnText: "Submit for HOD Cross-Check",
+            description: "As an L1/L2/L3 officer (Maker), this rejection will be forwarded to the Head of Department (HOD) for cross-check and final approval.",
+          };
+        }
         return {
           title: "Reject grievance",
           tone: "danger",
           label: "Reason for rejection",
           placeholder: "Explain why this grievance can't be accepted…",
-          btnText: "Reject",
+          btnText: "Confirm Rejection",
           description: "This reason is saved to the audit trail and shared with the complainant.",
         };
       case "Investigating":
+        if (selectedTicket?.status === "Pending Rejection Approval") {
+          return {
+            title: "Overturn Rejection (Checker)",
+            tone: "primary",
+            label: "Overturn instructions / remarks",
+            placeholder: "Specify why the proposed rejection was overturned and what should be investigated…",
+            btnText: "Overturn & Return to Investigation",
+            description: "As Department Head (Checker), returning this ticket will send it back to the maker tier for continued investigation.",
+          };
+        }
         return {
           title: "Move to in progress",
           tone: "primary",
@@ -577,9 +642,27 @@ ${ragRecommendation.compliance_notes || ""}`;
 
 
   // Status badge (uses i18n for labels); colors live in AdminDashboard.css
-  const STATUS_TONES = { Open: "open", Investigating: "investigating", Resolved: "resolved", Closed: "closed", CHATBOT_HANDLING: "chatbot", HUMAN_HANDLING: "human" };
+  const STATUS_TONES = {
+    Open: "open",
+    Investigating: "investigating",
+    Resolved: "resolved",
+    Closed: "closed",
+    Rejected: "closed",
+    "Pending Rejection Approval": "pending-rejection",
+    CHATBOT_HANDLING: "chatbot",
+    HUMAN_HANDLING: "human"
+  };
   const getStatusBadge = (status) => {
-    const labels = { Open: t("pending"), Investigating: t("inProgress"), Resolved: t("resolved"), Closed: t("rejected"), CHATBOT_HANDLING: "Chatbot", HUMAN_HANDLING: "Human" };
+    const labels = {
+      Open: t("pending"),
+      Investigating: t("inProgress"),
+      Resolved: t("resolved"),
+      Closed: t("rejected"),
+      Rejected: t("rejected"),
+      "Pending Rejection Approval": "Pending Rejection (HOD Check)",
+      CHATBOT_HANDLING: "Chatbot",
+      HUMAN_HANDLING: "Human"
+    };
     return (
       <span className={`px-3 py-1 rounded-pill fw-semibold fs-12 text-nowrap tone-badge status-${STATUS_TONES[status] || "other"}`}>
         {labels[status] || status}
@@ -1172,6 +1255,7 @@ ${ragRecommendation.compliance_notes || ""}`;
               <option value="PENDING">Pending + In Progress</option>
               <option value="Open">Pending / Open</option>
               <option value="Investigating">In Progress</option>
+              <option value="Pending Rejection Approval">Pending Rejection (HOD Check)</option>
               <option value="Resolved">Resolved</option>
               <option value="Closed">Closed / Rejected</option>
             </select>
@@ -1490,6 +1574,38 @@ ${ragRecommendation.compliance_notes || ""}`;
                       {selectedTicket.description}
                     </p>
 
+                    {selectedTicket.status === "Pending Rejection Approval" && (
+                      <div className="p-3 mt-4 rounded-3 border border-warning-subtle bg-warning-subtle d-flex flex-column gap-2">
+                        <div className="d-flex align-items-center gap-2">
+                          <i className="bi bi-shield-exclamation text-warning-emphasis fs-4" />
+                          <div>
+                            <span className="fw-bold text-dark fs-14">Maker-Checker: Rejection Cross-Check Required</span>
+                            <div className="fs-12 text-secondary">
+                              An L1/L2/L3 officer proposed rejecting this grievance. As Department Head (Checker), your review is required before final rejection.
+                            </div>
+                          </div>
+                        </div>
+                        {isHOD && (
+                          <div className="d-flex gap-2 mt-2 flex-wrap">
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-danger fw-semibold px-3 py-1 d-inline-flex align-items-center gap-1 shadow-sm"
+                              onClick={() => handleStatusChange(selectedTicket.grievance_id, "Rejected")}
+                            >
+                              <i className="bi bi-check2-circle" /> Confirm & Approve Rejection
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary fw-semibold px-3 py-1 d-inline-flex align-items-center gap-1 bg-white shadow-sm"
+                              onClick={() => handleStatusChange(selectedTicket.grievance_id, "Investigating")}
+                            >
+                              <i className="bi bi-arrow-return-left" /> Overturn & Return to Investigation
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {selectedTicket.resolution_reason && (
                       <div className="mt-4">
                         <div className="ticket-section-label">
@@ -1497,9 +1613,11 @@ ${ragRecommendation.compliance_notes || ""}`;
                             ? "Resolution summary"
                             : selectedTicket.status === "Rejected"
                             ? "Rejection reason"
+                            : selectedTicket.status === "Pending Rejection Approval"
+                            ? "Proposed rejection reason (Maker)"
                             : "Latest status note"}
                         </div>
-                        <div className={`fs-13 text-theme admin-resolution-note is-${(selectedTicket.status || "").toLowerCase()}`}>
+                        <div className={`fs-13 text-theme admin-resolution-note is-${(selectedTicket.status || "").toLowerCase().replace(/\s+/g, '-')}`}>
                           {selectedTicket.resolution_reason}
                         </div>
                       </div>
@@ -1597,25 +1715,46 @@ ${ragRecommendation.compliance_notes || ""}`;
                       <dd>{new Date(selectedTicket.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</dd>
                     </dl>
 
-                    {isOpenTicket && (
+                    {selectedTicket.status === "Pending Rejection Approval" && !isHOD ? (
+                      <div className="mb-4 p-3 rounded-3 bg-warning-subtle border border-warning-subtle text-dark fs-13">
+                        <div className="d-flex align-items-center gap-2 fw-semibold mb-1">
+                          <i className="bi bi-hourglass-split text-warning-emphasis" />
+                          Awaiting HOD Cross-Check
+                        </div>
+                        <div className="text-secondary fs-12">
+                          Rejection was proposed and escalated to the Department Head ({selectedTicket.assigned_tier || "HEAD"}). Ticket is locked pending HOD decision.
+                        </div>
+                      </div>
+                    ) : !canAdminUpdateTicket(selectedTicket) && isOpenTicket ? (
+                      <div className="mb-4 p-3 rounded-3 bg-light border text-muted fs-13">
+                        <i className="bi bi-lock me-1" />
+                        Currently assigned to <strong>{selectedTicket.assigned_tier}</strong> tier. This ticket is read-only for your tier.
+                      </div>
+                    ) : isOpenTicket ? (
                       <div className="mb-4">
                         <label className="ticket-section-label d-block" htmlFor="ticket-status">Status</label>
                         <select
                           id="ticket-status"
                           className="form-select form-select-sm fs-13"
-                          value={["Open", "Investigating"].includes(selectedTicket.status) ? selectedTicket.status : ""}
+                          value={["Open", "Investigating", "Pending Rejection Approval"].includes(selectedTicket.status) ? selectedTicket.status : ""}
                           disabled={updatingId === selectedTicket.grievance_id}
                           onChange={(e) => handleStatusChange(selectedTicket.grievance_id, e.target.value)}
                         >
-                          {/* System-assigned statuses (e.g. HUMAN_HANDLING) aren't manual choices */}
                           <option value="" disabled hidden>Change status…</option>
                           <option value="Open">Pending</option>
                           <option value="Investigating">In Progress</option>
                           <option value="Resolved">Resolve</option>
-                          <option value="Rejected">Reject</option>
+                          {selectedTicket.status === "Pending Rejection Approval" ? (
+                            <>
+                              <option value="Pending Rejection Approval" disabled>Awaiting HOD Check</option>
+                              {isHOD && <option value="Rejected">Confirm Rejection</option>}
+                            </>
+                          ) : (
+                            <option value="Rejected">{isMaker ? "Propose Rejection (Maker)" : "Reject"}</option>
+                          )}
                         </select>
                       </div>
-                    )}
+                    ) : null}
 
                     <div className="ticket-section-label">Actions</div>
                     <div className="d-flex flex-column gap-2">
@@ -1957,7 +2096,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                   <div className="d-flex align-items-center gap-2 mb-3">
                     {getStatusBadge(pendingStatusChange.currentStatus)}
                     <i className="bi bi-arrow-right text-theme-muted" />
-                    {getStatusBadge(pendingStatusChange.newStatus)}
+                    {getStatusBadge(isMaker && pendingStatusChange.newStatus === "Rejected" ? "Pending Rejection Approval" : pendingStatusChange.newStatus)}
                   </div>
 
                   <label className="form-label fs-13 fw-semibold text-heading mb-1" htmlFor="status-reason">

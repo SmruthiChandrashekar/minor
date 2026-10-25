@@ -244,3 +244,28 @@ def notify_admins_resolved(department: str, grievance_id: str):
             notification_type="RESOLVED",
             message=f"Grievance GR-{grievance_id[:8]} has been marked as resolved.",
         )
+
+
+def notify_admins_rejection_proposed(department: str, grievance_id: str, maker_tier: str, maker_email: str):
+    """Notify department head that a rejection was proposed by L1/L2/L3 (Maker) and needs cross-check."""
+    admin_ids = _get_department_admin_ids(department, target_tier="HEAD")
+    for admin_id in admin_ids:
+        create_notification(
+            user_id=admin_id,
+            ticket_id=grievance_id,
+            notification_type="REJECTION_PROPOSED",
+            message=f"Rejection proposed for GR-{grievance_id[:8]} by {maker_tier} ({maker_email}). HOD cross-check required.",
+        )
+
+
+def notify_admins_rejection_overturned(department: str, grievance_id: str, target_tier: str):
+    """Notify department admins that a proposed rejection was overturned by HOD and returned for investigation."""
+    admin_ids = _get_department_admin_ids(department, target_tier=target_tier)
+    for admin_id in admin_ids:
+        create_notification(
+            user_id=admin_id,
+            ticket_id=grievance_id,
+            notification_type="REJECTION_OVERTURNED",
+            message=f"Rejection for GR-{grievance_id[:8]} was overturned by Department Head. Returned to {target_tier} for investigation.",
+        )
+
