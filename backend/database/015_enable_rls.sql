@@ -24,7 +24,7 @@ AS $$
     SELECT 1 FROM public.users
     WHERE user_id = auth.uid()
       AND COALESCE(is_active, true)
-      AND role IN ('admin', 'super_admin')   -- 'admin' = department L1/L2/L3/HEAD staff (see admin_tier)
+      AND role IN ('admin', 'super_admin', 'hr', 'safety', 'compliance')
   );
 $$;
 

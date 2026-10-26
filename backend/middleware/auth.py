@@ -89,6 +89,28 @@ def require_role(*allowed_roles):
         return user
     return checker
 
+def _phone_otp_required() -> bool:
+    return os.environ.get("REQUIRE_PHONE_VERIFIED", "false").lower() == "true"
+
+
+async def require_verified_phone(user: dict = Depends(get_current_user)):
+    """Complainants must have a verified phone to file grievances (when REQUIRE_PHONE_VERIFIED=true).
+    Staff accounts (admin / super_admin) are exempt. Needs migration 017 (users.phone_verified)."""
+    if not _phone_otp_required() or user.get("role") not in (None, "user"):
+        return user
+    try:
+        row = await asyncio.to_thread(
+            lambda: supabase.table("users").select("phone_verified")
+            .eq("user_id", user["user_id"]).execute()
+        )
+        verified = bool(row.data and row.data[0].get("phone_verified"))
+    except Exception:
+        verified = False
+    if not verified:
+        raise HTTPException(status_code=403, detail="Please verify your phone number before submitting a grievance.")
+    return user
+
+
 # Convenience shortcuts
 require_admin = require_role("admin", "super_admin")
 require_super_admin = require_role("super_admin")

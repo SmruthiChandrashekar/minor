@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { resetApiClientState } from "../services/api";
+import { resetApiClientState, apiClient } from "../services/api";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
 import { useLanguage } from "../context/LanguageContext";
 import "./Auth.css";
+
+// While the phone-verification step is pending, /login must not auto-redirect the
+// (already signed-in) user to the dashboard. AppRoutes reads this same key.
+const setVerifyPending = (on) => {
+  try {
+    if (on) sessionStorage.setItem("phoneVerifyPending", "1");
+    else sessionStorage.removeItem("phoneVerifyPending");
+  } catch (_) {}
+};
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -33,6 +42,12 @@ const Auth = () => {
     location: "",
   });
   const [errors, setErrors] = useState({});
+
+  // Phone OTP verification (only used when VITE_REQUIRE_PHONE_OTP=true)
+  const REQUIRE_PHONE_OTP = import.meta.env.VITE_REQUIRE_PHONE_OTP === "true";
+  const [verifyStep, setVerifyStep] = useState(null); // null | "phone" | "otp"
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -102,6 +117,14 @@ const Auth = () => {
           },
         ]);
         if (insertError) throw insertError;
+        if (REQUIRE_PHONE_OTP) {
+          if (!data.session) {
+            throw new Error("Account created. Please confirm your email, then sign in to verify your phone number.");
+          }
+          setMessage({ type: "success", text: "Account created. Now verify your phone number." });
+          setVerifyStep("phone");
+          return "verify";
+        }
         setMessage({ type: "success", text: "Registration successful! Redirecting to dashboard..." });
         setTimeout(() => { window.location.href = "/"; }, 1500);
       }
@@ -146,12 +169,72 @@ const Auth = () => {
     }
   };
 
+  const errorFromResponse = async (res) => {
+    try {
+      const body = await res.json();
+      if (typeof body.detail === "string") return body.detail;
+    } catch (_) {}
+    return "Something went wrong. Please try again.";
+  };
+
+  const sendOtp = async () => {
+    if (!/^\+\d{10,15}$/.test(phone.trim())) {
+      setMessage({ type: "error", text: "Enter your phone number with country code, e.g. +919876543210." });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await apiClient("/api/phone/send-otp", {
+        method: "POST",
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      if (!res.ok) {
+        setMessage({ type: "error", text: await errorFromResponse(res) });
+        return;
+      }
+      setOtp("");
+      setVerifyStep("otp");
+      setMessage({ type: "success", text: "Verification code sent. Enter it below." });
+    } catch (_) {
+      setMessage({ type: "error", text: "Could not reach the server. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!/^\d{6}$/.test(otp.trim())) {
+      setMessage({ type: "error", text: "Enter the 6-digit code you received." });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await apiClient("/api/phone/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ phone: phone.trim(), code: otp.trim() }),
+      });
+      if (!res.ok) {
+        setMessage({ type: "error", text: await errorFromResponse(res) });
+        return;
+      }
+      resetApiClientState();
+      setVerifyPending(false);
+      setMessage({ type: "success", text: "Phone verified! Redirecting..." });
+      setTimeout(() => { window.location.href = "/"; }, 1000);
+    } catch (_) {
+      setMessage({ type: "error", text: "Could not reach the server. Please try again." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    if (mode === "register") await registerUser();
-    else await loginUser();
+    if (REQUIRE_PHONE_OTP) setVerifyPending(true);
+    const result = mode === "register" ? await registerUser() : await loginUser();
+    if (REQUIRE_PHONE_OTP && result !== "verify") setVerifyPending(false);
     setLoading(false);
   };
 
@@ -162,6 +245,9 @@ const Auth = () => {
     setFormData({ userType: "", email: "", password: "", name: "", confirmPassword: "" });
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setVerifyStep(null);
+    setOtp("");
+    setVerifyPending(false);
   };
 
   const features = [
@@ -341,6 +427,56 @@ const Auth = () => {
                     </div>
                   )}
 
+                  {verifyStep && (
+                    <div>
+                      <h5 className="fw-bold mb-2">Verify your phone number</h5>
+                      <p className="text-muted auth-hint">
+                        One verified phone number is needed per account. We'll send a one-time code.
+                      </p>
+                      <div className="mb-3">
+                        <label className="form-label fw-semibold text-theme auth-hint">Phone number</label>
+                        <input
+                          type="tel"
+                          className="form-control auth-input"
+                          placeholder="+919876543210"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          disabled={loading || verifyStep === "otp"}
+                        />
+                      </div>
+                      {verifyStep === "otp" && (
+                        <div className="mb-3">
+                          <label className="form-label fw-semibold text-theme auth-hint">Verification code</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="form-control auth-input"
+                            placeholder="123456"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            disabled={loading}
+                          />
+                        </div>
+                      )}
+                      {verifyStep === "phone" ? (
+                        <button type="button" className="btn btn-danger w-100 fw-bold auth-submit-btn" onClick={sendOtp} disabled={loading}>
+                          {loading ? t("processing") : "Send code"}
+                        </button>
+                      ) : (
+                        <>
+                          <button type="button" className="btn btn-danger w-100 fw-bold auth-submit-btn" onClick={verifyOtp} disabled={loading}>
+                            {loading ? t("processing") : "Verify"}
+                          </button>
+                          <div className="d-flex justify-content-between mt-3">
+                            <button type="button" className="btn btn-link p-0" onClick={sendOtp} disabled={loading}>Resend code</button>
+                            <button type="button" className="btn btn-link p-0" onClick={() => { setVerifyStep("phone"); setOtp(""); }} disabled={loading}>Change number</button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {!verifyStep && (
                   <form onSubmit={handleSubmit} noValidate>
                     {/* FULL NAME — register only */}
                     {mode === "register" && (
@@ -417,7 +553,7 @@ const Auth = () => {
                     {/* EMAIL */}
                     <div className="mb-3">
                       <label className="form-label fw-semibold text-theme auth-hint">
-                        {t("emailAddress")}
+                        {t("authEmailAddress")}
                       </label>
                       <div className="input-group">
                         <span
@@ -575,6 +711,7 @@ const Auth = () => {
                       )}
                     </div>
                   </form>
+                  )}
                 </div>
               </div>
             )}

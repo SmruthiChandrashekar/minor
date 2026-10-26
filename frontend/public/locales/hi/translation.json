@@ -83,6 +83,7 @@
   "loginToAccountDesc": "GRM पोर्टल तक पहुंचने के लिए अपने क्रेडेंशियल दर्ज करें।",
   "fillDetailsDesc": "शुरू करने के लिए नीचे विवरण भरें।",
   "emailAddress": "ईमेल पता (वैकल्पिक)",
+  "authEmailAddress": "ईमेल पता",
   "emailPlaceholder": "you@example.com",
   "fullNameLabel": "पूरा नाम",
   "fullNamePlaceholder": "जैसे प्रिया शर्मा",

@@ -22,8 +22,9 @@ from agents.severity.severity import get_severity
 from agents.intent.intent import detect_intent
 from agents.escalation import EscalationAgent
 from agents.escalation.notifier import Notifier
-from backend.middleware.auth import get_current_user, require_admin, require_role, require_super_admin
+from backend.middleware.auth import get_current_user, require_verified_phone, require_admin, require_role, require_super_admin
 from backend.utils.audit import log_audit
+from backend.utils import phone_otp
 from backend.utils.translator import translate_text, translate_to_english
 from backend.utils.report_generator import generate_employee_report, generate_admin_report
 from groq import Groq
@@ -895,9 +896,68 @@ def clean_complaint_description(text: str) -> str:
     return re.sub(r"\s+", " ", cleaned).strip()
 
 
+
+# 📱 PHONE VERIFICATION (OTP) — sent through the same Twilio setup used for alerts
+class PhoneOtpSendRequest(BaseModel):
+    phone: str
+
+class PhoneOtpVerifyRequest(BaseModel):
+    phone: str
+    code: str
+
+_PHONE_RE = re.compile(r"^\+\d{10,15}$")
+
+
+@app.post("/api/phone/send-otp")
+async def send_phone_otp(req: PhoneOtpSendRequest, user: dict = Depends(get_current_user)):
+    phone = req.phone.strip()
+    if not _PHONE_RE.match(phone):
+        raise HTTPException(status_code=400, detail="Enter the phone number with country code, e.g. +919876543210.")
+
+    taken = supabase.table("users").select("user_id").eq("phone", phone).eq("phone_verified", True).neq("user_id", user["user_id"]).execute()
+    if taken.data:
+        raise HTTPException(status_code=409, detail="This phone number is already linked to another account.")
+
+    try:
+        code = phone_otp.issue_code(user["user_id"], phone)
+    except phone_otp.OtpError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+
+    if os.environ.get("OTP_DEV_MODE", "false").lower() == "true":
+        # Testing without sending an SMS: the code appears in the backend log only.
+        logging.warning("[OTP DEV MODE] code for %s is %s", phone, code)
+        return {"sent": True, "dev_mode": True}
+
+    sent = await asyncio.to_thread(notifier.send_sms, phone, f"Your Puravankara GRM verification code is {code}. It expires in 5 minutes.")
+    if not sent:
+        phone_otp.forget_code(user["user_id"])
+        raise HTTPException(status_code=502, detail="Could not send the SMS. Please try again later.")
+    return {"sent": True}
+
+
+@app.post("/api/phone/verify-otp")
+async def verify_phone_otp(req: PhoneOtpVerifyRequest, user: dict = Depends(get_current_user)):
+    phone = req.phone.strip()
+    try:
+        phone_otp.check_code(user["user_id"], phone, req.code.strip())
+    except phone_otp.OtpError as e:
+        raise HTTPException(status_code=e.status, detail=e.message)
+
+    from datetime import datetime, timezone
+    try:
+        supabase.table("users").update({
+            "phone": phone,
+            "phone_verified": True,
+            "phone_verified_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("user_id", user["user_id"]).execute()
+    except Exception as e:
+        logging.error("Failed to save verified phone for %s: %s", user["user_id"], e)
+        raise HTTPException(status_code=409, detail="Could not save this phone number. It may already be linked to another account.")
+    return {"verified": True}
+
 # 📝 SUBMIT COMPLAINT (Frontend calls this)
 @app.post("/submit-complaint")
-async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends(get_current_user)):
+async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends(require_verified_phone)):
     try:
         description_original = request.description.strip()
         user_lang = request.lang  # e.g. "hi", "kn", "en"
@@ -1742,7 +1802,7 @@ class ChatbotHandoffRequest(BaseModel):
 
 
 @app.post("/api/grievances/chatbot-handoff")
-def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(get_current_user)):
+def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(require_verified_phone)):
     """Escalate a LOW-severity chatbot conversation to L1 human handling."""
     try:
         route_info = chatbot_handoff_route(request.department)

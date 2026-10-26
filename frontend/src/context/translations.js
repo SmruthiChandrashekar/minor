@@ -89,6 +89,7 @@ const translations = {
     loginToAccountDesc: "Enter your credentials to access the GRM portal.",
     fillDetailsDesc: "Fill in the details below to get started.",
     emailAddress: "Email Address",
+    authEmailAddress: "Email Address",
     emailPlaceholder: "you@example.com",
     fullNameLabel: "Full Name",
     fullNamePlaceholder: "e.g. Priya Sharma",

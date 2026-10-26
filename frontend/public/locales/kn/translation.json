@@ -83,6 +83,7 @@
   "loginToAccountDesc": "GRM ಪೋರ್ಟಲ್ ಪ್ರವೇಶಿಸಲು ನಿಮ್ಮ ಪರಿಚಯ ಪತ್ರಗಳನ್ನು ನಮೂದಿಸಿ.",
   "fillDetailsDesc": "ಪ್ರಾರಂಭಿಸಲು ಕೆಳಗಿನ ವಿವರಗಳನ್ನು ತುಂಬಿ.",
   "emailAddress": "ಇಮೇಲ್ ವಿಳಾಸ (ಐಚ್ಛಿಕ)",
+  "authEmailAddress": "ಇಮೇಲ್ ವಿಳಾಸ",
   "emailPlaceholder": "you@example.com",
   "fullNameLabel": "ಪೂರ್ಣ ಹೆಸರು",
   "fullNamePlaceholder": "ಉದಾ. ಪ್ರಿಯಾ ಶರ್ಮಾ",
