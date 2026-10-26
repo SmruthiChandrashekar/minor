@@ -1,4 +1,6 @@
-# Consolidated Python dependencies for the entire Purvankara React project
+# ==============================================================================
+# Puravankara GRM Backend Dependencies
+# ==============================================================================
 fastapi
 uvicorn
 pydantic
@@ -8,20 +10,34 @@ cryptography
 python-dotenv
 requests
 langchain-community
-langchain-ollama
 langchain
 groq
 chromadb
 huggingface-hub
-sentence-transformers
-torch
-transformers
-datasets
-scikit-learn
 tqdm
 langgraph
 langchain-groq
-ragas
 deep_translator
 reportlab
 python-multipart
+
+# ==============================================================================
+# OPTION A: HEAVY ML DEPENDENCIES (COMMENTED FOR 512MB RAM FREE-TIER CLOUD DEPLOY)
+# ------------------------------------------------------------------------------
+# The packages below require >1.5GB disk space and consume >800MB RAM, causing
+# Out-of-Memory crashes on free cloud tiers (like Render free web service: 512MB).
+#
+# In this deployment:
+# - Intent, Department & Severity classification run through Groq LLM agent nodes.
+# - RAG runs in cloud-resilient mode using Groq.
+#
+# Uncomment below if deploying to a paid server with >=2GB RAM or for local GPU dev:
+# ------------------------------------------------------------------------------
+# torch
+# transformers
+# sentence-transformers
+# datasets
+# scikit-learn
+# ragas
+# langchain-ollama
+# ==============================================================================

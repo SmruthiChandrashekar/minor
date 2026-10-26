@@ -16,9 +16,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from supabase import create_client, Client
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from agents.severity.severity import get_severity
+# ==============================================================================
+# OPTION A: LOW-RAM CLOUD DEPLOYMENT (Render Free Tier: 512MB RAM)
+# ------------------------------------------------------------------------------
+# In local development with GPU, PyTorch and HuggingFace transformers were used.
+# However, importing torch & loading two local BERT models consumes >800MB RAM,
+# triggering out-of-memory crashes on free cloud tiers (e.g. Render 512MB limit).
+#
+# Classification and severity evaluation are handled dynamically by Groq LLM agents
+# (see `classify_severity_node`, `classify_department_node`, and `EscalationAgent`)
+# which run via external API calls with zero RAM overhead.
+#
+# Uncomment below if running locally or on a GPU instance with >1GB RAM:
+# import torch
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification
+# from agents.severity.severity import get_severity
+# ==============================================================================
 from agents.intent.intent import detect_intent
 from agents.escalation import EscalationAgent
 from agents.escalation.notifier import Notifier
@@ -82,7 +95,13 @@ app = FastAPI(title="Puravankara GRM Backend")
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -142,21 +161,54 @@ def async_generate_and_save_rag_recommendation(grievance_id: str, description: s
         logging.error("Failed to generate/save RAG recommendation for %s: %s", grievance_id, err)
 
 
-# --- LOAD CLASSIFICATION MODEL (lazy — graceful fallback if model files missing) ---
-device = torch.device("cpu")
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODEL_PATH = os.path.join(BASE_DIR, "agents", "classification", "model")
+# ==============================================================================
+# OPTION A: LOCAL PYTORCH MODEL LOADING (COMMENTED FOR LOW-RAM CLOUD DEPLOYMENT)
+# ------------------------------------------------------------------------------
+# Loading local PyTorch / HuggingFace BERT classification & severity models
+# consumes >800MB RAM, exceeding the Render free-tier limit (512MB RAM).
+#
+# In this deployment:
+# - Intent & Department classification: Handled via Groq LLM agent node
+#   (`classify_department_node` and `detect_intent`)
+# - Severity scoring: Handled via Groq LLM agent node (`classify_severity_node`)
+#   with deterministic safety guardrails.
+#
+# Original PyTorch loading code is preserved below as comments for local/GPU runs:
+#
+# device = torch.device("cpu")
+# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# MODEL_PATH = os.path.join(BASE_DIR, "agents", "classification", "model")
+#
+# try:
+#     print("loading clasf model")
+#     tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
+#     model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
+#     model.to(device)
+#     print("[OK] Classification model loaded")
+# except Exception as _clf_err:
+#     print(f"[WARN] Classification model not found — form classification will be unavailable. ({_clf_err})")
+#     tokenizer = None
+#     model = None
+#
+# severity_model_path = os.path.join(BASE_DIR, "severity_model")
+# try:
+#     print("loading sev model")
+#     severity_tokenizer = AutoTokenizer.from_pretrained(severity_model_path)
+#     severity_model = AutoModelForSequenceClassification.from_pretrained(severity_model_path)
+#     severity_model.to(device)
+#     print("[OK] Severity model loaded")
+# except Exception as _sev_err:
+#     print(f"[WARN] Severity model not found — form severity classification will be unavailable. ({_sev_err})")
+#     severity_tokenizer = None
+#     severity_model = None
+# ==============================================================================
 
-try:
-    print("loading clasf model")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-    model = AutoModelForSequenceClassification.from_pretrained(MODEL_PATH)
-    model.to(device)
-    print("[OK] Classification model loaded")
-except Exception as _clf_err:
-    print(f"[WARN] Classification model not found — form classification will be unavailable. ({_clf_err})")
-    tokenizer = None
-    model = None
+# Lightweight stubs for low-memory cloud execution:
+tokenizer = None
+model = None
+severity_tokenizer = None
+severity_model = None
+MODELS_READY = True  # Handled dynamically by Groq LLM agent nodes
 
 reverse_map = {
     0: "HR",
@@ -167,20 +219,6 @@ reverse_map = {
     5: "Other"
 }
 
-# --- LOAD SEVERITY MODEL (lazy — graceful fallback if model files missing) ---
-severity_model_path = os.path.join(BASE_DIR, "severity_model")
-
-try:
-    print("loading sev model")
-    severity_tokenizer = AutoTokenizer.from_pretrained(severity_model_path)
-    severity_model = AutoModelForSequenceClassification.from_pretrained(severity_model_path)
-    severity_model.to(device)
-    print("[OK] Severity model loaded")
-except Exception as _sev_err:
-    print(f"[WARN] Severity model not found — form severity classification will be unavailable. ({_sev_err})")
-    severity_tokenizer = None
-    severity_model = None
-
 severity_map = {
     0: "Policy",
     1: "Low",
@@ -188,8 +226,6 @@ severity_map = {
     3: "High",
     4: "Critical"
 }
-
-MODELS_READY = model is not None and severity_model is not None
 
 # --- INIT ESCALATION AGENT ---
 print("loading escalation agent")
