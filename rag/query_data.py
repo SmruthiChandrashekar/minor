@@ -47,21 +47,37 @@ def initialize_rag():
             print("[INFO] Warming up Policy RAG system...")
             start_time = time.time()
 
+            # ==================================================================
+            # OPTION A: EMBEDDING INITIALIZATION (LOW-RAM CLOUD RESILIENCE)
+            # ------------------------------------------------------------------
+            # Local HuggingFaceEmbeddings uses sentence-transformers & PyTorch.
+            # If those libraries are excluded/commented out to stay under 512MB RAM,
+            # this try-block catches the missing dependency and operates in
+            # direct Groq LLM fallback mode without failing the server startup.
+            # ==================================================================
             if embedding_model is None:
-                embedding_model = HuggingFaceEmbeddings(
-                    model_name="all-MiniLM-L6-v2"
+                try:
+                    embedding_model = HuggingFaceEmbeddings(
+                        model_name="all-MiniLM-L6-v2"
+                    )
+                except Exception as emb_init_err:
+                    print(f"[WARN] Local sentence-transformers not loaded ({emb_init_err}).")
+                    print("[INFO] Policy RAG running in lightweight cloud mode (Groq fallback).")
+                    embedding_model = None
+
+            if embedding_model is not None and os.path.exists(CHROMA_PATH):
+                persistent_client = chromadb.PersistentClient(path=CHROMA_PATH)
+                db = Chroma(
+                    client=persistent_client,
+                    embedding_function=embedding_model,
                 )
 
-            persistent_client = chromadb.PersistentClient(path=CHROMA_PATH)
-            db = Chroma(
-                client=persistent_client,
-                embedding_function=embedding_model,
-            )
-
-            try:
-                db.similarity_search("leave policy", k=1)
-            except Exception as e:
-                print("Warmup search error:", e)
+                try:
+                    db.similarity_search("leave policy", k=1)
+                except Exception as e:
+                    print("Warmup search error:", e)
+            else:
+                db = None
 
             RAG_READY = True
             print(f"[OK] Policy RAG Ready (Initialized in {round(time.time() - start_time, 2)}s)\n")
@@ -128,6 +144,19 @@ def get_rag_response(query_text: str):
 
     total_start = time.time()
     clean_query = preprocess_query(query_text)
+
+    # If Chroma vector store is not loaded (low-memory cloud mode), answer directly with Groq
+    if db is None:
+        prompt = (
+            "You are a helpful and knowledgeable corporate HR & Policy Assistant for Puravankara Limited.\n"
+            f"User inquiry: {clean_query}\n\n"
+            "Provide a professional, clear, and structured response based on standard Indian corporate and real-estate HR guidelines."
+        )
+        answer = call_llm(prompt)
+        return {
+            "answer": answer,
+            "sources": []
+        }
 
     # 1. RETRIEVAL (k=6)
     results = db.similarity_search_with_score(clean_query, k=6)
