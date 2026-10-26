@@ -20,6 +20,7 @@ langchain-groq
 deep_translator
 reportlab
 python-multipart
+pandas
 
 # ==============================================================================
 # OPTION A: HEAVY ML DEPENDENCIES (COMMENTED FOR 512MB RAM FREE-TIER CLOUD DEPLOY)
