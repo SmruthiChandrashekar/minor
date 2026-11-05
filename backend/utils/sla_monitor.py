@@ -376,9 +376,13 @@ async def sla_monitor_loop():
     """
     logger.info("[SLA] Monitor started — checking every %ds", CHECK_INTERVAL_SECONDS)
 
+    # First pass shortly after startup so deadlines (and the backfill of older tickets)
+    # appear straight away instead of after the first full interval.
+    delay = 15
     while True:
         try:
-            await asyncio.sleep(CHECK_INTERVAL_SECONDS)
+            await asyncio.sleep(delay)
+            delay = CHECK_INTERVAL_SECONDS
             await asyncio.to_thread(check_and_escalate)
             await asyncio.to_thread(check_resolution_sla)
         except asyncio.CancelledError:

@@ -419,7 +419,7 @@ function Track() {
                     <span className="fw-bold" style={{ color: routingInfo?.color || "#0d47a1" }}>
                       {(() => {
                         const v = trackedData.resolved_at || trackedData.expected_resolution_by;
-                        if (!v) return trackedData.assigned_tier ? "Within 30 days" : "—";
+                        if (!v) return "—";
                         return new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
                       })()}
                     </span>

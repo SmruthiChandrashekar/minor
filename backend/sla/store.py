@@ -19,12 +19,16 @@ _CACHE_TTL_SECONDS = 300
 _cache: dict = {}
 
 
+_MISSING_TTL_SECONDS = 30  # re-check soon after migration 020 is applied
+
+
 def _cached(key: str, loader):
     hit = _cache.get(key)
     if hit and hit[0] > time.monotonic():
         return hit[1]
     value = loader()
-    _cache[key] = (time.monotonic() + _CACHE_TTL_SECONDS, value)
+    ttl = _MISSING_TTL_SECONDS if value is None else _CACHE_TTL_SECONDS
+    _cache[key] = (time.monotonic() + ttl, value)
     return value
 
 
