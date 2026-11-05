@@ -1,0 +1,619 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+.blore-page {
+  font-family: 'Montserrat', sans-serif;
+  color: #1a1a1a;
+  background-color: #fcfcfc;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ───────── Top Navigation Header ───────── */
+.blore-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 50;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.7) 70%, transparent 100%);
+  backdrop-filter: blur(6px);
+}
+
+.blore-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.blore-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #0b3558;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.blore-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 20px;
+  height: 12px;
+}
+
+.blore-hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #0b3558;
+  border-radius: 2px;
+}
+
+.blore-nav-link {
+  color: #0b3558;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.blore-nav-link:hover {
+  color: #2b7fc3;
+}
+
+.blore-brand-logo {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #0b3558;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.blore-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.blore-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #0b3558;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.blore-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: rgba(11, 53, 88, 0.12);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b3558;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.blore-icon-btn:hover {
+  background-color: #0b3558;
+  color: #ffffff;
+}
+
+.blore-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* ───────── Hero Banner ───────── */
+.blore-hero {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.blore-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.5) 100%);
+}
+
+.blore-hero-title {
+  position: relative;
+  z-index: 10;
+  color: #ffffff;
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  margin: 0;
+}
+
+/* ───────── Enquire Now Sticky ───────── */
+.blore-enquire-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+  background-color: #0b3558;
+  color: #ffffff;
+  padding: 16px 8px;
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  border: none;
+  cursor: pointer;
+  z-index: 99;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+/* ───────── Content Container ───────── */
+.blore-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 30px 24px 60px;
+}
+
+/* Breadcrumbs */
+.blore-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666666;
+  margin-bottom: 30px;
+}
+
+.blore-breadcrumb a {
+  color: #444444;
+  text-decoration: none;
+}
+
+.blore-breadcrumb a:hover {
+  color: #0b3558;
+}
+
+.blore-breadcrumb .active {
+  color: #0b3558;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Intro Header */
+.blore-intro-section {
+  position: relative;
+  text-align: center;
+  max-width: 950px;
+  margin: 0 auto 40px;
+}
+
+.blore-wireframe-icon {
+  position: absolute;
+  left: -80px;
+  top: -10px;
+  width: 60px;
+  height: 60px;
+  opacity: 0.85;
+}
+
+.blore-heading {
+  font-size: 26px;
+  font-weight: 600;
+  color: #1e3a5f;
+  margin-bottom: 18px;
+  letter-spacing: -0.3px;
+}
+
+.blore-desc {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #4a5568;
+  margin-bottom: 22px;
+}
+
+.blore-readmore-btn {
+  background-color: #0b3558;
+  color: #ffffff;
+  border: none;
+  padding: 10px 26px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s ease;
+}
+
+.blore-readmore-btn:hover {
+  background-color: #154e7d;
+}
+
+/* Filter Tabs */
+.blore-filters-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 40px 0 35px;
+  flex-wrap: wrap;
+}
+
+.blore-filter-tab {
+  padding: 9px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #0b3558;
+  background-color: transparent;
+  color: #0b3558;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.blore-filter-tab:hover {
+  background-color: rgba(11, 53, 88, 0.06);
+}
+
+.blore-filter-tab.active {
+  background-color: #0b3558;
+  color: #ffffff;
+}
+
+/* ───────── Projects Grid ───────── */
+.blore-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  margin-bottom: 50px;
+}
+
+.blore-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.blore-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.blore-card-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+  background-color: #edf2f7;
+}
+
+.blore-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.blore-card:hover .blore-card-img {
+  transform: scale(1.03);
+}
+
+.blore-card-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: #0b3558;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 14px;
+  letter-spacing: 0.5px;
+  border-top-left-radius: 3px;
+}
+
+.blore-card-badge.ongoing {
+  background-color: #124570;
+}
+
+/* Card Body */
+.blore-card-body {
+  padding: 22px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.blore-card-title {
+  font-size: 19px;
+  font-weight: 600;
+  color: #1e3a5f;
+  margin: 0 0 6px;
+  line-height: 1.3;
+}
+
+.blore-card-location {
+  font-size: 12.5px;
+  color: #64748b;
+  margin: 0 0 20px;
+}
+
+/* Card Specs Grid (2 columns) */
+.blore-card-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+  margin-bottom: 24px;
+}
+
+.blore-spec-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 3px;
+}
+
+.blore-spec-val {
+  font-size: 12.5px;
+  color: #475569;
+}
+
+.blore-view-proj-wrap {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.blore-view-proj-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #0b3558;
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 6px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.blore-view-proj-btn:hover {
+  border-color: #0b3558;
+  background-color: #0b3558;
+  color: #ffffff;
+}
+
+/* Card Action Buttons */
+.blore-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.blore-action-btn {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 2px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  border: 1px solid #0b3558;
+}
+
+.blore-action-btn.site-visit {
+  background-color: #ffffff;
+  color: #0b3558;
+}
+
+.blore-action-btn.site-visit:hover {
+  background-color: #f1f5f9;
+}
+
+.blore-action-btn.enquire {
+  background-color: #0b3558;
+  color: #ffffff;
+}
+
+.blore-action-btn.enquire:hover {
+  background-color: #154e7d;
+}
+
+/* ───────── Pagination ───────── */
+.blore-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 40px 0 60px;
+}
+
+.blore-page-num {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.blore-page-num:hover {
+  border-color: #0b3558;
+  color: #0b3558;
+}
+
+.blore-page-num.active {
+  background-color: #0b3558;
+  border-color: #0b3558;
+  color: #ffffff;
+}
+
+/* ───────── FAQs Section ───────── */
+.blore-faqs-section {
+  max-width: 980px;
+  margin: 0 auto 80px;
+}
+
+.blore-faqs-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 600;
+  color: #1e3a5f;
+  margin-bottom: 30px;
+}
+
+.blore-faq-item {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.blore-faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 18px 0;
+  background: transparent;
+  border: none;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #2b6cb0;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.blore-faq-question:hover {
+  color: #1e3a5f;
+}
+
+.blore-faq-icon {
+  font-size: 18px;
+  font-weight: 400;
+  color: #718096;
+}
+
+.blore-faq-answer {
+  padding: 0 0 20px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #4a5568;
+}
+
+/* Floating Bottom Controls */
+.blore-scroll-top {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: #0b3558;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  z-index: 90;
+  transition: transform 0.2s ease;
+}
+
+.blore-scroll-top:hover {
+  transform: translateY(-3px);
+}
+
+.blore-chat-bubble {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: #0077b6;
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 90;
+  transition: transform 0.2s ease;
+}
+
+.blore-chat-bubble:hover {
+  transform: scale(1.08);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .blore-projects-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .blore-topbar {
+    padding: 0 16px;
+  }
+  .blore-topbar-left a,
+  .blore-dropdown-link {
+    display: none;
+  }
+  .blore-projects-grid {
+    grid-template-columns: 1fr;
+  }
+  .blore-hero-title {
+    font-size: 38px;
+  }
+  .blore-card-specs {
+    grid-template-columns: 1fr;
+  }
+}

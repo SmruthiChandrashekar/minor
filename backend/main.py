@@ -284,6 +284,7 @@ class ComplaintMetadata(BaseModel):
     severity: Optional[str] = None
     prefilled_severity: Optional[str] = None
     prefilled_department: Optional[str] = None
+    project: Optional[str] = None   # Puravankara project the complaint relates to
 
 class SubmitComplaintRequest(BaseModel):
     description: str
@@ -1181,6 +1182,10 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
         contact_email = None if (meta and meta.is_anonymous) else (meta.email if meta else None)
         is_anonymous_val = meta.is_anonymous if meta else False
         location_val = meta.location if meta else None
+        # No project column in the grievances table, so the project rides along in the location text.
+        project_val = (meta.project or "").strip()[:80] if meta else ""
+        if project_val:
+            location_val = f"{location_val} (Project: {project_val})" if location_val else f"Project: {project_val}"
         date_val = meta.date if meta else None
 
         # Store clean, emoji-free description

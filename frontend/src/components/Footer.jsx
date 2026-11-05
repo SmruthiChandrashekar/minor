@@ -20,7 +20,7 @@ function Footer() {
 
           <div className="col-md-3 mb-3">
             <h6 className="fw-bold mb-3 text-white footer-heading">{t("quickLinks")}</h6>
-            <p className="mb-2"><Link className="text-decoration-none footer-link" to="/">{t("home")}</Link></p>
+            <p className="mb-2"><Link className="text-decoration-none footer-link" to="/grm">{t("home")}</Link></p>
             <p className="mb-2"><Link className="text-decoration-none footer-link" to="/track">{t("trackStatus")}</Link></p>
             <p className="mb-2"><Link className="text-decoration-none footer-link" to="/help">{t("helpCenter")}</Link></p>
             <p className="mb-2"><Link className="text-decoration-none footer-link" to="/login">{t("loginRegister")}</Link></p>

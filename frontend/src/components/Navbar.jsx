@@ -26,7 +26,7 @@ function Navbar() {
       <div className="container">
 
         {/* LOGO */}
-        <Link className="navbar-brand d-flex align-items-center text-decoration-none" to="/">
+        <Link className="navbar-brand d-flex align-items-center text-decoration-none" to="/grm">
           <img src="/purvankaraimg.png" alt="Puravankara" className="navbar-brand-logo object-fit-contain" />
           <span className="text-accent fw-extrabold ls-1 brand-mark">GRM</span>
         </Link>
@@ -46,7 +46,7 @@ function Navbar() {
             <span className="d-inline-block rounded-circle nav-live-dot"></span>
           </Link>
 
-          <Link to="/" className="me-4 text-decoration-none nav-link-custom">
+          <Link to="/grm" className="me-4 text-decoration-none nav-link-custom">
             {user ? t("dashboard") : t("home")}
           </Link>
 
