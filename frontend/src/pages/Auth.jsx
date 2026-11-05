@@ -14,6 +14,13 @@ const setVerifyPending = (on) => {
   } catch (_) {}
 };
 
+// After login, a complainant who came from a project page goes straight to
+// filing for that project; everyone else lands on the GRM home.
+const afterLoginPath = () => {
+  const project = sessionStorage.getItem("purva_selected_project");
+  return project ? `/lodge-selection?project=${encodeURIComponent(project)}` : "/grm";
+};
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
@@ -126,7 +133,7 @@ const Auth = () => {
           return "verify";
         }
         setMessage({ type: "success", text: "Registration successful! Redirecting to dashboard..." });
-        setTimeout(() => { window.location.href = "/"; }, 1500);
+        setTimeout(() => { window.location.href = afterLoginPath(); }, 1500);
       }
     } catch (err) {
       setMessage({ type: "error", text: parseError(err) });
@@ -162,7 +169,7 @@ const Auth = () => {
         setTimeout(() => { window.location.href = "/admin/dashboard"; }, 1000);
       } else {
         setMessage({ type: "success", text: "Login successful! Welcome back." });
-        setTimeout(() => { window.location.href = "/"; }, 1000);
+        setTimeout(() => { window.location.href = afterLoginPath(); }, 1000);
       }
     } catch (err) {
       setMessage({ type: "error", text: parseError(err) });
@@ -220,7 +227,7 @@ const Auth = () => {
       resetApiClientState();
       setVerifyPending(false);
       setMessage({ type: "success", text: "Phone verified! Redirecting..." });
-      setTimeout(() => { window.location.href = "/"; }, 1000);
+      setTimeout(() => { window.location.href = afterLoginPath(); }, 1000);
     } catch (_) {
       setMessage({ type: "error", text: "Could not reach the server. Please try again." });
     } finally {

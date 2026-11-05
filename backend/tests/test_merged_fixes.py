@@ -316,3 +316,16 @@ def test_policy_search_survives_vector_failure(monkeypatch):
     assert q.search_policies("sexual harassment complaint", top_k=3)
     q.search_policies("sexual harassment complaint", top_k=3)
     assert broken.similarity_search_with_score.call_count == 1  # cooldown skips the second call
+
+
+# ── Website simulation: complaint keeps the Puravankara project ──────────
+
+def test_project_is_saved_with_the_location(client, monkeypatch):
+    c, fake, _ = client
+    _classify(monkeypatch, "HIGH")
+    fake.handler = lambda t, ops: [{"grievance_id": "g1"}] if t == "grievances" else []
+    monkeypatch.setattr(main, "run_escalation_agent", MagicMock(), raising=False)
+    c.post("/submit-complaint", json={"description": "Water leaking into the lift shaft",
+                                      "metadata": {"location": "Tower B", "project": "Purva Heritage"}})
+    row = fake.ops_for("grievances", "insert")[0][1][0]
+    assert row["location"] == "Tower B (Project: Purva Heritage)"

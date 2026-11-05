@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
@@ -6,11 +6,23 @@ import { supabase } from "../services/supabaseClient";
 import { apiClient } from "../services/api";
 import FileUpload from "../components/FileUpload";
 import { saveToQueue } from "../services/offlineQueue";
+import { PURVA_CITIES_PROJECTS, PURVA_CITIES, findProjectByNameOrId } from "../config/projectsData";
 import "./Lodge.css";
 
 function LodgeExternal() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Project from URL query parameter or sessionStorage (if clicked from a project previously)
+  const urlProject = new URLSearchParams(location.search).get("project");
+  const storedProject = sessionStorage.getItem("purva_selected_project");
+  const initialIdentifier = urlProject || storedProject || "";
+  const initialProjectObj = initialIdentifier ? findProjectByNameOrId(initialIdentifier) : null;
+
+  const [selectedProject, setSelectedProject] = useState(initialProjectObj);
+  const [selectedCity, setSelectedCity] = useState(initialProjectObj?.city || "");
+  const [isChangingProject, setIsChangingProject] = useState(false);
+
   const [submittedId, setSubmittedId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [queryRedirect, setQueryRedirect] = useState(null);
@@ -21,12 +33,20 @@ function LodgeExternal() {
     orgName: "",
     contactNumber: "",
     emailAddress: "",
-    cityLocation: "",
-    incidentDate: "",
+    cityLocation: initialProjectObj?.location || "",
+    incidentDate: new Date().toISOString().split("T")[0],
     description: location.state?.description || "",
     isAnonymous: false,
     attachments: []
   });
+
+  // Save selected project to sessionStorage so it persists across refreshes or navigation
+  useEffect(() => {
+    if (urlProject) {
+      sessionStorage.setItem("purva_selected_project", urlProject);
+    }
+  }, [urlProject]);
+
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -73,6 +93,7 @@ function LodgeExternal() {
         severity: location.state?.severity || null,
         prefilled_severity: location.state?.severity || null,
         prefilled_department: location.state?.department || null,
+        project: selectedProject?.name || initialIdentifier || null,
         is_anonymous: formData.isAnonymous
       },
     };
@@ -131,6 +152,143 @@ function LodgeExternal() {
             {!submittedId ? (
               <>
                 <h3 className="mb-4 fw-bold">{t("lodgeExternal")}</h3>
+
+                {/* ── PROJECT SITE DETAILS (AUTO-FILLED OR SEARCH/SELECT) ── */}
+                {selectedProject && !isChangingProject ? (
+                  /* PROJECT SITE DETAILS CARD (AUTO-FILLED WITH IMAGE & METADATA) */
+                  <div className="card border-0 mb-4 shadow-sm lodge-project-card">
+                    <div className="card-body p-3">
+                      <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+                        <div className="d-flex align-items-center gap-3">
+                          <img
+                            src={selectedProject.image || "/purva_heritage.jpg"}
+                            alt={selectedProject.name}
+                            className="lodge-project-img rounded-3 shadow-xs"
+                          />
+                          <div>
+                            <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                              <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 fs-11">
+                                <i className="bi bi-patch-check-fill me-1"></i>Verified Site
+                              </span>
+                              <span className="badge bg-navy text-white fs-11">
+                                {selectedProject.type || "Residential"}
+                              </span>
+                              {selectedProject.city && (
+                                <span className="badge bg-light text-muted border fs-11">
+                                  {selectedProject.city}
+                                </span>
+                              )}
+                            </div>
+                            <h5 className="fw-bold mb-1 text-navy">{selectedProject.name}</h5>
+                            <p className="text-muted small mb-0">
+                              <i className="bi bi-geo-alt-fill text-danger me-1"></i>
+                              {selectedProject.location}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="d-flex flex-sm-column align-items-end justify-content-center gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 fw-semibold fs-12"
+                            onClick={() => setIsChangingProject(true)}
+                          >
+                            <i className="bi bi-arrow-repeat me-1"></i> Change Site
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* CITY & PROJECT SELECTOR (HOMEPAGE OR MANUAL SELECTION) */
+                  <div className="card border mb-4 bg-light shadow-xs rounded-3 lodge-selector-card">
+                    <div className="card-body p-3">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <h6 className="fw-bold text-navy mb-0">
+                          <i className="bi bi-building me-2 text-danger"></i>
+                          Select City &amp; Project Site
+                        </h6>
+                        {selectedProject && (
+                          <button
+                            type="button"
+                            className="btn btn-link btn-sm text-decoration-none p-0 text-muted small"
+                            onClick={() => setIsChangingProject(false)}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-muted small mb-3">
+                        Choose your city and Puravankara project to link this grievance to the appropriate site response team.
+                      </p>
+
+                      <div className="row g-3">
+                        {/* CITY DROPDOWN */}
+                        <div className="col-12 col-md-5">
+                          <label className="form-label fw-semibold text-navy small mb-1">
+                            City <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className="form-select form-select-sm"
+                            value={selectedCity}
+                            onChange={(e) => {
+                              const city = e.target.value;
+                              setSelectedCity(city);
+                              setSelectedProject(null);
+                            }}
+                          >
+                            <option value="">-- Choose City --</option>
+                            {PURVA_CITIES.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* PROJECT DROPDOWN */}
+                        <div className="col-12 col-md-7">
+                          <label className="form-label fw-semibold text-navy small mb-1">
+                            Puravankara Project <span className="text-danger">*</span>
+                          </label>
+                          <select
+                            className="form-select form-select-sm"
+                            disabled={!selectedCity}
+                            value={selectedProject?.id || ""}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (!val) {
+                                setSelectedProject(null);
+                                return;
+                              }
+                              const proj = PURVA_CITIES_PROJECTS[selectedCity]?.find((p) => p.id === val);
+                              if (proj) {
+                                const fullProj = { ...proj, city: selectedCity };
+                                setSelectedProject(fullProj);
+                                sessionStorage.setItem("purva_selected_project", fullProj.name);
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  cityLocation: fullProj.location || prev.cityLocation,
+                                }));
+                                setIsChangingProject(false);
+                              }
+                            }}
+                          >
+                            <option value="">
+                              {!selectedCity ? "-- Select City First --" : "-- Select Project --"}
+                            </option>
+                            {selectedCity &&
+                              PURVA_CITIES_PROJECTS[selectedCity]?.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} ({p.location})
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
 
                 {/* Query / Low / Medium Redirect Banner */}
                 {queryRedirect && (

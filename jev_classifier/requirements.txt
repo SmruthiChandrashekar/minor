@@ -1,0 +1,5 @@
+# Laya Decision Model Lab — Isolated Dependencies
+# Install with: pip install -r jev_classifier/requirements.txt
+
+laya
+numpy
