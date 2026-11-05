@@ -74,6 +74,8 @@ from backend.utils.notification_service import (
     create_notification,
 )
 from backend.utils.sla_monitor import sla_monitor_loop
+from backend.sla.store import start_sla
+from backend.sla.engine import status_change_fields, current_deadline
 
 # ── Configure logging for escalation agent ──
 logging.basicConfig(
@@ -640,6 +642,11 @@ async def track_grievance(tracking_id: str):
                 "assigned_to", "resolution_reason", "report_url", "created_at"]
         out = {k: g.get(k) for k in keys}
         out["documents"] = docs
+        # Complainant-facing SLA dates (GRM §7). Internal levels and breach flags stay hidden.
+        deadline = current_deadline(g)
+        out["acknowledged_at"] = g.get("acknowledged_at") or g.get("created_at")
+        out["expected_resolution_by"] = deadline.isoformat() if deadline else None
+        out["resolved_at"] = g.get("resolved_at")
         return out
     except HTTPException:
         raise
@@ -1212,6 +1219,11 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
             "escalation_history": [],
         }
 
+        # Resolution SLA (GRM §7): acknowledged now, resolve within the rule's days,
+        # escalated cases within 45 working days. Only for tickets that reach a human.
+        if route_info["assigned_tier"]:
+            grievance_data.update(start_sla(supabase, dept, category, severity))
+
         result = supabase.table("grievances").insert(grievance_data).execute()
 
         if not result.data:
@@ -1315,7 +1327,7 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
 
         status_attachments = _clean_admin_attachments(request.attachments)
 
-        target = supabase.table("grievances").select("department, category, assigned_tier, status, escalation_history") \
+        target = supabase.table("grievances").select("*") \
             .eq("grievance_id", request.grievance_id).limit(1).execute()
         if not target.data:
             raise HTTPException(status_code=404, detail="Grievance not found")
@@ -1332,6 +1344,11 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
         user_email = user.get("email") or "Admin"
         user_role = user.get("role")
         history = list(ticket_data.get("escalation_history") or [])
+
+        def _with_sla(payload: dict) -> dict:
+            """Add resolution-SLA bookkeeping (first response, resolved / reopened) for the DB status written."""
+            payload.update(status_change_fields(ticket_data, payload.get("status") or current_status, now_utc))
+            return payload
 
         is_maker_tier = (user_role != "super_admin") and (user_tier in ("L1", "L2", "L3"))
         is_checker_tier = (user_role == "super_admin") or (user_tier == "HEAD")
@@ -1377,7 +1394,7 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
                 history.append(history_item)
                 update_payload["escalation_history"] = history
 
-                result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+                result = supabase.table("grievances").update(_with_sla(update_payload)).eq("grievance_id", request.grievance_id).execute()
                 if not result.data:
                     raise HTTPException(status_code=404, detail="Grievance not found.")
 
@@ -1446,7 +1463,7 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
                 history.append(history_item)
                 update_payload["escalation_history"] = history
 
-                result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+                result = supabase.table("grievances").update(_with_sla(update_payload)).eq("grievance_id", request.grievance_id).execute()
                 if not result.data:
                     raise HTTPException(status_code=404, detail="Grievance not found.")
 
@@ -1497,7 +1514,7 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
             history.append(history_item)
             update_payload["escalation_history"] = history
 
-            result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+            result = supabase.table("grievances").update(_with_sla(update_payload)).eq("grievance_id", request.grievance_id).execute()
             if not result.data:
                 raise HTTPException(status_code=404, detail="Grievance not found or update failed.")
 
@@ -1549,7 +1566,7 @@ async def update_grievance_status(request: UpdateStatusRequest, user: dict = Dep
         except Exception as hist_err:
             logging.warning("Could not append status update to escalation_history: %s", hist_err)
 
-        result = supabase.table("grievances").update(update_payload).eq("grievance_id", request.grievance_id).execute()
+        result = supabase.table("grievances").update(_with_sla(update_payload)).eq("grievance_id", request.grievance_id).execute()
 
         if not result.data:
             raise HTTPException(status_code=404, detail="Grievance not found or not assigned to you.")
@@ -1988,6 +2005,7 @@ def chatbot_handoff(request: ChatbotHandoffRequest, user: dict = Depends(require
             "sla_deadline": route_info["sla_deadline"].isoformat() if route_info["sla_deadline"] else None,
             "escalation_history": [{"from_tier": "CHATBOT", "to_tier": "L1", "reason": "USER_REQUEST"}],
         }
+        grievance_data.update(start_sla(supabase, request.department, request.department, "Low"))
 
         result = supabase.table("grievances").insert(grievance_data).execute()
         if not result.data:

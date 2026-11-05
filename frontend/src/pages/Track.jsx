@@ -62,6 +62,8 @@ function Track() {
           initial_handler: data.initial_handler,
           assigned_to: data.assigned_to,
           resolution_reason: data.resolution_reason,
+          expected_resolution_by: data.expected_resolution_by,
+          resolved_at: data.resolved_at,
           report_url: data.report_url,
           documents: data.documents || [],
           date: new Date(data.created_at).toLocaleDateString("en-IN", {
@@ -412,10 +414,14 @@ function Track() {
                   </div>
                   <div className="col-6 col-md-4">
                     <span className="text-muted d-block fw-semibold mb-1 fs-11 ls-1">
-                      RESOLUTION SLA
+                      {trackedData.resolved_at ? "RESOLVED ON" : "EXPECTED RESOLUTION BY"}
                     </span>
                     <span className="fw-bold" style={{ color: routingInfo?.color || "#0d47a1" }}>
-                      {trackedData.sla_hours ? `${trackedData.sla_hours} Hours` : "Standard SLA"}
+                      {(() => {
+                        const v = trackedData.resolved_at || trackedData.expected_resolution_by;
+                        if (!v) return trackedData.assigned_tier ? "Within 30 days" : "—";
+                        return new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+                      })()}
                     </span>
                   </div>
                   <div className="col-6 col-md-4">

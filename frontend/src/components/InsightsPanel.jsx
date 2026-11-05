@@ -11,7 +11,10 @@ const DONE = ["Resolved", "Closed", "Rejected"];
 export const isDone = (g) => DONE.includes(g.status);
 
 export const isSlaBreached = (g, now = Date.now()) =>
-  !isDone(g) && g.sla_deadline && new Date(g.sla_deadline).getTime() < now;
+  !isDone(g) && (
+    (g.sla_deadline && new Date(g.sla_deadline).getTime() < now) ||
+    (g.resolve_by && new Date(g.resolve_by).getTime() < now)
+  );
 
 const wasEscalated = (g) =>
   (g.escalation_history || []).some((h) => h.reason || h.from_tier || h.to_tier);

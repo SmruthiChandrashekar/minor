@@ -12,6 +12,7 @@ Each escalation:
 """
 
 import asyncio
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -181,6 +182,191 @@ def _send_escalation_notifications(
         logger.error("[SLA] Failed to send escalation notifications: %s", e)
 
 
+# ── Resolution SLA (GRM framework §7) ────────────────────────────────
+
+_OPEN_TICKET_FIELDS = (
+    "grievance_id, department, category, severity, status, assigned_tier, user_id, created_at, "
+    "escalation_history, acknowledged_at, resolve_by, final_resolve_by, resolved_at, "
+    "resolution_breached, final_breached, sla_rule_snapshot, sla_alerts_sent"
+)
+_DONE = ["Resolved", "Rejected", "Closed", "CHATBOT_HANDLING"]
+
+
+def _fmt_ist(value) -> str:
+    from backend.sla.calendar import to_ist
+    from backend.sla.engine import parse_ts
+    dt = parse_ts(value)
+    return to_ist(dt).strftime("%d %b %Y") if dt else "—"
+
+
+def _super_admin_ids(supabase) -> list[str]:
+    try:
+        res = supabase.table("users").select("user_id").eq("role", "super_admin").execute()
+        return [r["user_id"] for r in res.data or []]
+    except Exception as e:
+        logger.error("[SLA] Could not load super admins: %s", e)
+        return []
+
+
+def _notify(user_ids, grievance_id: str, notification_type: str, message: str):
+    from backend.utils.notification_service import create_notification
+    for uid in dict.fromkeys(user_ids):
+        create_notification(uid, grievance_id, notification_type, message)
+
+
+def backfill_resolution_sla(supabase, now: datetime) -> int:
+    """Stamp deadlines on open human-handled tickets filed before migration 020.
+    Alerts already in the past are recorded as sent, so nobody is spammed."""
+    from backend.sla.engine import backfill_fields
+    from backend.sla.store import resolve_rule, load_holidays
+
+    res = (
+        supabase.table("grievances").select(_OPEN_TICKET_FIELDS)
+        .is_("resolve_by", "null")
+        .not_.is_("assigned_tier", "null")
+        .not_.in_("status", _DONE)
+        .limit(200)
+        .execute()
+    )
+    rows = res.data or []
+    holidays = load_holidays(supabase)
+    for g in rows:
+        rule = resolve_rule(supabase, g.get("department"), g.get("category"), g.get("severity"))
+        if rule is None:
+            return 0
+        fields = backfill_fields(g, rule, holidays, now)
+        fields["acknowledged_at"] = g.get("created_at")
+        supabase.table("grievances").update(fields).eq("grievance_id", g["grievance_id"]) \
+            .is_("resolve_by", "null").execute()
+    if rows:
+        logger.info("[SLA] Backfilled resolution deadlines on %d open ticket(s)", len(rows))
+    return len(rows)
+
+
+def check_resolution_sla() -> int:
+    """Send resolution reminders and handle breaches. Each alert key fires once per ticket.
+
+      resolve_<pct>   reminder to the current level (and HEAD from 75%)
+      resolve_breach  not resolved within the rule's days → escalated case: move to HEAD,
+                      now measured against final_resolve_by (45 working days)
+      final_75        HEAD warned that the escalated-case ceiling is close
+      final_breach    45 working days exceeded → HEAD and super admins alerted
+    """
+    from backend.sla.engine import due_alerts
+    from backend.sla.store import load_policies
+    from backend.utils.notification_service import _get_department_admin_ids
+
+    try:
+        supabase = _get_supabase()
+        if load_policies(supabase) is None:
+            return 0  # migration 020 not applied
+        now = datetime.now(timezone.utc)
+        backfill_resolution_sla(supabase, now)
+
+        res = (
+            supabase.table("grievances").select(_OPEN_TICKET_FIELDS)
+            .is_("resolved_at", "null")
+            .not_.is_("resolve_by", "null")
+            .not_.in_("status", _DONE)
+            .execute()
+        )
+        handled = 0
+        for g in res.data or []:
+            keys = due_alerts(g, now)
+            if not keys:
+                continue
+            gid = g["grievance_id"]
+            sent = list(g.get("sla_alerts_sent") or []) + keys
+            update = {"sla_alerts_sent": sent}
+
+            dept = g.get("department") or g.get("category") or ""
+            tier = g.get("assigned_tier") or "L1"
+            short = f"GR-{gid[:8]}"
+            resolve_by = _fmt_ist(g.get("resolve_by"))
+            final_by = _fmt_ist(g.get("final_resolve_by"))
+            days = (g.get("sla_rule_snapshot") or {}).get("resolution_days")
+            actions = []
+
+            if "resolve_breach" in keys:
+                update["resolution_breached"] = True
+                if tier != "HEAD":
+                    from backend.agent.nodes.router import TIER_SLA_HOURS, build_queue_name
+                    from datetime import timedelta
+                    history = list(g.get("escalation_history") or [])
+                    history.append({
+                        "from_tier": tier,
+                        "to_tier": "HEAD",
+                        "tier": "System",
+                        "handler": "SLA Monitor (Automated)",
+                        "action": f"Escalated from {tier} to HEAD: resolution deadline missed",
+                        "reason": "RESOLUTION_SLA_BREACH",
+                        "notes": (f"Not resolved by {resolve_by}"
+                                  + (f" ({days}-day resolution SLA)" if days else "")
+                                  + f". Escalated case must be closed by {final_by} "
+                                    "(45 working days from acknowledgement)."),
+                        "escalated_at": now.isoformat(),
+                        "timestamp": now.isoformat(),
+                    })
+                    update.update({
+                        "assigned_tier": "HEAD",
+                        "assigned_queue": build_queue_name(dept, "HEAD"),
+                        "sla_hours": TIER_SLA_HOURS["HEAD"],
+                        "sla_deadline": (now + timedelta(hours=TIER_SLA_HOURS["HEAD"])).isoformat(),
+                        "escalation_history": history,
+                    })
+                actions.append(lambda: _notify(
+                    _get_department_admin_ids(dept, "HEAD"), gid, "SLA_BREACHED",
+                    f"{short} missed its resolution deadline ({resolve_by}) and is now an escalated "
+                    f"case with HEAD. It must be closed by {final_by}."))
+                if g.get("user_id"):
+                    actions.append(lambda: _notify(
+                        [g["user_id"]], gid, "ESCALATED",
+                        f"Your grievance {short} has been escalated to the Department Head. "
+                        f"Expected resolution by {final_by}."))
+            elif any(k.startswith("resolve_") for k in keys):
+                pct = max(int(k.split("_")[1]) for k in keys if k.startswith("resolve_"))
+                target = _get_department_admin_ids(dept, tier)
+                if pct >= 75:
+                    target += _get_department_admin_ids(dept, "HEAD")
+                actions.append(lambda: _notify(
+                    target, gid, "SLA_REMINDER",
+                    f"{short}: {pct}% of the resolution time used. Resolve by {resolve_by}."))
+
+            if "final_breach" in keys:
+                update["final_breached"] = True
+                actions.append(lambda: _notify(
+                    _get_department_admin_ids(dept, "HEAD") + _super_admin_ids(supabase), gid,
+                    "SLA_BREACHED",
+                    f"{short} has exceeded the 45-working-day limit for escalated cases "
+                    f"(due {final_by}). Record the reason for the delay."))
+            elif "final_75" in keys:
+                actions.append(lambda: _notify(
+                    _get_department_admin_ids(dept, "HEAD"), gid, "SLA_REMINDER",
+                    f"{short}: escalated case must be closed by {final_by} (75% of the "
+                    "45-working-day limit used)."))
+
+            # Claim the alerts first so a second worker (or a retry) never sends them twice.
+            claimed = (
+                supabase.table("grievances").update(update)
+                .eq("grievance_id", gid)
+                .not_.contains("sla_alerts_sent", json.dumps([keys[-1]]))
+                .execute()
+            )
+            if not claimed.data:
+                continue
+            for act in actions:
+                try:
+                    act()
+                except Exception as e:
+                    logger.error("[SLA] Notification failed for %s: %s", gid[:8], e)
+            logger.info("[SLA] %s resolution alerts: %s", gid[:8], ", ".join(keys))
+            handled += 1
+        return handled
+    except Exception as e:
+        logger.error("[SLA] Resolution check failed: %s", e, exc_info=True)
+        return 0
+
+
 async def sla_monitor_loop():
     """
     Async background loop that periodically checks for SLA breaches.
@@ -194,6 +380,7 @@ async def sla_monitor_loop():
         try:
             await asyncio.sleep(CHECK_INTERVAL_SECONDS)
             await asyncio.to_thread(check_and_escalate)
+            await asyncio.to_thread(check_resolution_sla)
         except asyncio.CancelledError:
             logger.info("[SLA] Monitor stopped")
             break

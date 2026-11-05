@@ -9,7 +9,10 @@ Rules:
     - Falls back to original text on any error or suspicious response.
 """
 
-from deep_translator import GoogleTranslator
+try:
+    from deep_translator import GoogleTranslator
+except ImportError:
+    GoogleTranslator = None
 import time
 
 # Supported language codes (ISO 639-1)
@@ -39,6 +42,8 @@ def translate_text(text: str, target_lang: str, retries: int = 2) -> str:
         return text
     if target_lang not in SUPPORTED_LANGS or target_lang == "en":
         return text
+    if GoogleTranslator is None:
+        return text
 
     # Split long texts to avoid API limits (Google caps at ~5000 chars)
     if len(text) > 4500:
@@ -65,7 +70,7 @@ def translate_to_english(text: str) -> str:
     """
     Normalize any user input to English for ML processing.
     """
-    if not text or not text.strip():
+    if not text or not text.strip() or GoogleTranslator is None:
         return text
     try:
         result = GoogleTranslator(source="auto", target="en").translate(text)

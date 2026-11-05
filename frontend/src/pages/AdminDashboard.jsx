@@ -693,6 +693,33 @@ ${ragRecommendation.compliance_notes || ""}`;
     return { label: `${Math.round(hoursLeft)}h left`, tone: 'on-track' };
   };
 
+  // Resolution SLA (GRM §7): resolve within the rule's days; escalated cases within 45 working days
+  const getResolutionStatus = (g) => {
+    if (!g.resolve_by) return null;
+    const fmt = (v) => new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+    if (["Resolved", "Rejected", "Closed"].includes(g.status)) {
+      if (g.resolution_sla_met === false) return { label: "Resolved late", tone: "overdue", title: `Was due ${fmt(g.resolve_by)}` };
+      if (g.resolution_sla_met === true) return { label: "On time", tone: "on-track", title: `Was due ${fmt(g.resolve_by)}` };
+      return null;
+    }
+    const now = new Date().getTime();
+    const escalated = g.resolution_breached || new Date(g.resolve_by).getTime() < now;
+    const deadline = new Date(escalated && g.final_resolve_by ? g.final_resolve_by : g.resolve_by).getTime();
+    const daysLeft = Math.ceil((deadline - now) / 86400000);
+    const title = escalated
+      ? `Missed ${fmt(g.resolve_by)}. Escalated case must close by ${fmt(deadline)} (45 working days)`
+      : `Resolve by ${fmt(deadline)}`;
+    if (deadline < now) return { label: "Past 45 WD", tone: "overdue", title };
+    if (escalated) return { label: `Escalated · ${daysLeft}d`, tone: "overdue", title };
+    const start = new Date(g.acknowledged_at || g.created_at).getTime();
+    const used = (now - start) / Math.max(deadline - start, 1);
+    return { label: `${daysLeft}d left`, tone: used >= 0.75 ? "due-soon" : "on-track", title };
+  };
+
+  const isSlaBreachReason = (reason) => reason === "SLA_BREACH" || reason === "RESOLUTION_SLA_BREACH";
+  const breachReasonText = (reason) =>
+    reason === "RESOLUTION_SLA_BREACH" ? "Resolution deadline missed" : "SLA Breach";
+
   // Tier badge
   const getTierBadge = (tier) => {
     if (!tier) return <span className="text-theme-muted fs-12">—</span>;
@@ -1452,8 +1479,8 @@ ${ragRecommendation.compliance_notes || ""}`;
                             const esc = (g.escalation_history || []).filter(h => h.reason || h.from_tier);
                             if (esc.length === 0) return null;
                             const last = esc[esc.length - 1];
-                            const isBreach = last.reason === "SLA_BREACH";
-                            const reasonText = isBreach ? "SLA Breach" : (last.reason || "Escalated");
+                            const isBreach = isSlaBreachReason(last.reason);
+                            const reasonText = isBreach ? breachReasonText(last.reason) : (last.reason || "Escalated");
                             return (
                               <span
                                 className="badge rounded-pill fw-semibold text-truncate d-inline-block"
@@ -1482,11 +1509,21 @@ ${ragRecommendation.compliance_notes || ""}`;
                       <td>
                         {(() => {
                           const sla = getSlaStatus(g);
-                          if (!sla) return <span className="text-theme-muted fs-12">—</span>;
+                          const res = getResolutionStatus(g);
+                          if (!sla && !res) return <span className="text-theme-muted fs-12">—</span>;
                           return (
-                            <span className={`px-2 py-1 rounded-pill fw-semibold fs-11 tone-badge sla-${sla.tone}`}>
-                              {sla.label}
-                            </span>
+                            <div className="d-flex flex-column align-items-start gap-1">
+                              {sla && (
+                                <span className={`px-2 py-1 rounded-pill fw-semibold fs-11 tone-badge sla-${sla.tone}`} title="Pickup time at this level">
+                                  {sla.label}
+                                </span>
+                              )}
+                              {res && (
+                                <span className={`px-2 py-1 rounded-pill fw-semibold fs-11 tone-badge sla-${res.tone}`} title={res.title}>
+                                  Resolve: {res.label}
+                                </span>
+                              )}
+                            </div>
                           );
                         })()}
                       </td>
@@ -1528,7 +1565,9 @@ ${ragRecommendation.compliance_notes || ""}`;
           (h) => h.reason || h.from_tier || h.to_tier || h.action?.toLowerCase().includes("escalat")
         );
         const latestEsc = escEvents[escEvents.length - 1];
-        const isBreach = latestEsc?.reason === "SLA_BREACH";
+        const isBreach = isSlaBreachReason(latestEsc?.reason);
+        const resolution = getResolutionStatus(selectedTicket);
+        const fmtDate = (v) => new Date(v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
         const formatDateTime = (value) =>
           new Date(value).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -1633,7 +1672,9 @@ ${ragRecommendation.compliance_notes || ""}`;
                               ? `Escalated from ${latestEsc.from_tier} to ${latestEsc.to_tier || selectedTicket.assigned_tier}`
                               : `Escalated to ${selectedTicket.assigned_tier}`}
                             <span className="fw-normal text-theme-muted">
-                              {" — "}{isBreach ? "SLA deadline expired" : (latestEsc.reason || "manual escalation")}
+                              {" — "}{isBreach
+                                ? (latestEsc.reason === "RESOLUTION_SLA_BREACH" ? "resolution deadline missed" : "SLA deadline expired")
+                                : (latestEsc.reason || "manual escalation")}
                             </span>
                           </div>
                           {latestEsc.notes && (
@@ -1654,7 +1695,7 @@ ${ragRecommendation.compliance_notes || ""}`;
                       {history.length > 0 ? (
                         <ol className="ticket-timeline list-unstyled mb-0">
                           {history.map((item, idx) => (
-                            <li key={idx} className={`ticket-timeline-item${item.reason === "SLA_BREACH" ? " is-breach" : ""}`}>
+                            <li key={idx} className={`ticket-timeline-item${isSlaBreachReason(item.reason) ? " is-breach" : ""}`}>
                               <div className="d-flex justify-content-between gap-3">
                                 <span className="fs-13 fw-semibold text-heading">
                                   {item.action || (item.from_tier ? `Escalated from ${item.from_tier} to ${item.to_tier}` : "Action logged")}
@@ -1670,7 +1711,11 @@ ${ragRecommendation.compliance_notes || ""}`;
                               {item.reason && (
                                 <div className="fs-13 text-theme mt-1">
                                   <span className="text-theme-muted">Reason: </span>
-                                  {item.reason === "SLA_BREACH" ? "SLA deadline breach (automated)" : item.reason}
+                                  {item.reason === "SLA_BREACH"
+                                    ? "SLA deadline breach (automated)"
+                                    : item.reason === "RESOLUTION_SLA_BREACH"
+                                      ? "Resolution deadline missed (automated)"
+                                      : item.reason}
                                 </div>
                               )}
                               {item.notes && (
@@ -1714,6 +1759,37 @@ ${ragRecommendation.compliance_notes || ""}`;
                       </dd>
                       <dt>Submitted</dt>
                       <dd>{new Date(selectedTicket.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</dd>
+                      {selectedTicket.resolve_by && (
+                        <>
+                          <dt>Resolve by</dt>
+                          <dd className="d-flex align-items-center gap-2 flex-wrap">
+                            {fmtDate(selectedTicket.resolve_by)}
+                            {selectedTicket.sla_rule_snapshot?.resolution_days && (
+                              <span className="text-theme-muted fs-12">
+                                ({selectedTicket.sla_rule_snapshot.resolution_days}{" "}
+                                {selectedTicket.sla_rule_snapshot.resolution_calendar === "working" ? "working days" : "days"})
+                              </span>
+                            )}
+                            {resolution && (
+                              <span className={`px-2 py-1 rounded-pill fw-semibold fs-11 tone-badge sla-${resolution.tone}`} title={resolution.title}>
+                                {resolution.label}
+                              </span>
+                            )}
+                          </dd>
+                          {selectedTicket.final_resolve_by && (
+                            <>
+                              <dt>Escalated limit</dt>
+                              <dd>{fmtDate(selectedTicket.final_resolve_by)} <span className="text-theme-muted fs-12">(45 working days)</span></dd>
+                            </>
+                          )}
+                          {selectedTicket.resolved_at && (
+                            <>
+                              <dt>Resolved</dt>
+                              <dd>{fmtDate(selectedTicket.resolved_at)}</dd>
+                            </>
+                          )}
+                        </>
+                      )}
                     </dl>
 
                     {selectedTicket.status === "Pending Rejection Approval" && !isHOD ? (
