@@ -46,7 +46,8 @@ function Navbar() {
             <span className="d-inline-block rounded-circle nav-live-dot"></span>
           </Link>
 
-          <Link to="/grm" className="me-4 text-decoration-none nav-link-custom">
+          {/* Logged out: Home is the Puravankara website. Logged in: Dashboard is the GRM home. */}
+          <Link to={user ? "/grm" : "/"} className="me-4 text-decoration-none nav-link-custom">
             {user ? t("dashboard") : t("home")}
           </Link>
 
