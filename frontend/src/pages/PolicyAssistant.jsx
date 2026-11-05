@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthProvider';
 import { apiClient } from '../services/api';
@@ -20,6 +20,7 @@ const formatBotMessage = (text) => {
 
 function PolicyAssistant() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { langCode, t } = useLanguage();
   const { user, userDetails } = useAuth();
 
@@ -421,6 +422,17 @@ function PolicyAssistant() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
+  // A low-priority form submission arrives here with its text: ask Purva about it once.
+  const prefillSentRef = useRef(false);
+  useEffect(() => {
+    const prefill = location.state?.prefill;
+    if (!prefill || prefillSentRef.current) return;
+    prefillSentRef.current = true;
+    navigate(location.pathname, { replace: true, state: null });
+    handleSendMessage(prefill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="pa-container">
 

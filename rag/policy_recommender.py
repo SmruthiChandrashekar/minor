@@ -21,16 +21,8 @@ from rag.query_data import (
     is_rag_ready,
     call_llm,
     preprocess_query,
-    deduplicate_results,
+    search_policies,
 )
-
-
-def _get_db():
-    """Retrieve the Chroma vector store instance from query_data."""
-    import rag.query_data as qd
-    if not qd.is_rag_ready():
-        qd.initialize_rag()
-    return qd.db
 
 
 def generate_policy_recommendation(
@@ -64,49 +56,15 @@ def generate_policy_recommendation(
     if not is_rag_ready():
         initialize_rag()
 
-    db = _get_db()
-    if not db:
-        logger.error("Vector database is unavailable for policy recommendation.")
-        return {
-            "has_policy_match": False,
-            "primary_policy": "None",
-            "citations": [],
-            "recommended_steps": [
-                {
-                    "step_number": 1,
-                    "title": "Acknowledge and Contact Complainant",
-                    "detail": "Contact the complainant within 24 hours to confirm receipt and gather initial facts.",
-                    "deadline": "Within 24 Hours"
-                },
-                {
-                    "step_number": 2,
-                    "title": "Assign Investigating Officer",
-                    "detail": "Assign an appropriate department representative to investigate the complaint.",
-                    "deadline": "Within 48 Hours"
-                }
-            ],
-            "compliance_notes": "Follow standard Puravankara operating guidelines and SLA requirements for High severity tickets.",
-            "executive_summary": "Standard resolution protocol initiated pending policy vector search availability.",
-            "generated_at": datetime.utcnow().isoformat()
-        }
-
     # Step 1: Expand query with category context for high-precision retrieval
     enhanced_query = f"{category} policy {grievance_text}"
     cleaned_query = preprocess_query(enhanced_query)
 
-    # Step 2: Vector similarity search (k=6)
     try:
-        raw_results = db.similarity_search_with_score(cleaned_query, k=6)
-        deduped = deduplicate_results(raw_results)
+        matching_chunks = search_policies(cleaned_query, top_k=6)
     except Exception as e:
-        logger.error("Vector search error in policy recommender: %s", e)
-        deduped = []
-
-    # Step 3: Threshold filtering
-    MAX_DISTANCE_THRESHOLD = 1.15
-    matching_chunks = [
-        (doc, score) for doc, score in deduped if score <= MAX_DISTANCE_THRESHOLD
-    ]
+        logger.error("Policy search error in policy recommender: %s", e)
+        matching_chunks = []
 
     has_policy_match = len(matching_chunks) > 0
 

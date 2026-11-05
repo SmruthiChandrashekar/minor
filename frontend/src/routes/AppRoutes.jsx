@@ -17,6 +17,7 @@ const Dashboard = lazy(() => import("../pages/Dashboard"));
 const AdminLogin = lazy(() => import("../pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 const SuperAdminPortal = lazy(() => import("../pages/SuperAdminPortal"));
+const SetPassword = lazy(() => import("../pages/SetPassword"));
 const PolicyAssistant = lazy(() => import("../pages/PolicyAssistant"));
 const Profile = lazy(() => import("../pages/Profile"));
 
@@ -71,6 +72,7 @@ const MainRoutes = () => {
         <Route path="/admin" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} />
         <Route path="/admin/login" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} />
         <Route path="/admin/dashboard" element={isAdmin ? <AdminDashboard /> : <Navigate to="/admin/login" replace />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route path="/admin/portal" element={isSuperAdmin ? <SuperAdminPortal /> : (isAdmin ? <Navigate to="/admin/dashboard" replace /> : <Navigate to="/admin/login" replace />)} />
       </Routes>
       </Suspense>

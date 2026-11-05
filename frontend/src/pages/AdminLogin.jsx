@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthProvider";
 import { supabase } from "../services/supabaseClient";
@@ -7,6 +7,7 @@ import "./AdminLogin.css";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useLanguage();
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
@@ -32,7 +33,7 @@ const AdminLogin = () => {
       // Check role — only admins/super_admins can access admin portal
       const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("role")
+        .select("role, is_active")
         .eq("user_id", authData.user.id)
         .single();
 
@@ -40,6 +41,13 @@ const AdminLogin = () => {
       if (userError || !allowedRoles.includes(userData?.role)) {
         await supabase.auth.signOut();
         setError("Access denied. This portal is for administrators only.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (userData.is_active === false) {
+        await supabase.auth.signOut();
+        setError("This account has been deactivated. Contact your super admin.");
         setIsLoading(false);
         return;
       }
@@ -68,6 +76,12 @@ const AdminLogin = () => {
               <h3 className="fw-bold mb-1 admin-login-title">{t("adminPortalTitle")}</h3>
               <p className="text-muted small">{t("adminSecureAccess")}</p>
             </div>
+
+            {location.state?.message && !error && (
+              <div className="alert alert-success py-2 text-center fw-semibold fs-14">
+                {location.state.message}
+              </div>
+            )}
 
             {error && (
               <div className="alert alert-danger py-2 text-center fw-semibold fs-14">

@@ -7,10 +7,13 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+# Load .env from working directory, root directory, and backend directory
+load_dotenv()
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
 import asyncio
 import logging
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -94,14 +97,22 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app = FastAPI(title="Puravankara GRM Backend")
 
 # --- CORS ---
+cors_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+frontend_url_env = os.getenv("FRONTEND_URL")
+if frontend_url_env:
+    for u in frontend_url_env.split(","):
+        clean_url = u.strip().rstrip("/")
+        if clean_url and clean_url not in cors_origins:
+            cors_origins.append(clean_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=cors_origins,
     allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
@@ -252,7 +263,6 @@ ADMIN_TIERS = {"L1", "L2", "L3", "HEAD"}
 
 class InviteRequest(BaseModel):
     email: str
-    password: str
     role: str
     name: str
     department: Optional[str] = None
@@ -597,10 +607,11 @@ async def track_grievance(tracking_id: str):
     (no internal escalation notes, handler emails or contact details)."""
     tid = tracking_id.strip()
     hex_part = tid.replace("-", "")
-    if not re.fullmatch(r"[0-9a-fA-F-]{8,36}", tid) or not (8 <= len(hex_part) <= 32):
+    if not re.fullmatch(r"[0-9a-fA-F-]{5,36}", tid) or not (5 <= len(hex_part) <= 32):
         raise HTTPException(status_code=404, detail="Not found")
     try:
         # grievance_id is a uuid column (no ILIKE on uuid), so a short ID is matched as a range:
+        # (min 5 chars, as shown on the Track page; ambiguous prefixes are rejected)
         # "34c83bc2" -> between 34c83bc2-0000-... and 34c83bc2-ffff-...
         def _as_uuid(h: str) -> str:
             h = h.ljust(32, "0")
@@ -609,9 +620,10 @@ async def track_grievance(tracking_id: str):
         high = _as_uuid(hex_part.lower().ljust(32, "f"))
         res = await asyncio.to_thread(
             lambda: supabase.table("grievances").select("*")
-            .gte("grievance_id", low).lte("grievance_id", high).limit(1).execute()
+            .gte("grievance_id", low).lte("grievance_id", high).limit(2).execute()
         )
-        if not res.data:
+        # A short prefix that matches more than one complaint is ambiguous: ask for more characters.
+        if not res.data or len(res.data) > 1:
             raise HTTPException(status_code=404, detail="Not found")
         g = res.data[0]
         docs, seen = [], set()
@@ -646,16 +658,78 @@ def delete_grievance(grievance_id: str, user: dict = Depends(require_super_admin
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def _frontend_base_url(http_request: Request) -> str:
+    """Site address for links in emails: FRONTEND_URL, else the calling page's origin."""
+    configured = (os.getenv("FRONTEND_URL") or "").split(",")[0].strip().rstrip("/")
+    base_url = configured or (http_request.headers.get("origin") or "").rstrip("/")
+    if not base_url:
+        raise HTTPException(status_code=500, detail="FRONTEND_URL is not set on the server, so the email link has nowhere to point.")
+    return base_url
+
+
+def _staff_access_link(base_url: str, email: str, link_type: str) -> tuple[str, str]:
+    """
+    One-time set-password link for staff: link_type "invite" (also creates the
+    Auth account if it doesn't exist yet) or "recovery" (existing password).
+    Points at our /set-password page, which redeems the token only when the
+    form is submitted, so mail scanners that open links don't use it up.
+    Returns (auth user id, link).
+    """
+    res = supabase.auth.admin.generate_link({"type": link_type, "email": email})
+    url = f"{base_url}/set-password?token_hash={res.properties.hashed_token}&type={link_type}"
+    return str(res.user.id), url
+
+
+def _email_staff_access(base_url: str, email: str, name: str, role_label: str, link: str, link_type: str) -> bool:
+    if link_type == "invite":
+        subject = "You've been invited to the Puravankara GRM portal"
+        intro = f"You've been added to the Puravankara Grievance Redressal portal as {role_label}."
+    else:
+        subject = "Set your Puravankara GRM portal password"
+        intro = "A new password link was requested for your Puravankara Grievance Redressal portal account."
+    body = (
+        f"Hello {name or ''},\n\n"
+        f"{intro}\n\n"
+        f"Set your password here:\n{link}\n\n"
+        f"Then sign in at {base_url}/admin/login with this email address.\n\n"
+        f"This link works once and expires. If it has expired, ask your super admin to resend the invite.\n"
+    )
+    return notifier.send_email(email, subject, body)
+
+
+def _staff_role_label(role: str, department: Optional[str], admin_tier: Optional[str]) -> str:
+    if role == "super_admin":
+        return "Super Admin"
+    return f"{department} {'Department Head' if admin_tier == 'HEAD' else f'{admin_tier} admin'}"
+
+
+def _require_email_configured():
+    # Without SMTP the notifier only logs emails, so an invite would silently go nowhere
+    if not notifier.email_configured:
+        raise HTTPException(status_code=503, detail="Email is not configured on the server (SMTP_HOST, SMTP_USER, SMTP_PASSWORD), so the invite can't be sent.")
+
+
 @app.get("/api/admin/users")
 def get_admin_users(user: dict = Depends(require_super_admin)):
     try:
         result = supabase.table("users").select("*").in_("role", ["super_admin", "admin"]).order("created_at", desc=True).execute()
-        return result.data
+        staff = result.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+    # Flag staff who haven't accepted their invite yet, so the portal can show
+    # them as pending. The list still loads if this lookup fails.
+    try:
+        auth_users = {str(u.id): u for u in supabase.auth.admin.list_users(per_page=1000)}
+        for row in staff:
+            auth_user = auth_users.get(str(row["user_id"]))
+            row["invite_pending"] = bool(auth_user) and not auth_user.email_confirmed_at
+    except Exception as e:
+        logging.warning("Could not load invite status for staff list: %s", e)
+    return staff
+
 @app.post("/api/admin/users/invite")
-def invite_admin_user(request: InviteRequest, user: dict = Depends(require_super_admin)):
+def invite_admin_user(request: InviteRequest, http_request: Request, user: dict = Depends(require_super_admin)):
     if request.role not in INVITABLE_ROLES:
         raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {sorted(INVITABLE_ROLES)}")
     if request.role == "admin":
@@ -666,18 +740,20 @@ def invite_admin_user(request: InviteRequest, user: dict = Depends(require_super
         invite_dept, invite_tier = request.department, request.admin_tier
     else:  # super_admin is not tied to a department or tier
         invite_dept, invite_tier = None, None
+    _require_email_configured()
+    base_url = _frontend_base_url(http_request)
+    # Case-insensitive exact match; escape LIKE wildcards (emails often contain "_")
+    email_pattern = re.sub(r"([\\%_])", r"\\\1", request.email.strip())
+    existing = supabase.table("users").select("role").ilike("email", email_pattern).execute().data
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{request.email} already has an account (role: {existing[0].get('role')}). Use a different email, or change that account's role instead.",
+        )
     try:
-        service_key = SUPABASE_KEY
-        admin_supabase = create_client(SUPABASE_URL, service_key)
-        
-        auth_res = admin_supabase.auth.admin.create_user({
-            "email": request.email,
-            "password": request.password,
-            "email_confirm": True
-        })
-        
-        new_user_id = auth_res.user.id
-        
+        # Creates the Auth account with no password; the invitee sets their own from the link
+        new_user_id, link = _staff_access_link(base_url, request.email, "invite")
+
         user_data = {
             "user_id": new_user_id,
             "email": request.email,
@@ -690,11 +766,39 @@ def invite_admin_user(request: InviteRequest, user: dict = Depends(require_super
         }
         supabase.table("users").insert(user_data).execute()
         
-        log_audit(supabase, "INVITE_USER", user, new_user_id, None, request.role, {"email": request.email})
-        
-        return {"status": "success", "user_id": new_user_id}
+        log_audit(supabase, "INVITE_USER", user, new_user_id, request.email, None, request.role,
+                  {"department": invite_dept, "admin_tier": invite_tier})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    role_label = _staff_role_label(request.role, invite_dept, invite_tier)
+    if not _email_staff_access(base_url, request.email, request.name, role_label, link, "invite"):
+        raise HTTPException(status_code=502, detail="The account was created, but the invite email could not be sent. Check the server's SMTP settings, then use Resend invite.")
+    return {"status": "success", "user_id": new_user_id}
+
+@app.post("/api/admin/users/{target_id}/resend-invite")
+def resend_staff_invite(target_id: str, http_request: Request, user: dict = Depends(require_super_admin)):
+    _require_email_configured()
+    base_url = _frontend_base_url(http_request)
+    try:
+        rows = supabase.table("users").select("*").eq("user_id", target_id).in_("role", ["super_admin", "admin"]).execute().data
+        if not rows:
+            raise HTTPException(status_code=404, detail="Staff member not found.")
+        staff = rows[0]
+        auth_user = supabase.auth.admin.get_user_by_id(target_id).user
+        # Not accepted yet: send a fresh invite. Already set up: send a password reset link.
+        link_type = "recovery" if auth_user.email_confirmed_at else "invite"
+        _, link = _staff_access_link(base_url, staff["email"], link_type)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    role_label = _staff_role_label(staff["role"], staff.get("department"), staff.get("admin_tier"))
+    if not _email_staff_access(base_url, staff["email"], staff.get("name"), role_label, link, link_type):
+        raise HTTPException(status_code=502, detail="Could not send the email. Check the server's SMTP settings.")
+    log_audit(supabase, "RESEND_INVITE", user, target_id, staff["email"], None, link_type)
+    return {"status": "success", "type": link_type}
 
 @app.put("/api/admin/users/{target_id}/status")
 def update_user_status(target_id: str, request: StatusUpdateRequest, user: dict = Depends(require_super_admin)):
@@ -703,7 +807,7 @@ def update_user_status(target_id: str, request: StatusUpdateRequest, user: dict 
         
         status_text = "ACTIVATED" if request.is_active else "DEACTIVATED"
         target_email = result.data[0]["email"] if result.data else target_id
-        log_audit(supabase, f"{status_text}_USER", user, target_id, None, str(request.is_active), {"email": target_email})
+        log_audit(supabase, f"{status_text}_USER", user, target_id, target_email, None, str(request.is_active))
         
         return {"status": "success"}
     except Exception as e:
@@ -851,6 +955,8 @@ async def chat_with_agent(request: ChatRequest):
         )
 
         response_en = agent_result.get("response", "I'm sorry, I couldn't process your request.")
+        if agent_result.get("error"):
+            logging.error("[AGENT GRAPH ERROR]: %s", agent_result.get("error"))
 
         # Step 4 — Translate response back to user's language
         final_response = translate_text(response_en, user_lang)
@@ -1025,6 +1131,17 @@ async def submit_complaint(request: SubmitComplaintRequest, user: dict = Depends
             dept_res = classify_department_node({"user_message": clean_desc_en})
             category = dept_res.get("department", "CRM")
             severity = sev_res.get("severity", "MEDIUM").capitalize()
+
+        # Low-severity direct submissions are not formal grievances: hand them to the
+        # policy assistant instead of storing a ticket or notifying anyone.
+        # (Chatbot escalations are an explicit user choice to file, so they are kept.)
+        if not is_chatbot_escalated and severity.lower() == "low":
+            logging.info("Low-severity direct submission redirected to assistant (nothing stored)")
+            return {
+                "redirect": "assistant",
+                "severity": severity,
+                "message": "This looks like a low-priority concern. The Purva assistant can help with it.",
+            }
 
         # 🔹 STEP 3.5: ESCALATION AGENT (non-blocking)
         # Runs email/SMS notifications in the background

@@ -7,6 +7,10 @@ import { translateList } from "../services/translationService";
 import { apiClient } from "../services/api";
 import "./Dashboard.css";
 
+// The backend stores workflow states (HUMAN_HANDLING, CHATBOT_HANDLING); users see plain statuses.
+const normalizeStatus = (status) =>
+  ({ HUMAN_HANDLING: "Open", CHATBOT_HANDLING: "Open" }[status] || status);
+
 function Dashboard() {
   const navigate = useNavigate();
   const { user, userDetails, loading: authLoading } = useAuth();
@@ -137,8 +141,8 @@ function Dashboard() {
   const rejected = grievances.filter(g => g.status === "Closed" || g.status === "Rejected").length;
 
   // Helper for status badge class
-  const getBadgeClass = (status) => {
-    switch(status) {
+  const getBadgeClass = (rawStatus) => {
+    switch(normalizeStatus(rawStatus)) {
       case "Open": return "bg-primary text-white";
       case "Investigating": return "bg-warning text-dark";
       case "Resolved": return "bg-success text-white";
@@ -149,7 +153,8 @@ function Dashboard() {
   };
 
   // Translate status value → i18n label (status itself is stored in English in DB)
-  const getStatusLabel = (status) => {
+  const getStatusLabel = (rawStatus) => {
+    const status = normalizeStatus(rawStatus);
     switch(status) {
       case "Open":          return t("pending");
       case "Investigating": return t("inProgress");

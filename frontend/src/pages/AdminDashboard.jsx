@@ -134,7 +134,8 @@ const AdminDashboard = () => {
       normDept = "Investors";
     }
 
-    let status = t.status;
+    // HUMAN_HANDLING / CHATBOT_HANDLING are intake states: the ticket is still Pending until an admin acts.
+    let status = (t.status === "HUMAN_HANDLING" || t.status === "CHATBOT_HANDLING") ? "Open" : t.status;
     let resolutionReason = t.resolution_reason || "";
     if (
       status === "Investigating" &&

@@ -87,42 +87,34 @@ function LodgeContract() {
         body: JSON.stringify(payload)
       });
       
-      if (!submitRes.ok) throw new Error("Backend not ready or returned error");
-      
+      if (!submitRes.ok) {
+        const body = await submitRes.json().catch(() => ({}));
+        throw new Error(body.detail || `Server error (${submitRes.status})`);
+      }
+
       const data = await submitRes.json();
+      if (data.redirect === "assistant") {
+        // Low-priority concern: nothing was filed, so continue the conversation with Purva.
+        navigate("/assistant", { state: { prefill: cleanDescription } });
+        return;
+      }
       setSubmittedId(data.grievance_id || data.id);
       return;
-      
-    } catch (err) {
-      console.warn("Backend not ready. Falling back to direct Supabase insert.", err);
-      
-      // ── FALLBACK: store cleanDescription only — NO metadata prefix ─────────
-      try {
-         const { data, error } = await supabase.from("grievances").insert({
-             user_id: payload.metadata.user_id,
-             category: "Other",
-             description: cleanDescription, // ← clean text only, no metadata noise
-             department: "Operations",
-             status: "Open"
-         }).select().single();
-         
-         if (error) throw error;
-         setSubmittedId(data.grievance_id);
-      } catch (supabaseErr) {
-         console.error("Supabase insert error:", supabaseErr);
 
-         // ── OFFLINE FALLBACK: Save to IndexedDB queue ──
-         if (!navigator.onLine) {
-           try {
-             await saveToQueue(payload);
-             setSubmittedId("offline-queued");
-           } catch (qErr) {
-             console.error("Offline queue error:", qErr);
-             alert("Failed to submit grievance. Please try again.");
-           }
-         } else {
-           alert("Failed to submit grievance. Please try again.");
-         }
+    } catch (err) {
+      console.error("Grievance submit failed:", err);
+      // Queue for later only when the device is offline; otherwise report the real
+      // error instead of saving an unrouted stub row straight into Supabase.
+      if (!navigator.onLine) {
+        try {
+          await saveToQueue(payload);
+          setSubmittedId("offline-queued");
+        } catch (qErr) {
+          console.error("Offline queue error:", qErr);
+          alert("Failed to submit grievance. Please try again.");
+        }
+      } else {
+        alert(`Failed to submit grievance: ${err.message}`);
       }
     } finally {
        setIsSubmitting(false);
