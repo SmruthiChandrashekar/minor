@@ -43,6 +43,11 @@ class Notifier:
     # ─────────────────────────────────────────────────────────────────────
     # EMAIL
     # ─────────────────────────────────────────────────────────────────────
+    @property
+    def email_configured(self) -> bool:
+        """True when SMTP is set up; otherwise send_email only logs (simulation mode)."""
+        return bool(self.smtp_host and self.smtp_user and self.smtp_password)
+
     def send_email(self, recipient: str, subject: str, body: str) -> bool:
         """
         Send an email notification via SMTP.

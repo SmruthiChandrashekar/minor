@@ -15,9 +15,6 @@ Configurable via .env:
 import os
 import re
 import logging
-from openai import OpenAI
-from groq import Groq
-
 logger = logging.getLogger(__name__)
 
 
@@ -29,16 +26,19 @@ def get_llm():
     provider = os.getenv("LLM_PROVIDER", "groq").strip().lower()
 
     if provider == "ollama":
+        try:
+            from openai import OpenAI
+        except ImportError:
+            raise RuntimeError("The 'openai' package is required for local Ollama mode. Run 'pip install openai'.")
+
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
         model = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
         # Generous timeout for local CPU/GPU inference
-        # num_ctx is passed per-request via extra_body since OpenAI client
-        # doesn't expose Ollama-specific options at the client level.
         client = OpenAI(base_url=base_url, api_key="ollama", timeout=120.0)
-        # Attach num_ctx as a default so callers get it automatically.
         client._ollama_num_ctx = int(os.getenv("OLLAMA_NUM_CTX", "4096"))
         return client, model
     else:
+        from groq import Groq
         groq_api_key = os.getenv("GROQ_API_KEY")
         model = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
         client = Groq(api_key=groq_api_key, timeout=30.0)

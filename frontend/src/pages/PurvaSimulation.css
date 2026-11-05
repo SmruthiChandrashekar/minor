@@ -1,0 +1,578 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Reset container */
+.purva-sim-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 600px;
+  overflow: hidden;
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  user-select: none;
+}
+
+/* Hero Background */
+.purva-hero {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transition: transform 0.6s ease, filter 0.4s ease;
+}
+
+.purva-hero.dimmed {
+  filter: brightness(0.65);
+}
+
+/* Subtle gradient overlay to match Puravankara's golden hour lighting */
+.purva-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.0) 40%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+  pointer-events: none;
+}
+
+/* Top Navigation Bar */
+.purva-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 20;
+}
+
+/* Menu Toggle Button */
+.purva-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #1a2a3a;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.25s ease;
+}
+
+.purva-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.purva-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 22px;
+  height: 12px;
+}
+
+.purva-hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #1a2a3a;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* Phone Contact Button */
+.purva-phone-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(20, 35, 55, 0.55);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.purva-phone-btn:hover {
+  background: rgba(20, 35, 55, 0.85);
+  transform: scale(1.05);
+}
+
+.purva-phone-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+/* Center Brand Logo */
+.purva-brand-logo {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  text-align: center;
+}
+
+.purva-brand-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 4.2rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #0b3558;
+  margin: 0;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
+  line-height: 1;
+}
+
+/* 50 Years Emblem & Typography on Right Side */
+.purva-celebration-block {
+  position: absolute;
+  bottom: 80px;
+  right: 12%;
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 440px;
+}
+
+/* Circular 50 Years Badge */
+.purva-badge-ring {
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  border: 2px solid #e0c37b;
+  box-shadow: 0 0 25px rgba(224, 195, 123, 0.25), inset 0 0 15px rgba(224, 195, 123, 0.15);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, rgba(20, 35, 55, 0.3) 0%, rgba(10, 20, 35, 0.6) 100%);
+  backdrop-filter: blur(4px);
+  margin-bottom: 24px;
+}
+
+.purva-badge-ring::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px dashed rgba(224, 195, 123, 0.5);
+  pointer-events: none;
+}
+
+.purva-badge-number-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  line-height: 0.85;
+}
+
+.purva-badge-num {
+  font-family: 'Cinzel', serif;
+  font-size: 72px;
+  font-weight: 700;
+  color: #edd99d;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+  letter-spacing: -3px;
+}
+
+.purva-badge-years-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #edd99d;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.purva-badge-divider {
+  width: 70px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #edd99d, transparent);
+  margin: 6px 0;
+}
+
+.purva-badge-since {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #f7ebc8;
+  text-transform: uppercase;
+}
+
+/* Celebration Text */
+.purva-celebrate-title {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 27px;
+  color: #ffffff;
+  margin: 0 0 6px 0;
+  font-weight: 600;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  letter-spacing: 0.5px;
+}
+
+.purva-river-title {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 32px;
+  font-weight: 600;
+  color: #3b97dc;
+  margin: 0 0 10px 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.purva-tagline {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: #ffffff;
+  letter-spacing: 1.5px;
+  margin: 0;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+/* Enquire Now Sticky Button on the Right Edge */
+.purva-enquire-tab {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #0b3558;
+  color: #ffffff;
+  padding: 18px 9px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: translateY(-50%) rotate(180deg);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  border: none;
+  cursor: pointer;
+  z-index: 25;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.25);
+  transition: all 0.25s ease;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.purva-enquire-tab:hover {
+  background-color: #0e4470;
+  padding-left: 14px;
+}
+
+/* Backdrop Overlay for Slide-out Menu */
+.purva-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 900;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.purva-menu-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Slide-out Sidebar Menu */
+.purva-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: 100vh;
+  background-color: #202020;
+  color: #ffffff;
+  z-index: 1000;
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  box-shadow: 5px 0 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.purva-drawer.open {
+  transform: translateX(0);
+}
+
+/* Drawer Header with Title and Close X */
+.purva-drawer-header {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.purva-drawer-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #dddddd;
+  letter-spacing: 0.5px;
+}
+
+.purva-drawer-close {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.purva-drawer-close:hover {
+  opacity: 1;
+  transform: rotate(90deg);
+}
+
+/* Drawer Navigation Viewports (Sliding between Main and Sub-menu) */
+.purva-drawer-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+.purva-nav-pane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding: 20px 0;
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+}
+
+.purva-nav-pane.main-pane {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.purva-nav-pane.main-pane.slide-left {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.purva-nav-pane.sub-pane {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.purva-nav-pane.sub-pane.slide-in {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Navigation List Items */
+.purva-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 16px 28px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: all 0.2s ease;
+}
+
+.purva-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #e0c37b;
+}
+
+.purva-nav-chevron {
+  font-size: 14px;
+  color: #999999;
+  transition: transform 0.2s ease;
+}
+
+.purva-nav-item:hover .purva-nav-chevron {
+  color: #e0c37b;
+  transform: translateX(3px);
+}
+
+/* Back Button in Sub-menu */
+.purva-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 28px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: 12px;
+}
+
+.purva-back-btn:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #e0c37b;
+}
+
+.purva-back-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+/* Sub-items list */
+.purva-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 28px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.purva-sub-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #3b97dc;
+}
+
+.purva-sub-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: transparent;
+  border: 1.5px solid #ffffff;
+  transition: all 0.2s ease;
+}
+
+.purva-sub-item:hover .purva-sub-dot,
+.purva-sub-item.active .purva-sub-dot {
+  background-color: #3b97dc;
+  border-color: #3b97dc;
+}
+
+/* Mini Portal Switcher (Quick link back to GRM portal for dev pairing) */
+.purva-portal-switch {
+  position: absolute;
+  bottom: 20px;
+  left: 28px;
+  right: 28px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #aaaaaa;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.purva-portal-switch:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: #3b97dc;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .purva-brand-text {
+    font-size: 3rem;
+  }
+  .purva-celebration-block {
+    right: 5%;
+    bottom: 40px;
+  }
+  .purva-celebrate-title {
+    font-size: 22px;
+  }
+  .purva-river-title {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 600px) {
+  .purva-topbar {
+    padding: 0 20px;
+  }
+  .purva-brand-text {
+    font-size: 2.2rem;
+  }
+  .purva-brand-logo {
+    top: 75px;
+  }
+  .purva-badge-ring {
+    width: 130px;
+    height: 130px;
+    margin-bottom: 14px;
+  }
+  .purva-badge-num {
+    font-size: 54px;
+  }
+  .purva-celebration-block {
+    left: 20px;
+    right: 20px;
+    bottom: 30px;
+    margin: 0 auto;
+  }
+  .purva-drawer {
+    width: 85vw;
+  }
+}

@@ -69,3 +69,33 @@
 h4.lodge-sync-title {
   color: #f7931e;
 }
+
+/* ── Project Details Card & Selector ── */
+.lodge-project-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0 !important;
+  border-left: 4px solid var(--accent, #991B1B) !important;
+  transition: all 0.2s ease;
+}
+
+.lodge-project-card:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08) !important;
+}
+
+.lodge-project-img {
+  width: 90px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.lodge-selector-card {
+  background-color: #f8fafc !important;
+  border: 1px dashed #cbd5e1 !important;
+}
+
+.shadow-xs {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}

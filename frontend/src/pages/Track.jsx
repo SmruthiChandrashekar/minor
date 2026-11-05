@@ -6,6 +6,10 @@ import { useAuth } from "../context/AuthProvider";
 import { apiClient } from "../services/api";
 import "./Track.css";
 
+// The backend stores workflow states (HUMAN_HANDLING, CHATBOT_HANDLING); users see plain statuses.
+const normalizeStatus = (status) =>
+  ({ HUMAN_HANDLING: "Open", CHATBOT_HANDLING: "Open" }[status] || status);
+
 function Track() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,7 +52,7 @@ function Track() {
           id: data.grievance_id,
           category: data.category,
           severity: data.severity,
-          status: data.status,
+          status: normalizeStatus(data.status),
           department: data.department,
           description: data.description,
           assigned_tier: data.assigned_tier,

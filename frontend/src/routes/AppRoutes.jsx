@@ -17,8 +17,12 @@ const Dashboard = lazy(() => import("../pages/Dashboard"));
 const AdminLogin = lazy(() => import("../pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("../pages/AdminDashboard"));
 const SuperAdminPortal = lazy(() => import("../pages/SuperAdminPortal"));
+const SetPassword = lazy(() => import("../pages/SetPassword"));
 const PolicyAssistant = lazy(() => import("../pages/PolicyAssistant"));
 const Profile = lazy(() => import("../pages/Profile"));
+const PurvaSimulation = lazy(() => import("../pages/PurvaSimulation"));
+const BengaluruResidential = lazy(() => import("../pages/BengaluruResidential"));
+const ProjectDetail = lazy(() => import("../pages/ProjectDetail"));
 
 const PageLoader = () => (
   <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
@@ -49,7 +53,9 @@ const MainRoutes = () => {
     <Layout>
       <Suspense fallback={<PageLoader />}>
       <Routes>
-        <Route path="/" element={getRootElement()} />
+        {/* Puravankara website simulation is the landing page; the GRM portal lives at /grm */}
+        <Route path="/" element={<PurvaSimulation />} />
+        <Route path="/grm" element={getRootElement()} />
         
         {/* Protected User Routes */}
         <Route path="/track" element={<ProtectedRoute><Track /></ProtectedRoute>} />
@@ -61,16 +67,19 @@ const MainRoutes = () => {
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
         {/* Public Routes */}
+        <Route path="/residential/bengaluru/:projectId" element={<ProjectDetail />} />
+        <Route path="/residential/bengaluru" element={<BengaluruResidential />} />
         <Route path="/assistant" element={<PolicyAssistant />} />
         <Route path="/help" element={<Help />} />
         <Route path="/auth" element={<Auth />} />
-        <Route path="/login" element={isAuthenticated && !isAdmin && !window.location.search.includes("message=") && !sessionStorage.getItem("phoneVerifyPending") ? <Navigate to="/" replace /> : <Auth />} />
+        <Route path="/login" element={isAuthenticated && !isAdmin && !window.location.search.includes("message=") && !sessionStorage.getItem("phoneVerifyPending") ? <Navigate to="/grm" replace /> : <Auth />} />
         <Route path="/register" element={<Auth />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} />
         <Route path="/admin/login" element={isAdmin ? <Navigate to="/admin/dashboard" replace /> : <AdminLogin />} />
         <Route path="/admin/dashboard" element={isAdmin ? <AdminDashboard /> : <Navigate to="/admin/login" replace />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route path="/admin/portal" element={isSuperAdmin ? <SuperAdminPortal /> : (isAdmin ? <Navigate to="/admin/dashboard" replace /> : <Navigate to="/admin/login" replace />)} />
       </Routes>
       </Suspense>

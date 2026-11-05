@@ -1,0 +1,370 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+
+.purva-footer-wrapper {
+  position: relative;
+  width: 100%;
+  background-color: #ffffff;
+  color: #333333;
+  font-family: 'Montserrat', sans-serif;
+  margin-top: 60px;
+  border-top: 1px solid #eef2f6;
+}
+
+/* Trapezoid notch with down arrow at top center */
+.purva-footer-notch {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 16px;
+  background-color: #0b3558;
+  clip-path: polygon(15% 0%, 85% 0%, 100% 100%, 0% 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* Main Footer Container */
+.purva-footer-main {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 50px 30px 40px;
+  position: relative;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' opacity='0.08'%3E%3Cpath fill='%230b3558' d='M0,120 L0,100 L30,100 L30,60 L50,60 L50,100 L90,100 L90,40 L110,20 L130,40 L130,100 L180,100 L180,75 L210,75 L210,100 L260,100 L260,30 L290,30 L290,100 L350,100 L350,50 L370,30 L390,50 L390,100 L440,100 L440,65 L480,65 L480,100 L540,100 L540,15 L560,5 L580,15 L580,100 L630,100 L630,70 L660,70 L660,100 L720,100 L720,45 L760,45 L760,100 L820,100 L820,60 L850,60 L850,100 L910,100 L910,25 L930,10 L950,25 L950,100 L1000,100 L1000,55 L1040,55 L1040,100 L1100,100 L1100,75 L1140,75 L1140,100 L1200,100 L1200,120 Z'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: bottom center;
+  background-size: 800px 90px;
+}
+
+.purva-footer-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+  gap: 36px;
+}
+
+/* Column 1: Brand & Contact Info */
+.purva-footer-col-brand {
+  display: flex;
+  flex-direction: column;
+}
+
+.purva-footer-logo {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #0b3558;
+  margin: 0 0 4px;
+}
+
+.purva-footer-logo-line {
+  width: 44px;
+  height: 2.5px;
+  background-color: #0b3558;
+  margin-bottom: 24px;
+}
+
+.purva-contact-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0b3558;
+  margin-bottom: 16px;
+}
+
+.purva-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.purva-contact-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.purva-contact-icon-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #f0f7fc;
+  color: #176bb0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.purva-contact-text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #555555;
+}
+
+.purva-contact-link {
+  color: #555555;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.purva-contact-link:hover {
+  color: #0b3558;
+}
+
+/* Follow Us Divider & Icons */
+.purva-follow-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 10px 0 18px;
+}
+
+.purva-follow-divider::before,
+.purva-follow-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.purva-follow-label {
+  padding: 0 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.purva-social-icons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.purva-social-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.purva-social-btn:hover {
+  background-color: #0b3558;
+  border-color: #0b3558;
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+/* Nav Columns (PROJECTS, QUICK LINKS, OTHER LINKS) */
+.purva-footer-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.purva-footer-heading {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0b3558;
+  letter-spacing: 1px;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 8px;
+}
+
+.purva-footer-heading::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 28px;
+  height: 2px;
+  background-color: #0b3558;
+}
+
+.purva-footer-links-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.purva-footer-links-list li a {
+  font-size: 13px;
+  color: #4a5568;
+  text-decoration: none;
+  transition: color 0.2s, transform 0.2s;
+  display: inline-block;
+}
+
+.purva-footer-links-list li a:hover {
+  color: #0b3558;
+  transform: translateX(2px);
+}
+
+/* ───────── Bottom Copyright Bar ───────── */
+.purva-bottom-bar {
+  background-color: #08243c;
+  color: #d1d5db;
+  font-size: 12px;
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.purva-copyright {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.purva-quicklinks-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+
+.purva-bottom-legal {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.purva-bottom-legal a {
+  color: #d1d5db;
+  text-decoration: none;
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+.purva-bottom-legal a:hover {
+  color: #ffffff;
+}
+
+.purva-back-to-top-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.purva-back-to-top-btn:hover {
+  opacity: 0.8;
+}
+
+.purva-back-to-top-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+/* Floating WhatsApp & Online Widget */
+.purva-whatsapp-bubble {
+  position: fixed;
+  bottom: 84px;
+  right: 24px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #0b8043;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  z-index: 85;
+  transition: transform 0.2s ease;
+  border: none;
+}
+
+.purva-whatsapp-bubble:hover {
+  transform: scale(1.08);
+}
+
+.purva-online-badge {
+  position: fixed;
+  bottom: 80px;
+  right: 80px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 85;
+}
+
+.purva-online-badge-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .purva-footer-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .purva-footer-grid {
+    grid-template-columns: 1fr;
+  }
+  .purva-bottom-bar {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+    padding: 20px;
+  }
+  .purva-bottom-legal {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}

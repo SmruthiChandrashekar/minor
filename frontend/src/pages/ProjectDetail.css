@@ -1,0 +1,644 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+.proj-page {
+  font-family: 'Montserrat', sans-serif;
+  color: #1a1a1a;
+  background-color: #ffffff;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ───────── Top Navigation Header ───────── */
+.proj-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 50;
+  background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.7) 70%, transparent 100%);
+  backdrop-filter: blur(6px);
+}
+
+.proj-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.proj-menu-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #0b3558;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 0;
+  letter-spacing: 0.5px;
+}
+
+.proj-hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 20px;
+  height: 12px;
+}
+
+.proj-hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background-color: #0b3558;
+  border-radius: 2px;
+}
+
+.proj-nav-link {
+  color: #0b3558;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+
+.proj-nav-link:hover {
+  color: #2b7fc3;
+}
+
+.proj-brand-logo {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #0b3558;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.proj-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.proj-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #0b3558;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Header Grievance Portal Pill Button */
+.proj-header-grm-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background-color: #0b3558;
+  color: #ffffff;
+  border: 1px solid #0b3558;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(11, 53, 88, 0.2);
+  transition: all 0.25s ease;
+}
+
+.proj-header-grm-btn:hover {
+  background-color: #1a4f7c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(11, 53, 88, 0.3);
+}
+
+.proj-header-grm-icon {
+  font-size: 13px;
+}
+
+.proj-icon-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: rgba(11, 53, 88, 0.12);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0b3558;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.proj-icon-btn:hover {
+  background-color: #0b3558;
+  color: #ffffff;
+}
+
+.proj-icon-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* ───────── Hero Section ───────── */
+.proj-hero {
+  position: relative;
+  width: 100%;
+  height: 600px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 60px 70px;
+}
+
+.proj-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.2) 0%, rgba(15, 23, 42, 0.7) 100%);
+}
+
+.proj-hero-content {
+  position: relative;
+  z-index: 10;
+  max-width: 800px;
+  color: #ffffff;
+}
+
+.proj-hero-title {
+  font-size: 52px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+.proj-hero-subtitle {
+  font-size: 16px;
+  font-weight: 400;
+  color: #e2e8f0;
+  margin: 0 0 26px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.proj-hero-buttons {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.proj-virtual-tour-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  background-color: #ffffff;
+  color: #0b3558;
+  border: 1px solid #ffffff;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.proj-virtual-tour-btn:hover {
+  background-color: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+/* ───────── Breadcrumb Bar ───────── */
+.proj-breadcrumb-bar {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 24px 24px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.proj-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666666;
+}
+
+.proj-breadcrumb a {
+  color: #444444;
+  text-decoration: none;
+}
+
+.proj-breadcrumb a:hover {
+  color: #0b3558;
+}
+
+.proj-breadcrumb .active {
+  color: #0b3558;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.proj-subnav-grm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b3558;
+  text-decoration: none;
+  padding: 4px 10px;
+  background-color: #f0f7fc;
+  border-radius: 4px;
+  border: 1px solid #bae0fd;
+  transition: all 0.2s ease;
+}
+
+.proj-subnav-grm-link:hover {
+  background-color: #0b3558;
+  color: #ffffff;
+  border-color: #0b3558;
+}
+
+/* ───────── Overview Section ───────── */
+.proj-overview-section {
+  max-width: 1240px;
+  margin: 40px auto 60px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 50px;
+  align-items: center;
+}
+
+.proj-overview-img-wrap {
+  width: 100%;
+  height: 480px;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+.proj-overview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.proj-overview-img-wrap:hover .proj-overview-img {
+  transform: scale(1.03);
+}
+
+.proj-overview-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.proj-overview-heading {
+  font-size: 38px;
+  font-weight: 400;
+  color: #1e3a5f;
+  margin: 0 0 20px;
+}
+
+.proj-overview-p {
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: #4a5568;
+  margin: 0 0 16px;
+}
+
+.proj-overview-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.proj-brochure-btn {
+  background-color: #0b3558;
+  color: #ffffff;
+  border: none;
+  padding: 12px 28px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: background-color 0.2s ease;
+}
+
+.proj-brochure-btn:hover {
+  background-color: #154e7d;
+}
+
+/* ───────── Project Tour Section ───────── */
+.proj-tour-section {
+  max-width: 1240px;
+  margin: 40px auto 70px;
+  padding: 0 24px;
+  text-align: center;
+  position: relative;
+}
+
+.proj-tour-heading {
+  font-size: 36px;
+  font-weight: 400;
+  color: #1e3a5f;
+  margin-bottom: 24px;
+}
+
+.proj-tour-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 35px;
+  flex-wrap: wrap;
+}
+
+.proj-tour-tab {
+  padding: 9px 24px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #0b3558;
+  background-color: transparent;
+  color: #0b3558;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.proj-tour-tab.active {
+  background-color: #0b3558;
+  color: #ffffff;
+}
+
+.proj-tour-media-wrap {
+  position: relative;
+  max-width: 960px;
+  margin: 0 auto;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+.proj-tour-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.proj-tour-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.proj-tour-watermark {
+  align-self: flex-end;
+  font-size: 18px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 2px;
+}
+
+.proj-tour-center-badge {
+  align-self: center;
+  text-align: center;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.proj-tour-badge-name {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.proj-tour-badge-sub {
+  font-size: 13px;
+  letter-spacing: 3px;
+}
+
+.proj-tour-bottom-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.proj-tour-wireframe {
+  position: absolute;
+  right: 40px;
+  top: 60px;
+  width: 60px;
+  height: 60px;
+}
+
+/* ───────── Premium Amenities Section (Dark Blue) ───────── */
+.proj-amenities-section {
+  background-color: #0b3558;
+  color: #ffffff;
+  padding: 60px 40px 70px;
+  position: relative;
+}
+
+.proj-amenities-container {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.proj-amenities-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.proj-amenities-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #e0c37b;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.proj-amenities-title {
+  font-size: 34px;
+  font-weight: 400;
+  color: #ffffff;
+  margin: 0;
+}
+
+.proj-amenities-tabs {
+  display: flex;
+  gap: 12px;
+}
+
+.proj-amenity-tab {
+  padding: 8px 22px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid #ffffff;
+  background-color: transparent;
+  color: #ffffff;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.proj-amenity-tab.active {
+  background-color: #ffffff;
+  color: #0b3558;
+}
+
+/* Amenities Grid Layout: Left Photo + Right 8 Icons */
+.proj-amenities-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.proj-amenities-photo-wrap {
+  width: 100%;
+  height: 340px;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.proj-amenities-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.proj-amenities-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 26px 16px;
+}
+
+.proj-amenity-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.proj-amenity-icon-circle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #ffffff;
+  transition: all 0.25s ease;
+}
+
+.proj-amenity-card:hover .proj-amenity-icon-circle {
+  border-color: #e0c37b;
+  color: #e0c37b;
+  transform: translateY(-2px);
+}
+
+.proj-amenity-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+/* Sticky Right Enquire Button */
+.proj-enquire-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%) rotate(180deg);
+  background-color: #0b3558;
+  color: #ffffff;
+  padding: 16px 8px;
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  border: none;
+  cursor: pointer;
+  z-index: 99;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .proj-overview-section,
+  .proj-amenities-layout {
+    grid-template-columns: 1fr;
+  }
+  .proj-amenities-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 680px) {
+  .proj-topbar {
+    padding: 0 16px;
+  }
+  .proj-hero {
+    padding: 0 20px 40px;
+    height: 500px;
+  }
+  .proj-hero-title {
+    font-size: 34px;
+  }
+  .proj-amenities-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

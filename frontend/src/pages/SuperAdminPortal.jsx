@@ -12,7 +12,6 @@ const SuperAdminPortal = () => {
   const [inviteData, setInviteData] = useState({
     name: "",
     email: "",
-    password: "",
     role: "admin",
     department: "HR",
     admin_tier: "L1"
@@ -56,23 +55,51 @@ const SuperAdminPortal = () => {
     }
   };
 
+  const [isInviting, setIsInviting] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
+
   const handleInviteSubmit = async (e) => {
     e.preventDefault();
+    setIsInviting(true);
     try {
       const res = await apiClient("/api/admin/users/invite", {
         method: "POST",
         body: JSON.stringify(inviteData)
       });
       if (res.ok) {
-        alert("User invited successfully!");
+        alert(`Invite email sent to ${inviteData.email}. They'll set their own password from the link.`);
         setShowInviteModal(false);
-        fetchData();
+        setInviteData({ ...inviteData, name: "", email: "" });
       } else {
         const error = await res.json();
         alert(`Failed to invite: ${error.detail}`);
       }
+      // Refresh either way: the account may exist even if the email failed
+      fetchData();
     } catch (err) {
       console.error(err);
+      alert("Failed to invite: could not reach the server.");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleResendInvite = async (user) => {
+    if (!window.confirm(`Send ${user.name} a new ${user.invite_pending ? "invite" : "password reset"} email?`)) return;
+    setResendingId(user.user_id);
+    try {
+      const res = await apiClient(`/api/admin/users/${user.user_id}/resend-invite`, { method: "POST" });
+      if (res.ok) {
+        alert(`Email sent to ${user.email}.`);
+      } else {
+        const error = await res.json();
+        alert(`Failed to send: ${error.detail}`);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send: could not reach the server.");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -146,13 +173,25 @@ const SuperAdminPortal = () => {
                       </td>
                       <td>{u.department || "-"}{u.admin_tier ? ` · ${u.admin_tier}` : ""}</td>
                       <td className="text-center">
-                        {u.is_active ? (
-                          <span className="badge bg-success bg-opacity-10 text-success border border-success">Active</span>
-                        ) : (
+                        {!u.is_active ? (
                           <span className="badge bg-secondary bg-opacity-10 text-secondary border border-secondary">Deactivated</span>
+                        ) : u.invite_pending ? (
+                          <span className="badge bg-warning bg-opacity-10 text-warning border border-warning">Pending invite</span>
+                        ) : (
+                          <span className="badge bg-success bg-opacity-10 text-success border border-success">Active</span>
                         )}
                       </td>
-                      <td className="px-4 text-end">
+                      <td className="px-4 text-end text-nowrap">
+                        {u.is_active && (
+                          <button
+                            className="btn btn-sm btn-outline-secondary me-2"
+                            onClick={() => handleResendInvite(u)}
+                            disabled={resendingId === u.user_id}
+                            title={u.invite_pending ? "Email a new invite link" : "Email a password reset link"}
+                          >
+                            {resendingId === u.user_id ? "Sending..." : u.invite_pending ? "Resend invite" : "Send reset link"}
+                          </button>
+                        )}
                         <button
                           className={`btn btn-sm ${u.is_active ? 'btn-outline-danger' : 'btn-outline-success'}`}
                           onClick={() => handleToggleStatus(u)}
@@ -222,10 +261,9 @@ const SuperAdminPortal = () => {
                     <label className="form-label fw-semibold">Email</label>
                     <input type="email" className="form-control" value={inviteData.email} onChange={e => setInviteData({...inviteData, email: e.target.value})} required />
                   </div>
-                  <div className="mb-3">
-                    <label className="form-label fw-semibold">Temporary Password</label>
-                    <input type="text" className="form-control" value={inviteData.password} onChange={e => setInviteData({...inviteData, password: e.target.value})} required />
-                  </div>
+                  <p className="small text-muted mb-3">
+                    We'll email them a link to set their own password. The link works once.
+                  </p>
                   <div className="row">
                     <div className="col-md-6 mb-3">
                       <label className="form-label fw-semibold">Role</label>
@@ -262,7 +300,7 @@ const SuperAdminPortal = () => {
                   </div>
                   <div className="mt-4 d-flex justify-content-end">
                     <button type="button" className="btn btn-light me-2" onClick={() => setShowInviteModal(false)}>Cancel</button>
-                    <button type="submit" className="btn btn-primary">Send Invite</button>
+                    <button type="submit" className="btn btn-primary" disabled={isInviting}>{isInviting ? "Sending..." : "Send Invite"}</button>
                   </div>
                 </form>
               </div>
