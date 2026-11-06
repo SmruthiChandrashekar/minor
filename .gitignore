@@ -77,3 +77,13 @@ PERFORMANCE_ISSUES.txt
 frontend/dev-dist/
 PERFORMANCE_FIXES_LOG.md
 PROJECT_STATUS.md
+
+# Company grievance dataset (train/validation/test splits); never commit
+dataset/
+
+# LoRA adapters from experiments/finetune_llm.py (large, rebuildable)
+experiments/adapters/
+
+# The policy vector index ships with the repo so cloud deploys can search it
+!rag/chroma_final/*.sqlite3
+!rag/chroma_final/**/*.bin

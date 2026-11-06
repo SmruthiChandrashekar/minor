@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { apiClient } from "../services/api";
 
+// Error text from a failed response. Proxy errors (502/504 from the host) are HTML,
+// not JSON, so fall back to the status code instead of throwing.
+const errorDetail = async (res) => {
+  try {
+    const body = await res.json();
+    if (typeof body.detail === "string") return body.detail;
+  } catch {
+    // not JSON (e.g. an HTML error page from the host's proxy)
+  }
+  return `the server returned ${res.status}${res.statusText ? ` ${res.statusText}` : ""}`;
+};
+
 const SuperAdminPortal = () => {
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -24,11 +36,12 @@ const SuperAdminPortal = () => {
         apiClient("/api/admin/users"),
         apiClient("/api/admin/audit-logs")
       ]);
+      if (!usersRes.ok) throw new Error(await errorDetail(usersRes));
       setUsers(await usersRes.json());
-      setLogs(await logsRes.json());
+      setLogs(logsRes.ok ? await logsRes.json() : []);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch data.");
+      alert(`Failed to fetch data: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -48,10 +61,11 @@ const SuperAdminPortal = () => {
       if (res.ok) {
         fetchData();
       } else {
-        alert("Failed to update status.");
+        alert(`Failed to update status: ${await errorDetail(res)}`);
       }
     } catch (err) {
       console.error(err);
+      alert("Failed to update status: could not reach the server.");
     }
   };
 
@@ -71,8 +85,7 @@ const SuperAdminPortal = () => {
         setShowInviteModal(false);
         setInviteData({ ...inviteData, name: "", email: "" });
       } else {
-        const error = await res.json();
-        alert(`Failed to invite: ${error.detail}`);
+        alert(`Failed to invite: ${await errorDetail(res)}`);
       }
       // Refresh either way: the account may exist even if the email failed
       fetchData();
@@ -92,8 +105,7 @@ const SuperAdminPortal = () => {
       if (res.ok) {
         alert(`Email sent to ${user.email}.`);
       } else {
-        const error = await res.json();
-        alert(`Failed to send: ${error.detail}`);
+        alert(`Failed to send: ${await errorDetail(res)}`);
       }
     } catch (err) {
       console.error(err);

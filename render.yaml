@@ -1,0 +1,54 @@
+# Render blueprint for the FastAPI backend (Render → New → Blueprint, pick this repo).
+# Uses the light requirements.txt (no PyTorch) so it fits the 512 MB free tier;
+# policy search embeddings come from the Hugging Face Space in deploy/hf-embed-space.
+# Values marked sync: false are typed into the Render dashboard, never committed.
+services:
+  - type: web
+    name: puravankara-grm-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: qwen/qwen3.8-27b
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Vercel site address(es), comma-separated: used for CORS and invite links
+      - key: FRONTEND_URL
+        sync: false
+      # Hugging Face Space embeddings (see deploy/hf-embed-space/README.md)
+      - key: EMBED_URL
+        sync: false
+      - key: EMBED_KEY
+        sync: false
+      - key: HF_TOKEN
+        sync: false
+      # Render free tier blocks SMTP, so staff emails go through Brevo's HTTP API
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: Puravankara GRM
+      - key: SUPER_ADMIN_EMAIL
+        sync: false
+      - key: SUPER_ADMIN_PASSWORD
+        sync: false
+      - key: REQUIRE_PHONE_VERIFIED
+        value: "false"
+      - key: OTP_DEV_MODE
+        value: "false"

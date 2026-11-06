@@ -714,7 +714,7 @@ def _staff_role_label(role: str, department: Optional[str], admin_tier: Optional
 def _require_email_configured():
     # Without SMTP the notifier only logs emails, so an invite would silently go nowhere
     if not notifier.email_configured:
-        raise HTTPException(status_code=503, detail="Email is not configured on the server (SMTP_HOST, SMTP_USER, SMTP_PASSWORD), so the invite can't be sent.")
+        raise HTTPException(status_code=503, detail="Email is not configured on the server (BREVO_API_KEY, or SMTP_HOST, SMTP_USER, SMTP_PASSWORD), so the invite can't be sent.")
 
 
 @app.get("/api/admin/users")
@@ -781,7 +781,7 @@ def invite_admin_user(request: InviteRequest, http_request: Request, user: dict 
 
     role_label = _staff_role_label(request.role, invite_dept, invite_tier)
     if not _email_staff_access(base_url, request.email, request.name, role_label, link, "invite"):
-        raise HTTPException(status_code=502, detail="The account was created, but the invite email could not be sent. Check the server's SMTP settings, then use Resend invite.")
+        raise HTTPException(status_code=502, detail="The account was created, but the invite email could not be sent. Check the server's email settings (Brevo or SMTP) and its logs, then use Resend invite.")
     return {"status": "success", "user_id": new_user_id}
 
 @app.post("/api/admin/users/{target_id}/resend-invite")
@@ -804,7 +804,7 @@ def resend_staff_invite(target_id: str, http_request: Request, user: dict = Depe
 
     role_label = _staff_role_label(staff["role"], staff.get("department"), staff.get("admin_tier"))
     if not _email_staff_access(base_url, staff["email"], staff.get("name"), role_label, link, link_type):
-        raise HTTPException(status_code=502, detail="Could not send the email. Check the server's SMTP settings.")
+        raise HTTPException(status_code=502, detail="Could not send the email. Check the server's email settings (Brevo or SMTP) and its logs.")
     log_audit(supabase, "RESEND_INVITE", user, target_id, staff["email"], None, link_type)
     return {"status": "success", "type": link_type}
 
